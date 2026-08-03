@@ -135,7 +135,8 @@ namespace Ti2026.Data.Migrations
                     Region = table.Column<string>(type: "TEXT", nullable: true),
                     Qualification = table.Column<string>(type: "TEXT", nullable: true),
                     LogoUrl = table.Column<string>(type: "TEXT", nullable: true),
-                    LogoMediaAssetId = table.Column<int>(type: "INTEGER", nullable: true)
+                    LogoMediaAssetId = table.Column<int>(type: "INTEGER", nullable: true),
+                    OpenDotaTeamId = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -230,14 +231,15 @@ namespace Ti2026.Data.Migrations
                     Winrate = table.Column<double>(type: "REAL", nullable: false),
                     AvgKills = table.Column<double>(type: "REAL", nullable: false),
                     AvgDeaths = table.Column<double>(type: "REAL", nullable: false),
-                    AvgAssists = table.Column<double>(type: "REAL", nullable: false),
                     KillDiff = table.Column<double>(type: "REAL", nullable: false),
                     TotalKills = table.Column<double>(type: "REAL", nullable: false),
-                    FirstBloodRate = table.Column<double>(type: "REAL", nullable: false),
-                    F10Rate = table.Column<double>(type: "REAL", nullable: false),
-                    WinWhenFbRate = table.Column<double>(type: "REAL", nullable: false),
-                    WinWhenF10Rate = table.Column<double>(type: "REAL", nullable: false),
-                    AvgDurationMinutes = table.Column<double>(type: "REAL", nullable: false)
+                    AvgDurationMinutes = table.Column<double>(type: "REAL", nullable: false),
+                    AvgAssists = table.Column<double>(type: "REAL", nullable: true),
+                    FirstBloodRate = table.Column<double>(type: "REAL", nullable: true),
+                    F10Rate = table.Column<double>(type: "REAL", nullable: true),
+                    WinWhenFbRate = table.Column<double>(type: "REAL", nullable: true),
+                    WinWhenF10Rate = table.Column<double>(type: "REAL", nullable: true),
+                    Source = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -323,6 +325,13 @@ namespace Ti2026.Data.Migrations
                 name: "IX_TeamAliases_TeamId",
                 table: "TeamAliases",
                 column: "TeamId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Teams_OpenDotaTeamId",
+                table: "Teams",
+                column: "OpenDotaTeamId",
+                unique: true,
+                filter: "\"OpenDotaTeamId\" IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Teams_Slug",

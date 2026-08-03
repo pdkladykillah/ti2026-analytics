@@ -130,13 +130,21 @@ public static class DataEndpoints
         winrate = Math.Round(s.Winrate),
         kills = Math.Round(s.AvgKills, 2),
         deaths = Math.Round(s.AvgDeaths, 2),
-        assists = Math.Round(s.AvgAssists, 2),
-        firstBlood = Math.Round(s.FirstBloodRate),
-        f10 = Math.Round(s.F10Rate),
-        winWhenFb = Math.Round(s.WinWhenFbRate),
-        winWhenF10 = Math.Round(s.WinWhenF10Rate),
-        duration = Math.Round(s.AvgDurationMinutes),
-        totalKills = Math.Round(s.TotalKills, 2),
         killDiff = Math.Round(s.KillDiff, 2),
+        totalKills = Math.Round(s.TotalKills, 2),
+        duration = Math.Round(s.AvgDurationMinutes),
+
+        // null đi thẳng ra JSON thành null để UI hiện "—". KHÔNG quy về 0: một ô trống nói
+        // "chưa đo được", còn số 0 nói "đo rồi và bằng không" — trộn hai thứ là dựng số liệu sai.
+        assists = Round(s.AvgAssists, 2),
+        firstBlood = Round(s.FirstBloodRate),
+        f10 = Round(s.F10Rate),
+        winWhenFb = Round(s.WinWhenFbRate),
+        winWhenF10 = Round(s.WinWhenF10Rate),
+
+        source = s.Source,
     };
+
+    private static double? Round(double? value, int digits = 0) =>
+        value.HasValue ? Math.Round(value.Value, digits) : null;
 }

@@ -11,7 +11,7 @@ using Ti2026.Data;
 namespace Ti2026.Data.Migrations
 {
     [DbContext(typeof(Ti2026DbContext))]
-    [Migration("20260803044718_InitialCreate")]
+    [Migration("20260803062415_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -292,6 +292,9 @@ namespace Ti2026.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("OpenDotaTeamId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Qualification")
                         .HasColumnType("TEXT");
 
@@ -306,6 +309,10 @@ namespace Ti2026.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OpenDotaTeamId")
+                        .IsUnique()
+                        .HasFilter("\"OpenDotaTeamId\" IS NOT NULL");
 
                     b.HasIndex("Slug")
                         .IsUnique();
@@ -346,7 +353,7 @@ namespace Ti2026.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<double>("AvgAssists")
+                    b.Property<double?>("AvgAssists")
                         .HasColumnType("REAL");
 
                     b.Property<double>("AvgDeaths")
@@ -361,10 +368,10 @@ namespace Ti2026.Data.Migrations
                     b.Property<DateOnly>("CapturedOn")
                         .HasColumnType("TEXT");
 
-                    b.Property<double>("F10Rate")
+                    b.Property<double?>("F10Rate")
                         .HasColumnType("REAL");
 
-                    b.Property<double>("FirstBloodRate")
+                    b.Property<double?>("FirstBloodRate")
                         .HasColumnType("REAL");
 
                     b.Property<double>("KillDiff")
@@ -376,16 +383,20 @@ namespace Ti2026.Data.Migrations
                     b.Property<int>("Maps")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("TeamId")
                         .HasColumnType("INTEGER");
 
                     b.Property<double>("TotalKills")
                         .HasColumnType("REAL");
 
-                    b.Property<double>("WinWhenF10Rate")
+                    b.Property<double?>("WinWhenF10Rate")
                         .HasColumnType("REAL");
 
-                    b.Property<double>("WinWhenFbRate")
+                    b.Property<double?>("WinWhenFbRate")
                         .HasColumnType("REAL");
 
                     b.Property<int>("WindowDays")

@@ -28,14 +28,32 @@ public class TeamStatSnapshot
 
     public double AvgKills { get; set; }
     public double AvgDeaths { get; set; }
-    public double AvgAssists { get; set; }
     public double KillDiff { get; set; }
     public double TotalKills { get; set; }
-    public double FirstBloodRate { get; set; }
-    public double F10Rate { get; set; }
-    public double WinWhenFbRate { get; set; }
-    public double WinWhenF10Rate { get; set; }
 
     /// <summary>Phút — khớp đơn vị của field "duration" trong teams.json.</summary>
     public double AvgDurationMinutes { get; set; }
+
+    // ---- Năm chỉ số dưới đây NULLABLE có chủ ý ----
+    //
+    // Endpoint teams/{id}/matches của OpenDota không trả về assists, first blood, hay mốc
+    // đội nào đạt 10 kill trước. Chúng chỉ có trong match detail (matches/{id}) — một request
+    // cho mỗi trận, tức việc của Giai đoạn 3.
+    //
+    // null = CHƯA BIẾT, khác hoàn toàn với 0 = ĐÃ ĐO VÀ BẰNG KHÔNG. Nếu để không nullable thì
+    // ingest sẽ ghi 0 và trang hiển thị "first blood 0%" cho cả 16 đội, trông y như số thật.
+    // API trả null, UI hiện "—".
+
+    public double? AvgAssists { get; set; }
+    public double? FirstBloodRate { get; set; }
+    public double? F10Rate { get; set; }
+    public double? WinWhenFbRate { get; set; }
+    public double? WinWhenF10Rate { get; set; }
+
+    /// <summary>
+    /// Nguồn của hàng này: "editorial" (seed từ teams.json), "opendota" (tính từ match thật),
+    /// hoặc "mixed" (ingest cập nhật phần tính được, giữ lại phần biên tập chưa tính được).
+    /// Có cột này để không bao giờ nhầm số biên tập là số đo.
+    /// </summary>
+    public required string Source { get; set; }
 }

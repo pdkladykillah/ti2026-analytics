@@ -139,7 +139,8 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
             {
                 snapshot = new TeamStatSnapshot
                 {
-                    TeamId = team.Id, CapturedOn = today, WindowDays = window
+                    TeamId = team.Id, CapturedOn = today, WindowDays = window,
+                    Source = "editorial",
                 };
                 db.TeamStatSnapshots.Add(snapshot);
             }

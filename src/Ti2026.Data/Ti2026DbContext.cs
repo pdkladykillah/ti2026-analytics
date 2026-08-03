@@ -52,6 +52,8 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         }
 
         b.Entity<Team>().HasIndex(x => x.Slug).IsUnique();
+        b.Entity<Team>().HasIndex(x => x.OpenDotaTeamId).IsUnique()
+            .HasFilter("\"OpenDotaTeamId\" IS NOT NULL");
 
         b.Entity<TeamAlias>().HasIndex(x => new { x.Alias, x.Source }).IsUnique();
         b.Entity<TeamAlias>()

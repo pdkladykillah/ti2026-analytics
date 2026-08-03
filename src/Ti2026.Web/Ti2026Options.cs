@@ -10,6 +10,22 @@ public class Ti2026Options
     /// </summary>
     public string PathBase { get; set; } = "";
 
+    /// <summary>
+    /// PathBase đã chuẩn hoá: có dấu '/' ở đầu, không có '/' ở cuối, rỗng nếu không cấu hình.
+    ///
+    /// Cần thiết vì UsePathBase ném ArgumentException lúc startup nếu giá trị không bắt đầu
+    /// bằng '/'. Gõ "ti2026" thay vì "/ti2026" trong docker-compose là lỗi rất dễ mắc, và
+    /// hậu quả là container crash-loop với thông báo không nói gì về nguyên nhân.
+    /// </summary>
+    public string NormalizedPathBase()
+    {
+        var value = PathBase?.Trim() ?? "";
+        if (value.Length == 0 || value == "/") return "";
+
+        if (!value.StartsWith('/')) value = "/" + value;
+        return value.TrimEnd('/');
+    }
+
     public int IngestIntervalHours { get; set; } = 6;
 
     /// <summary>Bắt buộc ở Production — bảo vệ POST api/ingest/run.</summary>

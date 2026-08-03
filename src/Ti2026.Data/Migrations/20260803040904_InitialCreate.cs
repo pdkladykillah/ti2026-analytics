@@ -33,8 +33,8 @@ namespace Ti2026.Data.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Source = table.Column<string>(type: "TEXT", nullable: false),
-                    StartedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    FinishedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
+                    StartedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    FinishedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
                     Status = table.Column<int>(type: "INTEGER", nullable: false),
                     ItemsWritten = table.Column<int>(type: "INTEGER", nullable: false),
                     ErrorMessage = table.Column<string>(type: "TEXT", nullable: true)
@@ -50,7 +50,7 @@ namespace Ti2026.Data.Migrations
                 {
                     Id = table.Column<long>(type: "INTEGER", nullable: false),
                     SeriesId = table.Column<long>(type: "INTEGER", nullable: true),
-                    StartTime = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "TEXT", nullable: false),
                     DurationSeconds = table.Column<int>(type: "INTEGER", nullable: false),
                     LeagueId = table.Column<long>(type: "INTEGER", nullable: true),
                     LeagueName = table.Column<string>(type: "TEXT", nullable: true),
@@ -63,7 +63,7 @@ namespace Ti2026.Data.Migrations
                     RadiantHadFirstBlood = table.Column<bool>(type: "INTEGER", nullable: true),
                     RadiantReachedTenFirst = table.Column<bool>(type: "INTEGER", nullable: true),
                     PatchVersion = table.Column<string>(type: "TEXT", nullable: true),
-                    IngestedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    IngestedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -81,7 +81,7 @@ namespace Ti2026.Data.Migrations
                     ContentHash = table.Column<string>(type: "TEXT", nullable: false),
                     ETag = table.Column<string>(type: "TEXT", nullable: true),
                     ContentType = table.Column<string>(type: "TEXT", nullable: true),
-                    FetchedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    FetchedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -115,7 +115,7 @@ namespace Ti2026.Data.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     Key = table.Column<string>(type: "TEXT", nullable: false),
                     Hash = table.Column<string>(type: "TEXT", nullable: false),
-                    AppliedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    AppliedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {

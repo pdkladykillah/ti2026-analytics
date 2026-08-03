@@ -8,7 +8,14 @@ public class Match
     /// <summary>Để gom các game thành series Bo3/Bo5. API H2H tính từ đây.</summary>
     public long? SeriesId { get; set; }
 
-    public DateTimeOffset StartTime { get; set; }
+    /// <summary>
+    /// UTC. Dùng DateTime chứ không DateTimeOffset vì SQLite không hỗ trợ DateTimeOffset
+    /// trong ORDER BY — nó lưu thành TEXT kèm offset nên so sánh chuỗi sẽ sai giữa các múi
+    /// giờ. Toàn bộ pipeline sắp xếp và lọc theo cột này nên nó phải so sánh được.
+    /// DbContext có converter buộc mọi DateTime đọc/ghi đều là UTC.
+    /// </summary>
+    public DateTime StartTime { get; set; }
+
     public int DurationSeconds { get; set; }
     public long? LeagueId { get; set; }
     public string? LeagueName { get; set; }
@@ -24,5 +31,7 @@ public class Match
     public bool? RadiantHadFirstBlood { get; set; }
     public bool? RadiantReachedTenFirst { get; set; }
     public string? PatchVersion { get; set; }
-    public DateTimeOffset IngestedAt { get; set; }
+
+    /// <summary>UTC.</summary>
+    public DateTime IngestedAt { get; set; }
 }

@@ -13,5 +13,6 @@ public class SeedState
     /// <summary>SHA-256 dạng hex.</summary>
     public required string Hash { get; set; }
 
-    public DateTimeOffset AppliedAt { get; set; }
+    /// <summary>UTC.</summary>
+    public DateTime AppliedAt { get; set; }
 }

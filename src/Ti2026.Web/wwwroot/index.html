@@ -1,16 +1,4 @@
 <!DOCTYPE html>
-<!--
-  ⚠️  ĐÂY LÀ BẢN TĨNH CŨ — KHÔNG PHẢI BẢN ĐANG CHẠY.
-
-  Bản đang chạy: src/Ti2026.Web/wwwroot/index.html
-  Khác biệt duy nhất: 6 lời gọi fetch("data/*.json") đã đổi thành fetch("api/*").
-
-  File này được giữ lại làm đường lùi và bản tham chiếu để so sánh trong thời gian đầu
-  chuyển sang .NET. Sửa ở đây KHÔNG có tác dụng gì lên trang thật.
-  Xoá file này khi đã tin API chạy ổn định.
-
-  Thư mục data/ thì PHẢI giữ: nó là nguồn seed dữ liệu biên tập và Dockerfile copy vào image.
--->
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
@@ -254,7 +242,7 @@ th:first-child{border-radius:9px 0 0 0}th:last-child{border-radius:0 9px 0 0}td.
     </div>
   </section>
   <section class="v" id="v-abt"><div class="p"><h2>Về trang này</h2><div class="d" style="font-size:13.5px;line-height:1.7">
-    <p>Phân tích 16 đội <b>The International 2026</b>, chỉ số <b>6 tháng gần nhất</b> từ DLTV.org. Dữ liệu nằm ở <code>data/teams.json</code>; một GitHub Actions workflow cào lại hằng ngày để cập nhật tự động (xem repo).</p>
+    <p>Phân tích 16 đội <b>The International 2026</b>, chỉ số <b>6 tháng gần nhất</b> từ OpenDota và DLTV.org. Dữ liệu phục vụ qua API và được nền tự cập nhật định kỳ; trạng thái lần cập nhật gần nhất xem ở <code>api/health</code>.</p>
     <p><b>Bản đầy đủ</b> (kèm biểu đồ radar/scatter, scraper, workflow) có trong gói mã nguồn. Trang này là bản gọn tự chứa để demo.</p>
   </div></div></section>
   <p class="ft">Dữ liệu: <a href="https://dltv.org" target="_blank" rel="noopener">DLTV.org</a> · Cập nhật lần cuối: <span id="fu">—</span></p>
@@ -263,14 +251,14 @@ th:first-child{border-radius:9px 0 0 0}th:last-child{border-radius:0 9px 0 0}td.
 const $=s=>document.querySelector(s),tier=w=>w>=60?"S":w>=50?"A":"B";
 let T=[],R={},H={},TL=null;
 let PL=null,PH={},PI={},pCache={},pCur="";
-fetch("data/teams.json").then(r=>r.json()).then(d=>{
+fetch("api/teams").then(r=>r.json()).then(d=>{
   T=d.teams.map(x=>({...x,tier:x.stats?tier(x.stats.winrate):null}));
   return Promise.all([
-    fetch("data/meta.json").then(r=>r.json()).catch(()=>({})),
-    fetch("data/rosters.json").then(r=>r.json()).then(x=>x.rosters||{}).catch(()=>({})),
-    fetch("data/h2h.json").then(r=>r.json()).then(x=>x.pairs||{}).catch(()=>({})),
-    fetch("data/tiers.json").then(r=>r.json()).catch(()=>null),
-    fetch("data/players.json").then(r=>r.json()).catch(()=>null)
+    fetch("api/meta").then(r=>r.json()).catch(()=>({})),
+    fetch("api/rosters").then(r=>r.json()).then(x=>x.rosters||{}).catch(()=>({})),
+    fetch("api/h2h").then(r=>r.json()).then(x=>x.pairs||{}).catch(()=>({})),
+    fetch("api/tiers").then(r=>r.json()).catch(()=>null),
+    fetch("api/players").then(r=>r.json()).catch(()=>null)
   ]);
 }).then(([m,ros,h2h,tl,pl])=>{
   R=ros; H=h2h; TL=tl;
@@ -278,7 +266,7 @@ fetch("data/teams.json").then(r=>r.json()).then(d=>{
   const wd=T.filter(t=>t.stats).length,dt=m.updatedAt?new Date(m.updatedAt).toLocaleString("vi-VN",{dateStyle:"medium",timeStyle:"short"}):"—";
   $("#snap").innerHTML='<span class="lv">●</span> Cập nhật: <b>'+dt+'</b> · '+wd+'/'+T.length+' đội có dữ liệu'+(m.seed?' · (seed)':'');
   $("#fu").textContent=dt;render();
-}).catch(e=>{$("#err").innerHTML='<p style="color:var(--rd)">Không tải được data/teams.json — hãy mở qua GitHub Pages/web server.</p>';});
+}).catch(e=>{$("#err").innerHTML='<p style="color:var(--rd)">Không tải được api/teams — kiểm tra log server hoặc api/health.</p>';});
 const wd=()=>T.filter(t=>t.stats),S=t=>t.stats;
 function lg(t,big){
   const cm='mono'+(big?' mono-lg':''), ci='tlg'+(big?' tlg-lg':'');
@@ -424,7 +412,7 @@ const CDN="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/h
 let tpos=0;
 function himg(el){if(el.dataset.r){el.parentElement.classList.add("noimg");el.remove();}else{el.dataset.r="1";el.src=el.dataset.a;}}
 function tierInit(){
-  if(!TL||!TL.positions){$("#tlist").innerHTML='<div class="nd">Chưa tải được <code>data/tiers.json</code>.</div>';return;}
+  if(!TL||!TL.positions){$("#tlist").innerHTML='<div class="nd">Chưa tải được <code>api/tiers</code>.</div>';return;}
   $("#tpatch").textContent="· patch "+TL.patch+" ("+TL.patchDate+")";
   $("#tmethod").innerHTML="<b>Cách xếp hạng.</b> "+esc(TL.method)+"<br><br><b>Lưu ý khi đọc.</b> "+esc(TL.caveat);
   $("#tpills").innerHTML=TL.positions.map((p,i)=>'<button class="pill'+(i===tpos?" on":"")+'" data-i="'+i+'">'+esc(p.short)+'</button>').join("");
@@ -478,7 +466,7 @@ const dstr=t=>isFinite(t)&&t>0?new Date(t*1000).toLocaleDateString("vi-VN"):"\u2
 function mmss(s){const m=Math.floor(s/60);return m+":"+String(Math.round(s-m*60)).padStart(2,"0");}
 function plyInit(){
   const sel=$("#pSel");if(!sel)return;
-  if(!PL){$("#pBody").innerHTML='<div class="pldg er">Kh\u00f4ng t\u1ea3i \u0111\u01b0\u1ee3c data/players.json.</div>';return;}
+  if(!PL){$("#pBody").innerHTML='<div class="pldg er">Kh\u00f4ng t\u1ea3i \u0111\u01b0\u1ee3c api/players.</div>';return;}
   if(!sel.dataset.f){
     const g={};PL.forEach(p=>{(g[p.tn]=g[p.tn]||[]).push(p);});
     sel.innerHTML='<option value="">\u2014 Ch\u1ecdn tuy\u1ec3n th\u1ee7 \u2014</option>'+Object.keys(g).map(t=>

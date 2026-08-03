@@ -17,5 +17,6 @@ public class MediaAsset
 
     public string? ETag { get; set; }
     public string? ContentType { get; set; }
-    public DateTimeOffset FetchedAt { get; set; }
+    /// <summary>UTC.</summary>
+    public DateTime FetchedAt { get; set; }
 }

@@ -11,7 +11,7 @@ using Ti2026.Data;
 namespace Ti2026.Data.Migrations
 {
     [DbContext(typeof(Ti2026DbContext))]
-    [Migration("20260803034520_InitialCreate")]
+    [Migration("20260803040904_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -52,7 +52,7 @@ namespace Ti2026.Data.Migrations
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset?>("FinishedAt")
+                    b.Property<DateTime?>("FinishedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("ItemsWritten")
@@ -62,7 +62,7 @@ namespace Ti2026.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("StartedAt")
+                    b.Property<DateTime>("StartedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Status")
@@ -92,7 +92,7 @@ namespace Ti2026.Data.Migrations
                     b.Property<int?>("FirstBloodTimeSeconds")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset>("IngestedAt")
+                    b.Property<DateTime>("IngestedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<long?>("LeagueId")
@@ -122,7 +122,7 @@ namespace Ti2026.Data.Migrations
                     b.Property<long?>("SeriesId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset>("StartTime")
+                    b.Property<DateTime>("StartTime")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -150,7 +150,7 @@ namespace Ti2026.Data.Migrations
                     b.Property<string>("ETag")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("FetchedAt")
+                    b.Property<DateTime>("FetchedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("LocalPath")
@@ -246,7 +246,7 @@ namespace Ti2026.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset>("AppliedAt")
+                    b.Property<DateTime>("AppliedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Hash")

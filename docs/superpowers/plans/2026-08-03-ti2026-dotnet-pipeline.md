@@ -22,6 +22,23 @@ Ba điều dễ làm sai nếu không đọc trước:
 2. **Shape JSON phải giữ nguyên tuyệt đối.** `index.html:254-269` parse trực tiếp: `d.teams`, `x.rosters`, `x.pairs`, `pl.players`, `pl.h`, `pl.i`, `m.updatedAt`, `m.seed`. Sai một tên field là trang trắng.
 3. **`m.seed` đã tồn tại** (`index.html:267`) — khi bật, UI hiện nhãn `(seed)`. Ta dùng lại cờ này cho dữ liệu mồi chưa qua ingest, không cần thêm gì ở frontend.
 
+### Hai quyết định phát hiện trong lúc triển khai (đã áp dụng, không phải đề xuất)
+
+**1. Mọi cột thời gian dùng `DateTime` UTC, KHÔNG dùng `DateTimeOffset`.**
+SQLite không hỗ trợ `DateTimeOffset` trong `ORDER BY` — nó lưu thành TEXT kèm offset nên so
+sánh chuỗi sai giữa các múi giờ, và EF Core chặn thẳng bằng `NotSupportedException`. Vì
+`Match.StartTime` là trục thời gian của toàn bộ pipeline, đây là lỗi chặn ngay từ M1.
+`Ti2026DbContext` có value converter buộc mọi `DateTime` ghi xuống là UTC và đọc lên có
+`Kind=Utc`. Ngoại lệ duy nhất: `MetaFile.UpdatedAt` giữ `DateTimeOffset?` vì nó chỉ là DTO
+parse JSON, không phải entity.
+
+**2. Đường dẫn giải một lần qua `Ti2026Paths` singleton.**
+Ban đầu `Program.cs` giải đường dẫn bằng `DirectoryResolver` còn endpoint tự nối
+`ContentRootPath` + option một lần nữa. Hai cách tính cho cùng một thứ → `api/tiers` trả 404
+khi chạy thật, mà test vẫn xanh vì test ghi đè bằng đường dẫn tuyệt đối và không chạm nhánh
+sai. Bài học kèm theo: **test factory không được ghi đè `EditorialDirectory`**, nếu không nó
+né đúng đoạn code mà production đi qua.
+
 Đơn vị dữ liệu trong JSON hiện tại (giữ y nguyên ở API):
 - `winrate`, `firstBlood`, `f10`, `winWhenFb`, `winWhenF10` — **số nguyên phần trăm** (`60` = 60%)
 - `kills`, `deaths`, `assists`, `totalKills`, `killDiff` — **trung bình mỗi ván**, số thực
@@ -1143,11 +1160,11 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
         var playersWritten = await SeedRostersAsync(ct);
 
         if (state is null)
-            db.SeedStates.Add(new SeedState { Key = "teams.json", Hash = hash, AppliedAt = DateTimeOffset.UtcNow });
+            db.SeedStates.Add(new SeedState { Key = "teams.json", Hash = hash, AppliedAt = DateTime.UtcNow });
         else
         {
             state.Hash = hash;
-            state.AppliedAt = DateTimeOffset.UtcNow;
+            state.AppliedAt = DateTime.UtcNow;
         }
         await db.SaveChangesAsync(ct);
 
@@ -1352,7 +1369,7 @@ public static class DataEndpoints
 
             return Results.Ok(new
             {
-                updatedAt = lastRun?.FinishedAt ?? DateTimeOffset.UtcNow,
+                updatedAt = lastRun?.FinishedAt ?? DateTime.UtcNow,
                 window = "6 tháng gần nhất",
                 source = lastRun is null ? "data/*.json (mồi)" : "OpenDota + dltv.org",
                 teamsWithData,
@@ -1597,7 +1614,7 @@ public static class H2hEndpoints
 
             return Results.Ok(new
             {
-                updatedAt = DateTimeOffset.UtcNow,
+                updatedAt = DateTime.UtcNow,
                 source = "OpenDota",
                 window = "6 tháng gần nhất",
                 order = Order,
@@ -1769,9 +1786,9 @@ public sealed class RateLimitedHandler(double requestsPerSecond) : DelegatingHan
         await _gate.WaitAsync(ct);
         try
         {
-            var wait = _lastSent + _minInterval - DateTimeOffset.UtcNow;
+            var wait = _lastSent + _minInterval - DateTime.UtcNow;
             if (wait > TimeSpan.Zero) await Task.Delay(wait, ct);
-            _lastSent = DateTimeOffset.UtcNow;
+            _lastSent = DateTime.UtcNow;
         }
         finally { _gate.Release(); }
 
@@ -2001,7 +2018,7 @@ public class SnapshotIdempotencyTests : IDisposable
         db.Teams.AddRange(team, foe);
         await db.SaveChangesAsync();
 
-        var now = DateTimeOffset.UtcNow;
+        var now = DateTime.UtcNow;
         for (var i = 0; i < 4; i++)
             db.Matches.Add(new Match
             {
@@ -2340,7 +2357,7 @@ public class IngestOrchestrator(
     {
         var run = new IngestRun
         {
-            Source = source, StartedAt = DateTimeOffset.UtcNow, Status = IngestStatus.Running
+            Source = source, StartedAt = DateTime.UtcNow, Status = IngestStatus.Running
         };
         db.IngestRuns.Add(run);
         await db.SaveChangesAsync(ct);
@@ -2385,7 +2402,7 @@ public class IngestOrchestrator(
         run.Status = status;
         run.ItemsWritten = written;
         run.ErrorMessage = error;
-        run.FinishedAt = DateTimeOffset.UtcNow;
+        run.FinishedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
     }
 }
@@ -2803,7 +2820,7 @@ public class MediaCache(Ti2026DbContext db, HttpClient http, string mediaDirecto
         existing.ContentHash = hash;
         existing.ETag = res.Headers.ETag?.ToString();
         existing.ContentType = res.Content.Headers.ContentType?.MediaType;
-        existing.FetchedAt = DateTimeOffset.UtcNow;
+        existing.FetchedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
         return existing;

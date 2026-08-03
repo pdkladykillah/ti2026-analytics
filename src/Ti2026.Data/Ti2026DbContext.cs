@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Ti2026.Data.Entities;
 
 namespace Ti2026.Data;
@@ -17,8 +18,39 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<IngestRun> IngestRuns => Set<IngestRun>();
     public DbSet<SeedState> SeedStates => Set<SeedState>();
 
+    /// <summary>
+    /// Mọi DateTime ghi xuống đều chuyển sang UTC, mọi DateTime đọc lên đều được gắn
+    /// Kind=Utc. Không có converter này thì SQLite trả về Kind=Unspecified, và một lời gọi
+    /// ToLocalTime() ở đâu đó sẽ lệch giờ theo múi giờ của máy chủ mà không ai phát hiện.
+    ///
+    /// Toàn bộ entity dùng DateTime (không phải DateTimeOffset) vì SQLite không hỗ trợ
+    /// DateTimeOffset trong ORDER BY — xem ghi chú ở Match.StartTime.
+    /// </summary>
+    private static readonly ValueConverter<DateTime, DateTime> UtcConverter = new(
+        toDb => toDb.Kind == DateTimeKind.Utc ? toDb : toDb.ToUniversalTime(),
+        fromDb => DateTime.SpecifyKind(fromDb, DateTimeKind.Utc));
+
+    private static readonly ValueConverter<DateTime?, DateTime?> NullableUtcConverter = new(
+        toDb => toDb.HasValue
+            ? (toDb.Value.Kind == DateTimeKind.Utc ? toDb : toDb.Value.ToUniversalTime())
+            : toDb,
+        fromDb => fromDb.HasValue
+            ? DateTime.SpecifyKind(fromDb.Value, DateTimeKind.Utc)
+            : fromDb);
+
     protected override void OnModelCreating(ModelBuilder b)
     {
+        foreach (var entity in b.Model.GetEntityTypes())
+        {
+            foreach (var prop in entity.GetProperties())
+            {
+                if (prop.ClrType == typeof(DateTime))
+                    prop.SetValueConverter(UtcConverter);
+                else if (prop.ClrType == typeof(DateTime?))
+                    prop.SetValueConverter(NullableUtcConverter);
+            }
+        }
+
         b.Entity<Team>().HasIndex(x => x.Slug).IsUnique();
 
         b.Entity<TeamAlias>().HasIndex(x => new { x.Alias, x.Source }).IsUnique();

@@ -19,8 +19,11 @@ public class IngestRun
     /// <summary>"opendota" | "dltv" | "snapshot"</summary>
     public required string Source { get; set; }
 
-    public DateTimeOffset StartedAt { get; set; }
-    public DateTimeOffset? FinishedAt { get; set; }
+    /// <summary>UTC — xem ghi chú kiểu dữ liệu trong Match.StartTime.</summary>
+    public DateTime StartedAt { get; set; }
+
+    /// <summary>UTC.</summary>
+    public DateTime? FinishedAt { get; set; }
     public IngestStatus Status { get; set; }
     public int ItemsWritten { get; set; }
     public string? ErrorMessage { get; set; }

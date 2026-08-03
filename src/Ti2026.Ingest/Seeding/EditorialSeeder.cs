@@ -30,19 +30,23 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
 {
     private const string TeamsFileName = "teams.json";
     private const string RostersFileName = "rosters.json";
+    private const string PlayersFileName = "players.json";
 
     public async Task<SeedResult> SeedAsync(CancellationToken ct)
     {
         var teamsChanged = await HasChangedAsync(TeamsFileName, ct);
         var rostersChanged = await HasChangedAsync(RostersFileName, ct);
 
-        // Còn Player thiếu account_id thì vẫn phải chạy, kể cả khi không file nào đổi.
-        // Bước nối account_id được thêm vào sau khi Player đã tồn tại trong DB, nên nếu chỉ
-        // dựa vào hash file thì nó không bao giờ có cơ hội chạy — và mọi phân tích cá nhân
-        // im lặng trống rỗng dù dữ liệu đã đủ.
-        var needAccountLink = await db.Players.AnyAsync(p => p.OpenDotaAccountId == null, ct);
+        // players.json cũng theo dõi bằng hash như hai file kia.
+        //
+        // Đã thử điều kiện "còn Player nào thiếu account_id thì chạy lại" và nó SAI: rosters
+        // có cả HLV còn players.json chỉ có 5 tuyển thủ mỗi đội, nên luôn còn người thiếu
+        // account_id và seed vĩnh viễn không bao giờ báo Skipped. Hash file trả lời đúng câu
+        // hỏi "đã xử lý phiên bản này của file chưa", và nó tự chữa trên DB đang chạy: file
+        // chưa từng được đánh dấu nên hash lệch, chạy một lần rồi thôi.
+        var playersChanged = await HasChangedAsync(PlayersFileName, ct);
 
-        if (!teamsChanged && !rostersChanged && !needAccountLink)
+        if (!teamsChanged && !rostersChanged && !playersChanged)
             return new SeedResult(Skipped: true, 0, 0);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -75,6 +79,7 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
 
         // Chạy sau roster vì nó bổ sung account_id cho Player mà roster vừa tạo
         await SeedPlayerAccountIdsAsync(ct);
+        await MarkAppliedAsync(PlayersFileName, ct);
 
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
@@ -384,7 +389,7 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
     /// </summary>
     private async Task SeedPlayerAccountIdsAsync(CancellationToken ct)
     {
-        var file = ReadJson<PlayersFile>("players.json");
+        var file = ReadJson<PlayersFile>(PlayersFileName);
         if (file is null || file.Players.Count == 0) return;
 
         var players = await db.Players.ToListAsync(ct);

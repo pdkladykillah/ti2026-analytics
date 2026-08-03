@@ -116,7 +116,8 @@
         "totalKills": 49.49,
         "killDiff": 5.13
       },
-      "logo": "https://dltv.org/uploads/teams/QoOnPgu1RpLhomwHIxKUabSiCx9d6AGK.png.webp"
+      "logo": "https://dltv.org/uploads/teams/QoOnPgu1RpLhomwHIxKUabSiCx9d6AGK.png.webp",
+      "openDotaTeamId": 8255888
     },
     {
       "name": "Team Yandex",
@@ -162,7 +163,8 @@
         "totalKills": 49.67,
         "killDiff": 1.19
       },
-      "logo": "https://dltv.org/uploads/teams/ABiiALC6B9K3sk7Fui1M5Uhnf6RetRll.png.webp"
+      "logo": "https://dltv.org/uploads/teams/ABiiALC6B9K3sk7Fui1M5Uhnf6RetRll.png.webp",
+      "openDotaTeamId": 10182357
     },
     {
       "name": "Team Spirit",
@@ -233,7 +235,8 @@
         "totalKills": 52.06,
         "killDiff": 2.26
       },
-      "logo": "https://dltv.org/uploads/teams/rawK7xDgxwI7Ff8GumO9sC7Z9fHvyCQ2.png.webp"
+      "logo": "https://dltv.org/uploads/teams/rawK7xDgxwI7Ff8GumO9sC7Z9fHvyCQ2.png.webp",
+      "openDotaTeamId": 10136357
     },
     {
       "name": "L1GA TEAM",
@@ -375,5 +378,5 @@
       "logo": "https://dltv.org/uploads/teams/small/SL5XvIyOVg02fCankoCetSnjT3x7FdVY.png"
     }
   ],
-  "_openDotaNote": "openDotaTeamId: chỉ định tay, ghi đè bộ so khớp tự động (TeamResolver). Đặt khi OpenDota có nhiều đội trùng tên hoặc tên khác tên thi đấu. ĐÃ QUYẾT: team-spirit=7119388 (ứng viên kia #2621843 trận cuối 2019-01-02); lgd-gaming=10150538 (ứng viên kia #15 dừng từ 2024-08-03, cửa sổ 6 tháng cần đội đang thi đấu); parivision=9572001 (OpenDota ghi tên \"TEAM VISION\", khớp ghi chú TEAM VISION = PARIVISION). CÒN TRỐNG, cần xác nhận: betboom-team (ứng viên #8255888 tên OpenDota là \"BoomBoys\" tag BB, đang thi đấu, rating 1480 — tên không khớp nên chưa dám gán); nigma (#10136357 đá 2026-08-02 W/L 33/25 vs #7554697 lịch sử 630/574 nhưng dừng 2026-05-08); 1win-team (không nằm trong top 1000 của endpoint /teams nên chưa tìm được id)."
+  "_openDotaNote": "openDotaTeamId: chỉ định tay, ghi đè bộ so khớp tự động (TeamResolver). Căn cứ từng đội: team-spirit=7119388 (ứng viên kia #2621843 trận cuối 2019-01-02); lgd-gaming=10150538 (ứng viên kia #15 dừng từ 2024-08-03; cửa sổ 6 tháng cần đội đang thi đấu); parivision=9572001 (OpenDota ghi tên \"TEAM VISION\", khớp ghi chú TEAM VISION = PARIVISION); betboom-team=8255888 (OpenDota ghi tên \"BoomBoys\", tag BB, đang thi đấu, rating 1480 — chủ project xác nhận); nigma=10136357 (thực thể MỚI, đá 2026-08-02; đội hình đã thay đổi trong cửa sổ nên lấy bản mới thay vì #7554697); 1win-team=10182357 (OpenDota ghi tên \"1w\" nên so khớp theo tên thất bại; xác định qua /proPlayers: cả 5 tuyển thủ 33, Whitemon, bzm, Pure, Ari đều trỏ về team_id này)."
 }

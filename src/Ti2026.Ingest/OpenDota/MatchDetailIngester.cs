@@ -23,6 +23,8 @@ public class MatchDetailIngester(
 {
     public async Task<int> IngestAsync(int maxMatchesPerRun, CancellationToken ct)
     {
+        await RelinkOrphanPlayersAsync(ct);
+
         // Ván mới nhất trước: phong độ gần đây là thứ đáng có sớm nhất, và nếu vì lý do gì
         // đó việc nạp bù không bao giờ hoàn tất thì phần thiếu là quá khứ xa, ít giá trị hơn.
         var pending = await db.Matches
@@ -74,6 +76,37 @@ public class MatchDetailIngester(
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Đã nạp detail cho {Done}/{Batch} ván", done, pending.Count);
         return done;
+    }
+
+    /// <summary>
+    /// Nối lại MatchPlayer chưa gắn được về Player nào.
+    ///
+    /// Cần thiết vì thứ tự: match detail có thể được nạp TRƯỚC khi Player có account_id
+    /// (account_id đến từ players.json qua seeder). Không có bước này thì những hàng nạp sớm
+    /// nằm mồ côi vĩnh viễn và phân tích cá nhân trống rỗng dù dữ liệu đã có đủ.
+    ///
+    /// Chỉ đụng hàng PlayerId == null nên chạy lại bao nhiêu lần cũng vô hại.
+    /// </summary>
+    private async Task RelinkOrphanPlayersAsync(CancellationToken ct)
+    {
+        var known = await db.Players
+            .Where(p => p.OpenDotaAccountId != null)
+            .ToDictionaryAsync(p => p.OpenDotaAccountId!.Value, p => p.Id, ct);
+
+        if (known.Count == 0) return;
+
+        var accounts = known.Keys.ToList();
+        var orphans = await db.MatchPlayers
+            .Where(mp => mp.PlayerId == null && mp.AccountId != null
+                         && accounts.Contains(mp.AccountId.Value))
+            .ToListAsync(ct);
+
+        if (orphans.Count == 0) return;
+
+        foreach (var mp in orphans) mp.PlayerId = known[mp.AccountId!.Value];
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("Nối lại {Count} bản ghi MatchPlayer về tuyển thủ", orphans.Count);
     }
 
     private async Task ApplyAsync(

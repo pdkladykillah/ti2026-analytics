@@ -67,6 +67,9 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
             }
         }
 
+        // Chạy sau roster vì nó bổ sung account_id cho Player mà roster vừa tạo
+        await SeedPlayerAccountIdsAsync(ct);
+
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
@@ -361,6 +364,49 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
         return File.Exists(path)
             ? JsonSerializer.Deserialize<T>(File.ReadAllText(path), SeedJson.Options)
             : default;
+    }
+
+    /// <summary>
+    /// Nạp account_id OpenDota cho từng Player, lấy từ players.json.
+    ///
+    /// ĐÂY LÀ MẮT XÍCH NỐI dữ liệu đội với dữ liệu cá nhân: MatchPlayer chỉ gắn được về Player
+    /// của ta khi Player có OpenDotaAccountId. Thiếu bước này thì mọi phân tích cá nhân —
+    /// kills, hỗ trợ, nhịp 10 phút đầu — đều trống rỗng dù dữ liệu đã nằm sẵn trong DB.
+    ///
+    /// rosters.json (nguồn tạo Player) không có account_id; players.json thì có. Khớp hai
+    /// file bằng NickKey đã chuẩn hoá.
+    /// </summary>
+    private async Task SeedPlayerAccountIdsAsync(CancellationToken ct)
+    {
+        var file = ReadJson<PlayersFile>("players.json");
+        if (file is null || file.Players.Count == 0) return;
+
+        var players = await db.Players.ToListAsync(ct);
+        var byKey = players.ToDictionary(p => p.NickKey);
+
+        // Một account_id chỉ được thuộc về một Player (có unique index), nên loại trùng trước
+        var taken = players.Where(p => p.OpenDotaAccountId.HasValue)
+                           .Select(p => p.OpenDotaAccountId!.Value)
+                           .ToHashSet();
+
+        var linked = 0;
+
+        foreach (var dto in file.Players)
+        {
+            if (dto.Id is not long accountId || string.IsNullOrWhiteSpace(dto.N)) continue;
+
+            if (!byKey.TryGetValue(Player.MakeNickKey(dto.N), out var player)) continue;
+            if (player.OpenDotaAccountId == accountId) continue;
+            if (taken.Contains(accountId)) continue;
+
+            player.OpenDotaAccountId = accountId;
+            player.CountryName ??= dto.C;
+            player.CountryCode ??= dto.Cc;
+            taken.Add(accountId);
+            linked++;
+        }
+
+        if (linked > 0) await db.SaveChangesAsync(ct);
     }
 
     /// <summary>

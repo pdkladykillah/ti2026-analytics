@@ -129,6 +129,92 @@ public class IngestPipelineTests : IDisposable
             "\"alpha-legends\" phải khớp \"Alpha Legends\"");
     }
 
+    /// <summary>
+    /// Hồi quy cho lỗi phát hiện trên production: đội "Aurora Gaming" của ta bị gán cho một
+    /// đội khớp yếu theo tag, rồi từ chối chính ứng viên trùng tên đầy đủ vì "đến sau".
+    /// Trùng tên đầy đủ phải luôn THẮNG khớp theo tag.
+    /// </summary>
+    [Fact]
+    public async Task Resolver_uu_tien_trung_ten_day_du_hon_trung_tag()
+    {
+        using var db = NewDb();
+        db.Teams.Add(new Team { Slug = "aurora", Name = "Aurora Gaming", ShortName = "AUR" });
+        await db.SaveChangesAsync();
+
+        // Ứng viên khớp-tag đứng TRƯỚC trong danh sách, đúng như thứ tự đã gây lỗi
+        var odTeams = new List<OpenDotaTeam>
+        {
+            new() { TeamId = 111, Name = "Aurora Ascension", Tag = "AUR" },
+            new() { TeamId = 222, Name = "Aurora Gaming", Tag = "AG" },
+        };
+
+        await new TeamResolver(db, NullLogger<TeamResolver>.Instance)
+            .ResolveAsync(odTeams, CancellationToken.None);
+
+        (await db.Teams.FirstAsync()).OpenDotaTeamId.Should().Be(222,
+            "trùng tên đầy đủ mạnh hơn trùng tag, bất kể thứ tự trong danh sách");
+    }
+
+    [Fact]
+    public async Task Resolver_bo_qua_tag_qua_ngan_de_tranh_khop_bua()
+    {
+        using var db = NewDb();
+        db.Teams.Add(new Team { Slug = "betboom", Name = "BetBoom Team", ShortName = "BB" });
+        await db.SaveChangesAsync();
+
+        // "BB" khop ca BarBrothers lan BITCHBUILD — bang chung qua yeu de gan
+        var odTeams = new List<OpenDotaTeam>
+        {
+            new() { TeamId = 301, Name = "BarBrothers", Tag = "BB" },
+            new() { TeamId = 302, Name = "BITCHBUILD", Tag = "BB" },
+        };
+
+        var resolved = await new TeamResolver(db, NullLogger<TeamResolver>.Instance)
+            .ResolveAsync(odTeams, CancellationToken.None);
+
+        resolved.Should().Be(0);
+        (await db.Teams.FirstAsync()).OpenDotaTeamId.Should().BeNull(
+            "tag 2 ký tự không đủ phân biệt — gán bừa sẽ quy kết nhầm toàn bộ ván đấu");
+    }
+
+    [Fact]
+    public async Task Resolver_khong_cho_hai_doi_tro_ve_cung_mot_id()
+    {
+        using var db = NewDb();
+        db.Teams.AddRange(
+            new Team { Slug = "a", Name = "Alpha Legends" },
+            new Team { Slug = "b", Name = "Alpha Legends" });   // trùng tên, tình huống hiếm
+        await db.SaveChangesAsync();
+
+        var odTeams = new List<OpenDotaTeam> { new() { TeamId = 9000001, Name = "Alpha Legends" } };
+
+        await new TeamResolver(db, NullLogger<TeamResolver>.Instance)
+            .ResolveAsync(odTeams, CancellationToken.None);
+
+        var ids = await db.Teams.Select(t => t.OpenDotaTeamId).ToListAsync();
+        ids.Count(x => x == 9000001).Should().Be(1, "chỉ một đội được chiếm id đó");
+    }
+
+    [Fact]
+    public async Task Resolver_tu_choi_khi_co_nhieu_ung_vien_dong_hang()
+    {
+        using var db = NewDb();
+        db.Teams.Add(new Team { Slug = "x", Name = "Team X" });
+        await db.SaveChangesAsync();
+
+        var odTeams = new List<OpenDotaTeam>
+        {
+            new() { TeamId = 401, Name = "Team X" },
+            new() { TeamId = 402, Name = "TEAM-X" },   // chuan hoa xong cung ra "TEAMX"
+        };
+
+        var resolved = await new TeamResolver(db, NullLogger<TeamResolver>.Instance)
+            .ResolveAsync(odTeams, CancellationToken.None);
+
+        resolved.Should().Be(0);
+        (await db.Teams.FirstAsync()).OpenDotaTeamId.Should().BeNull();
+    }
+
     [Fact]
     public async Task Resolver_KHONG_doan_khi_khong_khop()
     {

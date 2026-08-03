@@ -80,6 +80,41 @@ curl -X POST -H "X-Ingest-Token: $TOKEN" <host>/ti2026/api/ingest/run
 | `mem_limit: 512m` | Trần cho container này, để nó không kéo sập project kia |
 | Build cache | `docker builder prune -f` khi đĩa đầy. **Không** dùng `docker system prune -a` — xoá cả image đang chạy |
 
+## ⚠️ Migration: KHÔNG sinh lại `InitialCreate` khi DB đã deploy
+
+Đã mắc lỗi này một lần và làm app sập trên VPS. Ở máy dev, cách nhanh nhất khi đổi schema là
+xoá thư mục `Migrations/` rồi `dotnet ef migrations add InitialCreate` lại. **Trên DB đã chạy
+thì cách đó phá app**: migration mới mang ID (timestamp) khác, `__EFMigrationsHistory` không
+có ID đó nên EF coi là chưa chạy và phát `CREATE TABLE` trên bảng đã tồn tại → `Migrate()` ném
+lỗi ngay lúc startup và host không lên nổi.
+
+Đổi schema sau khi đã deploy thì **thêm migration mới**:
+
+```bash
+dotnet ef migrations add TenMoTaThayDoi --project src/Ti2026.Data --startup-project src/Ti2026.Web
+```
+
+Nếu lỡ sinh lại `InitialCreate`: dữ liệu của project này **tái tạo được hoàn toàn** từ
+`data/*.json` + OpenDota, nên cách khôi phục nhanh nhất là xoá volume rồi nạp lại:
+
+```bash
+cd /opt/ti2026 && docker compose down && docker volume rm ti2026_app_data && docker compose up -d
+```
+
+Cái mất là snapshot lịch sử đã tích luỹ — càng về sau càng đắt, nên đừng lặp lại.
+
+## Bẫy khi viết vòng chờ app khởi động
+
+`curl -s -o /dev/null <url>` **thành công kể cả khi HTTP 502**. Vòng chờ dùng lệnh đó sẽ thoát
+sớm trong lúc container còn đang khởi động, và bước tiếp theo nhận 502 một cách khó hiểu. Phải
+kiểm mã trạng thái:
+
+```bash
+until [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost/ti2026/api/health)" = "200" ]; do
+  sleep 2
+done
+```
+
 ## Rollback
 
 ```bash

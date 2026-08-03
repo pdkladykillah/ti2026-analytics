@@ -1,0 +1,42 @@
+[
+  {
+    "team_id": 9000001,
+    "rating": 1650.5,
+    "wins": 420,
+    "losses": 210,
+    "last_match_time": 1784000000,
+    "name": "Alpha Legends",
+    "tag": "ALP",
+    "logo_url": "https://example.test/alpha.png"
+  },
+  {
+    "team_id": 9000002,
+    "rating": 1610.2,
+    "wins": 390,
+    "losses": 230,
+    "last_match_time": 1783990000,
+    "name": "Beta Squad",
+    "tag": "BET",
+    "logo_url": "https://example.test/beta.png"
+  },
+  {
+    "team_id": 9000003,
+    "rating": 1580.0,
+    "wins": 350,
+    "losses": 240,
+    "last_match_time": 1783980000,
+    "name": "Gamma Esports",
+    "tag": "GAM",
+    "logo_url": null
+  },
+  {
+    "team_id": 9000004,
+    "rating": 1500.0,
+    "wins": 300,
+    "losses": 300,
+    "last_match_time": 1783900000,
+    "name": "Delta Team",
+    "tag": null,
+    "logo_url": null
+  }
+]

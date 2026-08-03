@@ -1,11 +1,15 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Ti2026.Data;
+using Ti2026.Ingest;
 
 namespace Ti2026.Web.Endpoints;
 
 /// <summary>
-/// Quan sát hệ thống ở mức tối thiểu nhưng đủ: khi nguồn ngoài gãy, đây là chỗ nói rõ
-/// đang lỗi gì thay vì phải đi đọc log.
+/// Quan sát hệ thống ở mức tối thiểu nhưng đủ: khi nguồn ngoài gãy, đây là chỗ nói rõ đang
+/// lỗi gì thay vì phải đi đọc log container.
 /// </summary>
 public static class OpsEndpoints
 {
@@ -22,6 +26,7 @@ public static class OpsEndpoints
             {
                 status = "ok",
                 teams = await db.Teams.CountAsync(),
+                teamsResolved = await db.Teams.CountAsync(t => t.OpenDotaTeamId != null),
                 players = await db.Players.CountAsync(),
                 matches = await db.Matches.CountAsync(),
                 snapshots = await db.TeamStatSnapshots.CountAsync(),
@@ -35,6 +40,34 @@ public static class OpsEndpoints
                     errorMessage = r.ErrorMessage,
                 }),
             });
+        });
+
+        app.MapPost("/api/ingest/run", async (
+            HttpContext ctx,
+            IOptions<Ti2026Options> opt,
+            IngestPipeline pipeline,
+            CancellationToken ct) =>
+        {
+            var expected = opt.Value.IngestToken;
+
+            // Chưa cấu hình token thì TỪ CHỐI, không mở cửa. Để hở endpoint này nghĩa là bất
+            // kỳ ai cũng ép VPS spam OpenDota tới mức bị chặn IP — và mất IP thì mất luôn
+            // nguồn dữ liệu, không phải chỉ một vòng ingest.
+            if (string.IsNullOrWhiteSpace(expected))
+                return Results.Problem(
+                    "Chưa cấu hình Ti2026__IngestToken nên endpoint này bị vô hiệu hoá.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+
+            var provided = ctx.Request.Headers["X-Ingest-Token"].ToString();
+
+            // FixedTimeEquals thay vì == để không rò rỉ thông tin qua thời gian so sánh.
+            // Nó trả false ngay khi độ dài khác nhau, nên token rỗng cũng trượt đúng.
+            if (!CryptographicOperations.FixedTimeEquals(
+                    Encoding.UTF8.GetBytes(provided), Encoding.UTF8.GetBytes(expected)))
+                return Results.Unauthorized();
+
+            await pipeline.RunAllAsync(ct);
+            return Results.Accepted();
         });
     }
 }

@@ -28,6 +28,12 @@ public class Ti2026Options
 
     public int IngestIntervalHours { get; set; } = 6;
 
+    /// <summary>
+    /// Bật/tắt scheduler chạy nền. Tắt thì vẫn chạy tay được qua POST api/ingest/run.
+    /// Mặc định false để test và môi trường dev không tự gọi ra mạng ngoài.
+    /// </summary>
+    public bool IngestEnabled { get; set; }
+
     /// <summary>Bắt buộc ở Production — bảo vệ POST api/ingest/run.</summary>
     public string? IngestToken { get; set; }
 

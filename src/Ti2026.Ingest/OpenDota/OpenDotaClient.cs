@@ -1,0 +1,35 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+
+namespace Ti2026.Ingest.OpenDota;
+
+public class OpenDotaClient(HttpClient http)
+{
+    private static readonly JsonSerializerOptions Json = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    public Task<List<OpenDotaTeam>> GetTeamsAsync(CancellationToken ct) =>
+        GetListAsync<OpenDotaTeam>("teams", ct);
+
+    public Task<List<OpenDotaTeamMatch>> GetTeamMatchesAsync(int openDotaTeamId, CancellationToken ct) =>
+        GetListAsync<OpenDotaTeamMatch>($"teams/{openDotaTeamId}/matches", ct);
+
+    public Task<List<OpenDotaHero>> GetHeroesAsync(CancellationToken ct) =>
+        GetListAsync<OpenDotaHero>("heroes", ct);
+
+    /// <summary>
+    /// Trả danh sách rỗng khi nguồn trả mảng rỗng, và NÉM khi nguồn lỗi.
+    ///
+    /// Phân biệt này quan trọng: "nguồn nói không có gì" và "không gọi được nguồn" phải dẫn
+    /// tới hai hành vi khác nhau ở tầng trên. Nuốt lỗi thành danh sách rỗng sẽ khiến sanity
+    /// gate hiểu sai thành "nguồn đổi layout" và ghi nhầm nguyên nhân vào IngestRun.
+    /// </summary>
+    private async Task<List<T>> GetListAsync<T>(string path, CancellationToken ct)
+    {
+        using var res = await http.GetAsync(path, ct);
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<List<T>>(Json, ct) ?? [];
+    }
+}

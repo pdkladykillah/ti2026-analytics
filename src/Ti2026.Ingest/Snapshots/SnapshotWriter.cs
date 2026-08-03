@@ -1,0 +1,135 @@
+using Microsoft.EntityFrameworkCore;
+using Ti2026.Data;
+using Ti2026.Data.Entities;
+
+namespace Ti2026.Ingest.Snapshots;
+
+/// <summary>
+/// Tính lại chỉ số theo 3 cửa sổ và upsert vào TeamStatSnapshot.
+///
+/// Snapshot của các NGÀY khác nhau không bao giờ ghi đè nhau — đó là kho lịch sử, và lịch sử
+/// là thứ không lấy lại được. Trong cùng một ngày thì upsert, nên chạy lại bao nhiêu lần
+/// cũng an toàn.
+///
+/// Ngữ nghĩa merge: chỉ ghi đè một chỉ số khi giá trị mới THỰC SỰ biết. Giá trị biên tập đã
+/// seed cho 5 chỉ số mà OpenDota không cung cấp sẽ được giữ nguyên, và hàng đó đánh
+/// Source = "mixed" để không ai nhầm số biên tập là số đo.
+/// </summary>
+public class SnapshotWriter(Ti2026DbContext db)
+{
+    public static readonly int[] Windows = [30, 90, 180];
+
+    public async Task<int> WriteAsync(DateOnly capturedOn, CancellationToken ct)
+    {
+        var teams = await db.Teams.ToListAsync(ct);
+        if (teams.Count == 0) return 0;
+
+        var written = 0;
+
+        foreach (var window in Windows)
+        {
+            var since = capturedOn.AddDays(-window).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+
+            var matches = await db.Matches
+                .Where(m => m.StartTime >= since
+                            && m.RadiantTeamId != null && m.DireTeamId != null)
+                .ToListAsync(ct);
+
+            if (matches.Count == 0) continue;
+
+            foreach (var team in teams)
+            {
+                var outcomes = matches
+                    .Where(m => m.RadiantTeamId == team.Id || m.DireTeamId == team.Id)
+                    .Select(m => ToOutcome(m, team.Id))
+                    .ToList();
+
+                // Đội không có ván nào trong cửa sổ: BỎ QUA, không ghi hàng rỗng. Ghi hàng
+                // toàn 0 sẽ xoá mất giá trị biên tập đang phục vụ được và làm trang tệ đi.
+                if (outcomes.Count == 0) continue;
+
+                var stats = StatCalculator.Compute(outcomes);
+
+                var existing = await db.TeamStatSnapshots.FirstOrDefaultAsync(
+                    s => s.TeamId == team.Id
+                         && s.CapturedOn == capturedOn
+                         && s.WindowDays == window, ct);
+
+                if (existing is null)
+                {
+                    existing = new TeamStatSnapshot
+                    {
+                        TeamId = team.Id,
+                        CapturedOn = capturedOn,
+                        WindowDays = window,
+                        Source = "opendota",
+                    };
+                    db.TeamStatSnapshots.Add(existing);
+                }
+
+                Merge(existing, stats);
+                written++;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+        return written;
+    }
+
+    private static MatchOutcome ToOutcome(Match m, int teamId)
+    {
+        var isRadiant = m.RadiantTeamId == teamId;
+
+        return new MatchOutcome(
+            Date: DateOnly.FromDateTime(m.StartTime),
+            Won: isRadiant ? m.RadiantWin : !m.RadiantWin,
+            Kills: isRadiant ? m.RadiantScore : m.DireScore,
+            Deaths: isRadiant ? m.DireScore : m.RadiantScore,
+
+            // Ba giá trị dưới đây giữ nguyên null khi Match chưa có dữ liệu — KHÔNG quy về
+            // false. OpenDota teams/{id}/matches không trả về chúng, nên ở M2 chúng luôn null.
+            Assists: null,
+            HadFirstBlood: Flip(m.RadiantHadFirstBlood, isRadiant),
+            ReachedTenFirst: Flip(m.RadiantReachedTenFirst, isRadiant),
+
+            DurationSeconds: m.DurationSeconds);
+    }
+
+    /// <summary>Đổi góc nhìn Radiant sang góc nhìn đội đang xét, giữ null là null.</summary>
+    private static bool? Flip(bool? radiantValue, bool isRadiant) =>
+        radiantValue is null ? null : isRadiant ? radiantValue : !radiantValue;
+
+    /// <summary>
+    /// Ghi các chỉ số tính được; với chỉ số chưa biết thì GIỮ giá trị đang có thay vì ghi null.
+    /// Nếu có giữ lại giá trị cũ nào thì hàng được đánh "mixed".
+    /// </summary>
+    private static void Merge(TeamStatSnapshot s, TeamWindowStats st)
+    {
+        s.Maps = st.Maps;
+        s.Wins = st.Wins;
+        s.Losses = st.Losses;
+        s.Winrate = st.Winrate;
+        s.AvgKills = st.AvgKills;
+        s.AvgDeaths = st.AvgDeaths;
+        s.KillDiff = st.KillDiff;
+        s.TotalKills = st.TotalKills;
+        s.AvgDurationMinutes = st.AvgDurationMinutes;
+
+        var keptAny = false;
+
+        s.AvgAssists = Take(st.AvgAssists, s.AvgAssists, ref keptAny);
+        s.FirstBloodRate = Take(st.FirstBloodRate, s.FirstBloodRate, ref keptAny);
+        s.F10Rate = Take(st.F10Rate, s.F10Rate, ref keptAny);
+        s.WinWhenFbRate = Take(st.WinWhenFbRate, s.WinWhenFbRate, ref keptAny);
+        s.WinWhenF10Rate = Take(st.WinWhenF10Rate, s.WinWhenF10Rate, ref keptAny);
+
+        s.Source = keptAny ? "mixed" : "opendota";
+    }
+
+    private static double? Take(double? fresh, double? existing, ref bool keptAny)
+    {
+        if (fresh.HasValue) return fresh;
+        if (existing.HasValue) keptAny = true;
+        return existing;
+    }
+}

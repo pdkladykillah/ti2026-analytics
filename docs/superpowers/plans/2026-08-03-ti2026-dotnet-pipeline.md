@@ -3357,3 +3357,30 @@ Không còn mục spec nào thiếu task.
 - `SnapshotWriter.WriteAsync(DateOnly, CancellationToken)` khớp Task 13 / 14
 - `MediaCache.EnsureAsync(string, CancellationToken)` khớp Task 17
 - `TeamStatSnapshot.AvgDurationMinutes` (phút, không phải giây) dùng thống nhất ở Task 2 / 8 / 13 / 19
+
+---
+
+## Ghi chú triển khai M2 (cập nhật 2026-08-03)
+
+**Sandbox chặn `api.opendota.com` và `docs.opendota.com`.** `example.com` truy cập được, nên là
+chặn theo host chứ không phải mất mạng. Hệ quả:
+
+1. Fixture trong `tests/Ti2026.Tests/Fixtures/` là **tự dựng**, chưa chụp từ API thật. Cách thay
+   bằng dữ liệu thật: `tests/Ti2026.Tests/Fixtures/README.md`.
+2. Chưa xác minh được `/teams/{id}/matches` thực sự thiếu `assists` / first blood / `series_id`.
+   Toàn bộ thiết kế "chưa biết ≠ bằng không" dựa trên giả định đó. **Bước đầu tiên khi có mạng:
+   chụp fixture và kiểm bằng mắt.**
+
+**Thay đổi so với kế hoạch gốc:**
+
+| Kế hoạch gốc | Thực tế | Lý do |
+|---|---|---|
+| 5 chỉ số là `double` | `double?` | OpenDota không cung cấp; `0` sẽ hiển thị như số thật |
+| Snapshot ghi đè toàn bộ | Merge, không ghi null lên giá trị đã có | Giữ số biên tập cho 5 cột chưa tính được |
+| Không có cột nguồn | `TeamStatSnapshot.Source` | Không bao giờ nhầm số biên tập là số đo |
+| `GetTeamMatchesAsync(teamId)` dùng id nào không rõ | `Team.OpenDotaTeamId` + `TeamResolver` | Kế hoạch gốc mâu thuẫn: Task 12 dùng OpenDota team id, Task 14 nói dùng account_id |
+| Ingest luôn chạy | `Ti2026__IngestEnabled`, mặc định `false` | Test và dev không được tự gọi ra mạng ngoài |
+
+**`TeamResolver` không đoán.** Không khớp chắc chắn tên/tag thì để `OpenDotaTeamId = null` và ghi
+log cảnh báo. Đoán sai sẽ gán toàn bộ ván của một đội cho đội khác — sai lặng lẽ, rất khó phát
+hiện về sau, và làm hỏng cả dữ liệu lịch sử đã tích luỹ.

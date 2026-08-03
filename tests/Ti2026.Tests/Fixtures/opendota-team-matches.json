@@ -1,0 +1,62 @@
+[
+  {
+    "match_id": 8500000001,
+    "radiant": true,
+    "radiant_win": true,
+    "radiant_score": 31,
+    "dire_score": 18,
+    "duration": 2410,
+    "start_time": 1784000000,
+    "leagueid": 17000,
+    "league_name": "The International 2026",
+    "cluster": 111,
+    "opposing_team_id": 9000002,
+    "opposing_team_name": "Beta Squad",
+    "opposing_team_logo": "https://example.test/beta.png"
+  },
+  {
+    "match_id": 8500000002,
+    "radiant": false,
+    "radiant_win": true,
+    "radiant_score": 27,
+    "dire_score": 22,
+    "duration": 2900,
+    "start_time": 1783900000,
+    "leagueid": 17000,
+    "league_name": "The International 2026",
+    "cluster": 111,
+    "opposing_team_id": 9000002,
+    "opposing_team_name": "Beta Squad",
+    "opposing_team_logo": "https://example.test/beta.png"
+  },
+  {
+    "match_id": 8500000003,
+    "radiant": true,
+    "radiant_win": false,
+    "radiant_score": 15,
+    "dire_score": 29,
+    "duration": 2100,
+    "start_time": 1783800000,
+    "leagueid": 16800,
+    "league_name": "DreamLeague Season 29",
+    "cluster": 132,
+    "opposing_team_id": 9000003,
+    "opposing_team_name": "Gamma Esports",
+    "opposing_team_logo": null
+  },
+  {
+    "match_id": 8500000004,
+    "radiant": false,
+    "radiant_win": false,
+    "radiant_score": 19,
+    "dire_score": 33,
+    "duration": 2650,
+    "start_time": 1783700000,
+    "leagueid": 16800,
+    "league_name": "DreamLeague Season 29",
+    "cluster": 132,
+    "opposing_team_id": null,
+    "opposing_team_name": null,
+    "opposing_team_logo": null
+  }
+]

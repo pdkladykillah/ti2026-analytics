@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
+using Ti2026.Ingest;
+using Ti2026.Ingest.Http;
+using Ti2026.Ingest.OpenDota;
 using Ti2026.Ingest.Seeding;
+using Ti2026.Ingest.Snapshots;
 using Ti2026.Web;
 using Ti2026.Web.Endpoints;
 
@@ -19,6 +23,34 @@ builder.Services.AddSingleton(paths);
 
 builder.Services.AddDbContext<Ti2026DbContext>(o =>
     o.UseSqlite($"Data Source={paths.DatabasePath}"));
+
+// ---- Ingest pipeline ----
+
+builder.Services.AddSingleton(new SanityThresholds(
+    options.SanityGate.MinTeams, options.SanityGate.MinPlayers));
+
+builder.Services.AddHttpClient<OpenDotaClient>(c =>
+    {
+        c.BaseAddress = new Uri(options.OpenDota.BaseUrl);
+        c.Timeout = TimeSpan.FromSeconds(30);
+        c.DefaultRequestHeaders.UserAgent.ParseAdd(options.Dltv.UserAgent);
+    })
+    .AddHttpMessageHandler(() => new RateLimitedHandler(options.OpenDota.RequestsPerSecond));
+
+builder.Services.AddScoped<TeamResolver>();
+builder.Services.AddScoped<OpenDotaIngester>();
+builder.Services.AddScoped<SnapshotWriter>();
+builder.Services.AddScoped<IngestOrchestrator>();
+builder.Services.AddScoped<IngestPipeline>();
+
+builder.Services.AddSingleton(new IngestSchedule(
+    Interval: TimeSpan.FromHours(Math.Max(options.IngestIntervalHours, 1)),
+    InitialDelay: TimeSpan.FromSeconds(30)));
+
+// Bật scheduler chỉ khi có cấu hình rõ ràng. Test dùng WebApplicationFactory sẽ không chạy
+// ingest ngoài ý muốn, và người vận hành có thể tắt hẳn để chỉ chạy tay qua api/ingest/run.
+if (options.IngestEnabled)
+    builder.Services.AddHostedService<IngestBackgroundService>();
 
 var app = builder.Build();
 

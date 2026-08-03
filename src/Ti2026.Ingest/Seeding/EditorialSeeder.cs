@@ -36,7 +36,13 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
         var teamsChanged = await HasChangedAsync(TeamsFileName, ct);
         var rostersChanged = await HasChangedAsync(RostersFileName, ct);
 
-        if (!teamsChanged && !rostersChanged)
+        // Còn Player thiếu account_id thì vẫn phải chạy, kể cả khi không file nào đổi.
+        // Bước nối account_id được thêm vào sau khi Player đã tồn tại trong DB, nên nếu chỉ
+        // dựa vào hash file thì nó không bao giờ có cơ hội chạy — và mọi phân tích cá nhân
+        // im lặng trống rỗng dù dữ liệu đã đủ.
+        var needAccountLink = await db.Players.AnyAsync(p => p.OpenDotaAccountId == null, ct);
+
+        if (!teamsChanged && !rostersChanged && !needAccountLink)
             return new SeedResult(Skipped: true, 0, 0);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);

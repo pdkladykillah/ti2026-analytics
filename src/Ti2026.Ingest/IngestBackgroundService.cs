@@ -4,7 +4,15 @@ using Microsoft.Extensions.Logging;
 
 namespace Ti2026.Ingest;
 
-public sealed record IngestSchedule(TimeSpan Interval, TimeSpan InitialDelay);
+/// <param name="MaxMatchDetailsPerRun">
+/// Trần số ván nạp detail mỗi vòng. Mỗi ván tốn một request, nên nạp bù toàn bộ lịch sử ở
+/// 1 req/giây mất nhiều chục phút. Chia nhỏ để mỗi vòng vẫn commit được và không giữ
+/// transaction mở quá lâu.
+/// </param>
+public sealed record IngestSchedule(
+    TimeSpan Interval,
+    TimeSpan InitialDelay,
+    int MaxMatchDetailsPerRun);
 
 public class IngestBackgroundService(
     IServiceScopeFactory scopeFactory,

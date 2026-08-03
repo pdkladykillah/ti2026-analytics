@@ -77,6 +77,9 @@ namespace Ti2026.Data.Migrations
                     b.Property<long>("Id")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("DetailsIngestedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("DireScore")
                         .HasColumnType("INTEGER");
 
@@ -124,11 +127,62 @@ namespace Ti2026.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DetailsIngestedAt");
+
                     b.HasIndex("SeriesId");
 
                     b.HasIndex("StartTime");
 
                     b.ToTable("Matches");
+                });
+
+            modelBuilder.Entity("Ti2026.Data.Entities.MatchPlayer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("AccountId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Assists")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Deaths")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GoldPerMin")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("HeroId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsRadiant")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Kills")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("KillsFirst10Min")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("MatchId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PlayerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("XpPerMin")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.HasIndex("MatchId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("MatchPlayers");
                 });
 
             modelBuilder.Entity("Ti2026.Data.Entities.MediaAsset", b =>
@@ -446,6 +500,24 @@ namespace Ti2026.Data.Migrations
                     b.ToTable("TierEntries");
                 });
 
+            modelBuilder.Entity("Ti2026.Data.Entities.MatchPlayer", b =>
+                {
+                    b.HasOne("Ti2026.Data.Entities.Match", "Match")
+                        .WithMany("Players")
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Ti2026.Data.Entities.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Match");
+
+                    b.Navigation("Player");
+                });
+
             modelBuilder.Entity("Ti2026.Data.Entities.RosterEntry", b =>
                 {
                     b.HasOne("Ti2026.Data.Entities.Player", "Player")
@@ -496,6 +568,11 @@ namespace Ti2026.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Hero");
+                });
+
+            modelBuilder.Entity("Ti2026.Data.Entities.Match", b =>
+                {
+                    b.Navigation("Players");
                 });
 
             modelBuilder.Entity("Ti2026.Data.Entities.Team", b =>

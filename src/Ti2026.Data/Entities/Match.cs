@@ -34,4 +34,13 @@ public class Match
 
     /// <summary>UTC.</summary>
     public DateTime IngestedAt { get; set; }
+
+    /// <summary>
+    /// UTC, thời điểm đã nạp match detail (matches/{id}) cho ván này.
+    /// null = mới chỉ có dữ liệu mức đội, chưa có first blood / assists / timeline.
+    /// Ingester dùng cột này để biết còn ván nào cần nạp, và để không gọi lại ván đã có.
+    /// </summary>
+    public DateTime? DetailsIngestedAt { get; set; }
+
+    public List<MatchPlayer> Players { get; set; } = [];
 }

@@ -12,6 +12,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<RosterEntry> RosterEntries => Set<RosterEntry>();
     public DbSet<Hero> Heroes => Set<Hero>();
     public DbSet<Match> Matches => Set<Match>();
+    public DbSet<MatchPlayer> MatchPlayers => Set<MatchPlayer>();
     public DbSet<TeamStatSnapshot> TeamStatSnapshots => Set<TeamStatSnapshot>();
     public DbSet<TierEntry> TierEntries => Set<TierEntry>();
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
@@ -69,6 +70,18 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<Match>().Property(x => x.Id).ValueGeneratedNever();
         b.Entity<Match>().HasIndex(x => x.StartTime);
         b.Entity<Match>().HasIndex(x => x.SeriesId);
+        // Ingester quét cột này mỗi vòng để tìm ván chưa có detail
+        b.Entity<Match>().HasIndex(x => x.DetailsIngestedAt);
+
+        b.Entity<MatchPlayer>()
+            .HasIndex(x => new { x.MatchId, x.AccountId }).IsUnique();
+        b.Entity<MatchPlayer>()
+            .HasOne(x => x.Match).WithMany(x => x.Players)
+            .HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<MatchPlayer>()
+            .HasOne(x => x.Player).WithMany()
+            .HasForeignKey(x => x.PlayerId).OnDelete(DeleteBehavior.SetNull);
+        b.Entity<MatchPlayer>().HasIndex(x => x.PlayerId);
 
         // Khoá chống nhân đôi khi ingest chạy lại trong cùng ngày
         b.Entity<TeamStatSnapshot>()

@@ -7,7 +7,9 @@ namespace Ti2026.Ingest;
 public class IngestPipeline(
     IngestOrchestrator orchestrator,
     OpenDotaIngester openDota,
+    MatchDetailIngester matchDetails,
     SnapshotWriter snapshots,
+    IngestSchedule schedule,
     ILogger<IngestPipeline> logger)
 {
     public async Task RunAllAsync(CancellationToken ct)
@@ -20,6 +22,13 @@ public class IngestPipeline(
         // trận mới nào.
         await orchestrator.RunSourceAsync(
             "opendota", openDota.IngestAsync, SanityKind.None, ct);
+
+        // Nạp detail SAU khi có danh sách ván, TRƯỚC khi tính snapshot — để chỉ số của vòng
+        // này đã bao gồm phần detail vừa nạp thêm.
+        await orchestrator.RunSourceAsync(
+            "match-detail",
+            c => matchDetails.IngestAsync(schedule.MaxMatchDetailsPerRun, c),
+            SanityKind.None, ct);
 
         await orchestrator.RunSourceAsync(
             "snapshot",

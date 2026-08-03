@@ -39,13 +39,15 @@ builder.Services.AddHttpClient<OpenDotaClient>(c =>
 
 builder.Services.AddScoped<TeamResolver>();
 builder.Services.AddScoped<OpenDotaIngester>();
+builder.Services.AddScoped<MatchDetailIngester>();
 builder.Services.AddScoped<SnapshotWriter>();
 builder.Services.AddScoped<IngestOrchestrator>();
 builder.Services.AddScoped<IngestPipeline>();
 
 builder.Services.AddSingleton(new IngestSchedule(
     Interval: TimeSpan.FromHours(Math.Max(options.IngestIntervalHours, 1)),
-    InitialDelay: TimeSpan.FromSeconds(30)));
+    InitialDelay: TimeSpan.FromSeconds(30),
+    MaxMatchDetailsPerRun: Math.Max(options.MaxMatchDetailsPerRun, 1)));
 
 // Bật scheduler chỉ khi có cấu hình rõ ràng. Test dùng WebApplicationFactory sẽ không chạy
 // ingest ngoài ý muốn, và người vận hành có thể tắt hẳn để chỉ chạy tay qua api/ingest/run.

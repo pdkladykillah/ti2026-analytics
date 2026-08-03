@@ -19,6 +19,14 @@ public class OpenDotaClient(HttpClient http)
     public Task<List<OpenDotaHero>> GetHeroesAsync(CancellationToken ct) =>
         GetListAsync<OpenDotaHero>("heroes", ct);
 
+    public async Task<OpenDotaMatchDetail> GetMatchAsync(long matchId, CancellationToken ct)
+    {
+        using var res = await http.GetAsync($"matches/{matchId}", ct);
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<OpenDotaMatchDetail>(Json, ct)
+               ?? throw new HttpRequestException($"matches/{matchId} trả về nội dung rỗng");
+    }
+
     /// <summary>
     /// Trả danh sách rỗng khi nguồn trả mảng rỗng, và NÉM khi nguồn lỗi.
     ///

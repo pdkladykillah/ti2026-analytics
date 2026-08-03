@@ -63,7 +63,8 @@ namespace Ti2026.Data.Migrations
                     RadiantHadFirstBlood = table.Column<bool>(type: "INTEGER", nullable: true),
                     RadiantReachedTenFirst = table.Column<bool>(type: "INTEGER", nullable: true),
                     PatchVersion = table.Column<string>(type: "TEXT", nullable: true),
-                    IngestedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    IngestedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    DetailsIngestedAt = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -167,6 +168,41 @@ namespace Ti2026.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "MatchPlayers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    MatchId = table.Column<long>(type: "INTEGER", nullable: false),
+                    AccountId = table.Column<long>(type: "INTEGER", nullable: true),
+                    PlayerId = table.Column<int>(type: "INTEGER", nullable: true),
+                    HeroId = table.Column<int>(type: "INTEGER", nullable: false),
+                    IsRadiant = table.Column<bool>(type: "INTEGER", nullable: false),
+                    Kills = table.Column<int>(type: "INTEGER", nullable: false),
+                    Deaths = table.Column<int>(type: "INTEGER", nullable: false),
+                    Assists = table.Column<int>(type: "INTEGER", nullable: false),
+                    GoldPerMin = table.Column<int>(type: "INTEGER", nullable: false),
+                    XpPerMin = table.Column<int>(type: "INTEGER", nullable: false),
+                    KillsFirst10Min = table.Column<int>(type: "INTEGER", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MatchPlayers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_MatchPlayers_Matches_MatchId",
+                        column: x => x.MatchId,
+                        principalTable: "Matches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_MatchPlayers_Players_PlayerId",
+                        column: x => x.PlayerId,
+                        principalTable: "Players",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "RosterEntries",
                 columns: table => new
                 {
@@ -258,6 +294,11 @@ namespace Ti2026.Data.Migrations
                 columns: new[] { "Source", "StartedAt" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Matches_DetailsIngestedAt",
+                table: "Matches",
+                column: "DetailsIngestedAt");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Matches_SeriesId",
                 table: "Matches",
                 column: "SeriesId");
@@ -266,6 +307,17 @@ namespace Ti2026.Data.Migrations
                 name: "IX_Matches_StartTime",
                 table: "Matches",
                 column: "StartTime");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MatchPlayers_MatchId_AccountId",
+                table: "MatchPlayers",
+                columns: new[] { "MatchId", "AccountId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MatchPlayers_PlayerId",
+                table: "MatchPlayers",
+                column: "PlayerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_MediaAssets_ContentHash",
@@ -364,7 +416,7 @@ namespace Ti2026.Data.Migrations
                 name: "IngestRuns");
 
             migrationBuilder.DropTable(
-                name: "Matches");
+                name: "MatchPlayers");
 
             migrationBuilder.DropTable(
                 name: "MediaAssets");
@@ -383,6 +435,9 @@ namespace Ti2026.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "TierEntries");
+
+            migrationBuilder.DropTable(
+                name: "Matches");
 
             migrationBuilder.DropTable(
                 name: "Players");

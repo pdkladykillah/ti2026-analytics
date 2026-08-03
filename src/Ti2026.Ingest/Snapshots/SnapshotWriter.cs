@@ -33,6 +33,7 @@ public class SnapshotWriter(Ti2026DbContext db)
             var matches = await db.Matches
                 .Where(m => m.StartTime >= since
                             && m.RadiantTeamId != null && m.DireTeamId != null)
+                .Include(m => m.Players)
                 .ToListAsync(ct);
 
             if (matches.Count == 0) continue;
@@ -86,9 +87,9 @@ public class SnapshotWriter(Ti2026DbContext db)
             Kills: isRadiant ? m.RadiantScore : m.DireScore,
             Deaths: isRadiant ? m.DireScore : m.RadiantScore,
 
-            // Ba giá trị dưới đây giữ nguyên null khi Match chưa có dữ liệu — KHÔNG quy về
-            // false. OpenDota teams/{id}/matches không trả về chúng, nên ở M2 chúng luôn null.
-            Assists: null,
+            // Ba giá trị dưới đây chỉ có sau khi MatchDetailIngester nạp matches/{id}.
+            // Ván chưa có detail thì giữ null — KHÔNG quy về 0/false.
+            Assists: TeamAssists(m, isRadiant),
             HadFirstBlood: Flip(m.RadiantHadFirstBlood, isRadiant),
             ReachedTenFirst: Flip(m.RadiantReachedTenFirst, isRadiant),
 
@@ -98,6 +99,21 @@ public class SnapshotWriter(Ti2026DbContext db)
     /// <summary>Đổi góc nhìn Radiant sang góc nhìn đội đang xét, giữ null là null.</summary>
     private static bool? Flip(bool? radiantValue, bool isRadiant) =>
         radiantValue is null ? null : isRadiant ? radiantValue : !radiantValue;
+
+    /// <summary>
+    /// Tổng assists của 5 người thuộc phe đang xét.
+    ///
+    /// Trả null khi ván chưa nạp detail. Cũng trả null khi phe đó không đủ 5 người trong dữ
+    /// liệu: tổng của 3 người rồi đem so với tổng của 5 người ở ván khác là số liệu sai mà
+    /// nhìn vẫn hợp lý.
+    /// </summary>
+    private static int? TeamAssists(Match m, bool isRadiant)
+    {
+        if (m.DetailsIngestedAt is null || m.Players.Count == 0) return null;
+
+        var side = m.Players.Where(p => p.IsRadiant == isRadiant).ToList();
+        return side.Count == 5 ? side.Sum(p => p.Assists) : null;
+    }
 
     /// <summary>
     /// Ghi các chỉ số tính được; với chỉ số chưa biết thì GIỮ giá trị đang có thay vì ghi null.

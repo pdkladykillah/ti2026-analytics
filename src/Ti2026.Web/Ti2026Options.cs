@@ -34,6 +34,12 @@ public class Ti2026Options
     /// </summary>
     public bool IngestEnabled { get; set; }
 
+    /// <summary>
+    /// Trần số ván nạp match detail mỗi vòng. Mỗi ván một request; ở 1 req/giây thì 200 ván
+    /// mất khoảng 3,5 phút. Đặt cao hơn sẽ nạp bù lịch sử nhanh hơn nhưng mỗi vòng chạy lâu hơn.
+    /// </summary>
+    public int MaxMatchDetailsPerRun { get; set; } = 200;
+
     /// <summary>Bắt buộc ở Production — bảo vệ POST api/ingest/run.</summary>
     public string? IngestToken { get; set; }
 

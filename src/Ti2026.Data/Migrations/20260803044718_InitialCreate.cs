@@ -96,6 +96,7 @@ namespace Ti2026.Data.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     OpenDotaAccountId = table.Column<long>(type: "INTEGER", nullable: true),
                     Nick = table.Column<string>(type: "TEXT", nullable: false),
+                    NickKey = table.Column<string>(type: "TEXT", nullable: false),
                     RealName = table.Column<string>(type: "TEXT", nullable: true),
                     CountryName = table.Column<string>(type: "TEXT", nullable: true),
                     CountryCode = table.Column<string>(type: "TEXT", nullable: true),
@@ -277,6 +278,12 @@ namespace Ti2026.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Players_NickKey",
+                table: "Players",
+                column: "NickKey",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Players_OpenDotaAccountId",
                 table: "Players",
                 column: "OpenDotaAccountId",
@@ -287,6 +294,13 @@ namespace Ti2026.Data.Migrations
                 name: "IX_RosterEntries_PlayerId",
                 table: "RosterEntries",
                 column: "PlayerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RosterEntries_TeamId_PlayerId",
+                table: "RosterEntries",
+                columns: new[] { "TeamId", "PlayerId" },
+                unique: true,
+                filter: "\"ValidTo\" IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RosterEntries_TeamId_ValidTo",

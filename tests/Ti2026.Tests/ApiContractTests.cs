@@ -28,19 +28,74 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
             first.TryGetProperty(field, out _).Should().BeTrue($"index.html cần field '{field}'");
     }
 
+    /// <summary>
+    /// Bản trước của test này assert stats == null, tức mã hoá chính cái lỗi "seed bỏ qua khối
+    /// stats" thành kỳ vọng — trang render gần như trắng mà test vẫn xanh. Giờ nó kiểm điều
+    /// đúng: đủ 12 khoá, đúng kiểu số, đúng đơn vị.
+    /// </summary>
     [Fact]
-    public async Task api_teams_khi_chua_co_snapshot_tra_stats_null_chu_khong_bo_field()
+    public async Task api_teams_tra_du_12_chi_so_ngay_khi_moi_seed()
     {
         using var doc = JsonDocument.Parse(
             await factory.CreateClient().GetStringAsync("/api/teams"));
 
-        var first = doc.RootElement.GetProperty("teams")[0];
+        var teams = doc.RootElement.GetProperty("teams");
+        var withStats = teams.EnumerateArray()
+            .Where(t => t.GetProperty("stats").ValueKind != JsonValueKind.Null)
+            .ToList();
 
-        // index.html:255 kiểm x.stats truthy rồi mới đọc. Field phải TỒN TẠI và là null,
-        // vì index.html:286 gọi t.stats?.[k] — thiếu field thì cũng undefined, nhưng
-        // giữ field null làm hợp đồng rõ ràng hơn và khớp teams.json cũ.
-        first.TryGetProperty("stats", out var stats).Should().BeTrue();
-        stats.ValueKind.Should().Be(JsonValueKind.Null);
+        withStats.Should().HaveCount(16,
+            "cả 16 đội trong teams.json đều có khối stats, phải nạp hết vào snapshot");
+
+        // index.html:284 dựng bảng từ đúng 12 khoá này; thiếu một khoá là cột đó in "—"
+        var stats = withStats[0].GetProperty("stats");
+        foreach (var key in new[] { "maps", "winrate", "kills", "deaths", "assists",
+                                    "firstBlood", "f10", "winWhenFb", "winWhenF10",
+                                    "duration", "totalKills", "killDiff" })
+        {
+            stats.TryGetProperty(key, out var v).Should().BeTrue($"index.html cần stats.{key}");
+            v.ValueKind.Should().Be(JsonValueKind.Number,
+                $"index.html:284 gọi toFixed()/phép toán trên stats.{key} nên phải là số");
+        }
+    }
+
+    [Fact]
+    public async Task api_teams_giu_dung_don_vi_cua_JSON_cu()
+    {
+        using var doc = JsonDocument.Parse(
+            await factory.CreateClient().GetStringAsync("/api/teams"));
+
+        var falcons = doc.RootElement.GetProperty("teams").EnumerateArray()
+            .First(t => t.GetProperty("slug").GetString() == "team-falcons")
+            .GetProperty("stats");
+
+        // Đối chiếu trực tiếp với data/teams.json: winrate 60, kills 27.38, killDiff 1.15,
+        // duration 44 (PHÚT), maps 159
+        falcons.GetProperty("maps").GetInt32().Should().Be(159);
+        falcons.GetProperty("winrate").GetDouble().Should().Be(60);
+        falcons.GetProperty("kills").GetDouble().Should().BeApproximately(27.38, 0.01);
+        falcons.GetProperty("killDiff").GetDouble().Should().BeApproximately(1.15, 0.01);
+        falcons.GetProperty("duration").GetDouble().Should().Be(44);
+        falcons.GetProperty("winWhenF10").GetDouble().Should().Be(78);
+    }
+
+    /// <summary>
+    /// index.html:251 tính tier từ winrate: >=60 -> S, >=50 -> A, còn lại B. Nếu winrate trả
+    /// về dạng phân số 0..1 thay vì phần trăm thì mọi đội đều thành tier B mà không có lỗi nào.
+    /// </summary>
+    [Fact]
+    public async Task winrate_la_phan_tram_chu_khong_phai_phan_so()
+    {
+        using var doc = JsonDocument.Parse(
+            await factory.CreateClient().GetStringAsync("/api/teams"));
+
+        var winrates = doc.RootElement.GetProperty("teams").EnumerateArray()
+            .Where(t => t.GetProperty("stats").ValueKind != JsonValueKind.Null)
+            .Select(t => t.GetProperty("stats").GetProperty("winrate").GetDouble())
+            .ToList();
+
+        winrates.Should().OnlyContain(w => w >= 1 && w <= 100);
+        winrates.Should().Contain(w => w >= 50, "phải có đội đạt tier S hoặc A");
     }
 
     [Fact]
@@ -134,8 +189,11 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
             await factory.CreateClient().GetStringAsync("/api/health"));
 
         doc.RootElement.GetProperty("teams").GetInt32().Should().Be(16);
-        doc.RootElement.GetProperty("matches").GetInt32().Should().Be(0);
-        doc.RootElement.GetProperty("snapshots").GetInt32().Should().Be(0);
+        doc.RootElement.GetProperty("players").GetInt32().Should().BeGreaterThan(0);
+        doc.RootElement.GetProperty("matches").GetInt32().Should().Be(0,
+            "chưa có vòng ingest OpenDota nào — đó là việc của M2");
+        doc.RootElement.GetProperty("snapshots").GetInt32().Should().Be(16,
+            "seed phải nạp snapshot cho cả 16 đội, nếu không trang render trắng");
         doc.RootElement.GetProperty("recentRuns").GetArrayLength().Should().Be(0);
     }
 }

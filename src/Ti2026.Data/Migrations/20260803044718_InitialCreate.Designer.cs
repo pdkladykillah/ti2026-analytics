@@ -11,7 +11,7 @@ using Ti2026.Data;
 namespace Ti2026.Data.Migrations
 {
     [DbContext(typeof(Ti2026DbContext))]
-    [Migration("20260803040904_InitialCreate")]
+    [Migration("20260803044718_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -188,6 +188,10 @@ namespace Ti2026.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("NickKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<long?>("OpenDotaAccountId")
                         .HasColumnType("INTEGER");
 
@@ -201,6 +205,9 @@ namespace Ti2026.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("NickKey")
+                        .IsUnique();
 
                     b.HasIndex("OpenDotaAccountId")
                         .IsUnique()
@@ -234,6 +241,10 @@ namespace Ti2026.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PlayerId");
+
+                    b.HasIndex("TeamId", "PlayerId")
+                        .IsUnique()
+                        .HasFilter("\"ValidTo\" IS NULL");
 
                     b.HasIndex("TeamId", "ValidTo");
 

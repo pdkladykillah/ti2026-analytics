@@ -128,15 +128,15 @@ Bám sát dữ liệu đang có, không phát minh thêm. `h2h.json` có field `
 |---|---|---|
 | `Team` | 16 đội | `Slug` unique, dùng lại slug sẵn có (`team-falcons`) |
 | `TeamAlias` | Ánh xạ tên giữa các nguồn | Giải quyết đúng cái `_note` trong `teams.json`: OpenDota gọi `PARIVISION`, dltv gọi `TEAM VISION`; `HULIGANI` = `L1GA TEAM`. Không có bảng này thì ingest tạo đội trùng |
-| `Player` | Danh tính player | `OpenDotaAccountId` unique (nullable); `players.json` đã có sẵn `id` |
-| `RosterEntry` | Player thuộc đội nào, từ ngày nào đến ngày nào | `ValidFrom` / `ValidTo` (nullable = đang hiệu lực) |
+| `Player` | Danh tính player | `OpenDotaAccountId` unique (nullable); `players.json` đã có sẵn `id`. Định danh khi seed dùng `NickKey` = nick đã Trim + ToUpperInvariant, có unique index — SQLite so sánh chuỗi theo collation BINARY nên tra bằng nick nguyên bản sẽ trượt khi editor chỉ sửa hoa/thường và tạo ra player thứ hai cho cùng một người |
+| `RosterEntry` | Player thuộc đội nào, từ ngày nào đến ngày nào | Khoảng **nửa mở** `[ValidFrom, ValidTo)`; `ValidTo` null = đang hiệu lực. Quy ước phải ghi rõ, nếu không một lần chuyển đội sinh hai hàng cùng nhận ngày đổi và đội có 7 người trong đúng ngày đó. Unique index trên `(TeamId, PlayerId)` lọc `ValidTo IS NULL` chặn hàng mở trùng ở tầng DB |
 | `Hero` | Hero + ảnh | `Id` theo OpenDota hero id. Nạp từ endpoint heroes của OpenDota; cần cho GĐ1 vì tier list hiển thị ảnh hero |
 | `Match` | Từng game | Có `SeriesId` để gom thành series Bo3/Bo5; FK đội **nullable** vì OpenDota đôi khi thiếu ánh xạ đội |
 | `TeamStatSnapshot` | Xương sống của Giai đoạn 2 | Một dòng / đội / ngày / cửa sổ |
 | `TierEntry` | Tier list biên tập | Seed từ `tiers.json`, khóa theo `Patch` |
 | `MediaAsset` | Ảnh đã tải về VPS | `SourceUrl`, `LocalPath`, `ETag` → lần sau chỉ tải nếu ETag đổi. File nằm trong volume tại `/app/App_Data/media/`, phục vụ qua route `media/{hash}` (đường dẫn tương đối, tôn trọng path base) |
 | `IngestRun` | Lịch sử mỗi vòng chạy | Source, thời gian, số bản ghi, nguyên văn lỗi |
-| `SeedState` | Hash file JSON biên tập | Chỉ seed lại khi file thật sự đổi |
+| `SeedState` | Hash **từng** file JSON biên tập | Một hàng cho mỗi file (`teams.json`, `rosters.json`), chỉ seed lại file nào thật sự đổi. Gate chung một file làm sửa `rosters.json` không bao giờ có tác dụng |
 
 ### `TeamStatSnapshot` — chi tiết
 
@@ -314,7 +314,9 @@ Gate áp **cho từng ingester riêng, trên đúng loại dữ liệu ingester 
 | Một nguồn chết làm mất cả vòng | OpenDota và dltv độc lập, mỗi nguồn một transaction riêng; một bên fail, bên kia vẫn commit |
 | Bị OpenDota chặn IP | Rate limiter cứng phía client (~1 req/s). Chủ động giới hạn, **không** đợi bị 429 rồi mới xử lý |
 | Lỗi mạng tạm thời | `IHttpClientFactory` + retry backoff, tôn trọng `Retry-After` |
-| Deploy lần đầu, DB trống | Seed từ đúng 6 file JSON hiện có → trang có dữ liệu **ngay giây đầu**, không phải chờ vòng ingest đầu tiên |
+| Deploy lần đầu, DB trống | Seed từ đúng 6 file JSON hiện có → trang có dữ liệu **ngay giây đầu**. Bao gồm **cả 12 chỉ số** của từng đội, nạp thành `TeamStatSnapshot` cửa sổ 180 ngày — bỏ bước này thì `stats` trả `null` và trang render gần như trắng dù vẫn trả HTTP 200 |
+| File biên tập bị gõ sai cú pháp | Seed nằm trong một transaction và được bọc `try/catch` ở `Program.cs` → app **vẫn lên** và phục vụ dữ liệu đang có trong DB. Không bọc thì exception hạ cả host, site không phục vụ gì, và mọi lần restart sau đều lặp lại cú crash |
+| Player chuyển đội hoặc nghỉ | Seed đóng (`ValidTo`) mọi bản ghi đang mở của đội mà player không còn trong danh sách. Thiếu bước này thì player hiện ở **cả hai đội vĩnh viễn** |
 | Migration lỗi | App không lên, log rõ ràng — thà không lên còn hơn lên với schema sai |
 
 ### Quan sát hệ thống

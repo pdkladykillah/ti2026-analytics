@@ -40,11 +40,29 @@ using (var scope = app.Services.CreateScope())
         paths.DatabasePath, paths.EditorialDirectory);
 
     // Seed để deploy lần đầu là trang đã có dữ liệu ngay, không phải chờ vòng ingest.
-    var seed = await new EditorialSeeder(db, paths.EditorialDirectory)
-        .SeedAsync(CancellationToken.None);
-    app.Logger.LogInformation(
-        "Seed dữ liệu biên tập: skipped={Skipped} teams={Teams} players={Players}",
-        seed.Skipped, seed.TeamsWritten, seed.PlayersWritten);
+    //
+    // try/catch ở đây là CÓ CHỦ Ý và không được bỏ: file biên tập được sửa tay (đó là quy
+    // trình đã chọn), nên một dấu phẩy thừa trong teams.json là chuyện sẽ xảy ra. Không bắt
+    // thì exception hạ cả host — site không phục vụ gì cả, dù SQLite vẫn đang giữ nguyên bộ
+    // dữ liệu tốt của lần trước. Đúng nghịch đảo của nguyên tắc "dữ liệu hơi lỗi thời tốt
+    // hơn dữ liệu rỗng". Migration lỗi thì vẫn để chết như thiết kế.
+    try
+    {
+        var seed = await new EditorialSeeder(db, paths.EditorialDirectory)
+            .SeedAsync(CancellationToken.None);
+
+        app.Logger.LogInformation(
+            "Seed biên tập: skipped={Skipped} teams={Teams} snapshots={Snapshots} " +
+            "players={Players} rostersClosed={Closed}",
+            seed.Skipped, seed.TeamsWritten, seed.SnapshotsWritten,
+            seed.PlayersWritten, seed.RostersClosed);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex,
+            "Seed dữ liệu biên tập THẤT BẠI — tiếp tục chạy với dữ liệu đang có trong DB. " +
+            "Kiểm tra cú pháp các file trong {EditorialDir}", paths.EditorialDirectory);
+    }
 }
 
 app.UseDefaultFiles();

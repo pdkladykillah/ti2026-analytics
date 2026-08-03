@@ -60,6 +60,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
 
         b.Entity<Player>().HasIndex(x => x.OpenDotaAccountId).IsUnique()
             .HasFilter("\"OpenDotaAccountId\" IS NOT NULL");
+        b.Entity<Player>().HasIndex(x => x.NickKey).IsUnique();
 
         b.Entity<Hero>().Property(x => x.Id).ValueGeneratedNever();
 
@@ -84,6 +85,13 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<IngestRun>().HasIndex(x => new { x.Source, x.StartedAt });
 
         b.Entity<RosterEntry>().HasIndex(x => new { x.TeamId, x.ValidTo });
+
+        // Một player chỉ được có ĐÚNG MỘT bản ghi đang hiệu lực trong một đội.
+        // Index này là lưới an toàn ở tầng DB: kể cả khi logic seeder sai thì cũng không
+        // thể tạo được hai hàng mở, thay vì âm thầm hiện 7 người trên UI đội hình.
+        b.Entity<RosterEntry>()
+            .HasIndex(x => new { x.TeamId, x.PlayerId }).IsUnique()
+            .HasFilter("\"ValidTo\" IS NULL");
         b.Entity<RosterEntry>()
             .HasOne(x => x.Player).WithMany()
             .HasForeignKey(x => x.PlayerId).OnDelete(DeleteBehavior.Cascade);

@@ -4,4 +4,17 @@
     <ProjectReference Include="..\Ti2026.Ingest\Ti2026.Ingest.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Program dùng top-level statements nên lớp Program là internal.
+         WebApplicationFactory<Program> trong test cần thấy được nó. -->
+    <InternalsVisibleTo Include="Ti2026.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
 </Project>

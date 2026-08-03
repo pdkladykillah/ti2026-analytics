@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
 using Ti2026.Data.Entities;
+using Ti2026.Ingest.Analytics;
 
 namespace Ti2026.Ingest.Snapshots;
 
@@ -23,6 +24,10 @@ public class SnapshotWriter(Ti2026DbContext db)
     {
         var teams = await db.Teams.ToListAsync(ct);
         if (teams.Count == 0) return 0;
+
+        // Elo tính trên TOÀN BỘ lịch sử, không giới hạn theo cửa sổ: rating là thứ tích luỹ,
+        // cắt cửa sổ sẽ vứt đi chính phần thông tin làm nó có ý nghĩa.
+        var elo = await ComputeEloAsync(teams, ct);
 
         var written = 0;
 
@@ -69,12 +74,34 @@ public class SnapshotWriter(Ti2026DbContext db)
                 }
 
                 Merge(existing, stats);
+                existing.Elo = elo.TryGetValue(team.Id, out var r) && r.Games > 0 ? r.Elo : null;
                 written++;
             }
         }
 
         await db.SaveChangesAsync(ct);
         return written;
+    }
+
+    /// <summary>
+    /// Elo từ toàn bộ trận đã biết kết quả, xếp theo thứ tự thời gian.
+    /// Tính lại từ đầu mỗi vòng thay vì cập nhật tăng dần: rẻ ở quy mô này (vài nghìn trận)
+    /// và loại bỏ hẳn khả năng trôi số khi có trận được nạp bổ sung vào quá khứ.
+    /// </summary>
+    private async Task<Dictionary<int, TeamRating>> ComputeEloAsync(
+        List<Team> teams, CancellationToken ct)
+    {
+        var rows = await db.Matches
+            .Where(m => m.RadiantTeamId != null && m.DireTeamId != null)
+            .Select(m => new { m.StartTime, m.RadiantTeamId, m.DireTeamId, m.RadiantWin })
+            .ToListAsync(ct);
+
+        var rated = rows.Select(r => new RatedMatch(
+            r.StartTime,
+            WinnerTeamId: r.RadiantWin ? r.RadiantTeamId!.Value : r.DireTeamId!.Value,
+            LoserTeamId: r.RadiantWin ? r.DireTeamId!.Value : r.RadiantTeamId!.Value));
+
+        return EloEngine.Compute(rated, teams.Select(t => t.Id));
     }
 
     private static MatchOutcome ToOutcome(Match m, int teamId)

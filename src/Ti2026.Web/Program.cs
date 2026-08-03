@@ -105,6 +105,7 @@ app.UseStaticFiles();
 app.MapDataEndpoints();
 app.MapH2hEndpoints();
 app.MapTrendEndpoints();
+app.MapAnalyticsEndpoints();
 app.MapOpsEndpoints();
 
 app.Run();

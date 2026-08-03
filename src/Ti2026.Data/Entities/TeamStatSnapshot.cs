@@ -44,6 +44,13 @@ public class TeamStatSnapshot
     // ingest sẽ ghi 0 và trang hiển thị "first blood 0%" cho cả 16 đội, trông y như số thật.
     // API trả null, UI hiện "—".
 
+    /// <summary>
+    /// Elo tại thời điểm chụp. Lưu vào snapshot thay vì bảng riêng để có LỊCH SỬ RATING
+    /// miễn phí — biểu đồ phong độ vẽ được đường Elo theo ngày mà không thêm hạ tầng nào.
+    /// null với đội chưa có trận nào trong hệ.
+    /// </summary>
+    public double? Elo { get; set; }
+
     public double? AvgAssists { get; set; }
     public double? FirstBloodRate { get; set; }
     public double? F10Rate { get; set; }

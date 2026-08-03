@@ -1,558 +1,183 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The International 2026 — Phân tích chỉ số các đội</title>
-<style>
-/* ===== Bảng màu "Sapphire nightfall whisper" — #0474C4 #5379AE #2C444C #A8C4EC #06457F #262B40 — quy tắc 60/30/10 =====
-   60% CHỦ ĐẠO   : --pg (nền trang) + --cd (thẻ/khối nội dung) — sáng, trung tính, để nội dung nổi bật
-   30% MÀU PHỤ   : --sf (xanh nhạt) + --sf2 + --gr (#A8C4EC) — thanh nav, tiles, header bảng, chip, chân trang
-   10% ĐIỂM NHẤN : --bl / --ca (#0474C4) + --cb (#06457F) + --acc2 (#5379AE) — link, tab đang mở, nút CTA, avatar
-   Ngoại lệ có chủ đích: --aq (thắng) / --rd (thua) giữ xanh–đỏ ngữ nghĩa để đọc nhanh. */
-:root{
- --pg:#f4f8fd;--cd:#ffffff;                    /* 60% */
- --sf:#e3edfa;--sf2:#e0e9f4;--gr:#a8c4ec;--bd:rgba(38,43,64,.16);--pillon:#ffffff;   /* 30% */
- --bl:#0474c4;--ca:#0474c4;--cb:#06457f;--acc2:#5379ae;--onacc:#ffffff;              /* 10% */
- --tx:#262b40;--t2:#3c4a63;--mu:#5d6b85;
- --aq:#0f7d59;--rd:#c13a3a;
- --lo:#f4f8fd;--hi:#a8c4ec;--onheat:#262b40;
- --wash:rgba(168,196,236,.42)}
-[data-t=dark]{
- --pg:#1a1f30;--cd:#262b40;
- --sf:#333c58;--sf2:#2c444c;--gr:#3d4763;--bd:rgba(168,196,236,.16);--pillon:#06457f;
- --bl:#a8c4ec;--ca:#a8c4ec;--cb:#7fa4d8;--acc2:#5379ae;--onacc:#131726;
- --tx:#eaf1fb;--t2:#b3c3dc;--mu:#9aabc7;
- --aq:#3ecfa0;--rd:#f58a8a;
- --lo:#1f2740;--hi:#2f5c9e;--onheat:#eaf1fb;
- --wash:rgba(4,116,196,.20)}
-body::before{content:"";position:fixed;left:0;right:0;top:0;height:320px;background:linear-gradient(180deg,var(--wash),transparent);pointer-events:none;z-index:0}
-.w{position:relative;z-index:1}
-:where(a,button,select,input):focus-visible{outline:2px solid var(--bl);outline-offset:2px;border-radius:6px}
-*{box-sizing:border-box}body{margin:0;background:var(--pg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
-.w{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-h1{font-size:24px;margin:0 0 3px;letter-spacing:-.02em}.sub{color:var(--t2);font-size:14px;margin:0}.snap{color:var(--mu);font-size:12px;margin-top:4px}.snap b{color:var(--tx)}.lv{color:var(--aq)}
-.tb{background:var(--sf);color:var(--t2);border:1px solid var(--bd);border-radius:999px;padding:8px 15px;font-size:13px;cursor:pointer;font-family:inherit}
-.tb:hover{color:var(--tx)}
-nav{display:flex;gap:3px;margin:18px 0 14px;flex-wrap:wrap;background:var(--sf);border:1px solid var(--bd);border-radius:13px;padding:5px}
-nav button{background:none;border:none;border-radius:9px;color:var(--t2);font-size:14px;font-family:inherit;padding:8px 15px;cursor:pointer}
-nav button:hover{color:var(--tx)}
-nav button.on{background:var(--pillon);color:var(--bl);font-weight:600;box-shadow:0 1px 2px rgba(25,27,51,.09)}
-.v{display:none}.v.on{display:block}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:20px 0}
-.tile{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:16px 18px}
-.tile .l{font-size:12px;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}.tile .n{font-size:28px;font-weight:700;margin:6px 0 2px;letter-spacing:-.02em}.tile .h{font-size:13px;color:var(--t2)}.tile .h b{color:var(--tx)}
-.p{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:16px 18px;margin-bottom:16px}.p h2{font-size:15px;margin:0 0 2px}.p .d{font-size:12.5px;color:var(--t2);margin:0 0 12px}
-table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
-th,td{padding:7px 8px;text-align:center;border-bottom:1px solid var(--gr);white-space:nowrap}
-th{color:var(--t2);font-weight:600;cursor:pointer;user-select:none;background:var(--sf);border-bottom-color:var(--bd)}th:hover{color:var(--tx)}
-th:first-child{border-radius:9px 0 0 0}th:last-child{border-radius:0 9px 0 0}td.tm{text-align:left;font-weight:600}.tw{overflow-x:auto}
-.bg{display:inline-block;min-width:20px;height:20px;line-height:20px;border-radius:6px;color:var(--onacc);font-size:11px;padding:0 5px}.S{background:var(--bl)}.A{background:var(--aq)}.B{background:var(--mu)}
-.tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
-.c{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:16px 18px}.c .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.c .nm{font-size:16px;font-weight:700}.c .rg{font-size:11.5px;color:var(--mu)}
-.tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.t{font-size:11px;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--bl) 12%,transparent);color:var(--bl);border:1px solid color-mix(in srgb,var(--bl) 28%,transparent)}.t.wn{background:color-mix(in srgb,var(--rd) 12%,transparent);color:var(--rd);border-color:color-mix(in srgb,var(--rd) 28%,transparent)}
-.ms{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 10px;margin-top:10px}.m .ml{color:var(--mu);font-size:10.5px;text-transform:uppercase}.m .mv{font-weight:700;font-size:15px}
-.in{font-size:12.5px;color:var(--t2);margin-top:10px;padding-top:10px;border-top:1px solid var(--gr)}
-.nd{border:1px dashed var(--mu);border-radius:12px;padding:16px 18px;color:var(--mu);font-size:13px}
-.ft{color:var(--mu);font-size:11.5px;margin-top:14px}.ft a{color:var(--bl)}
-.tlg{width:20px;height:20px;object-fit:contain;vertical-align:-5px;margin-right:7px}
-.mono{display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--bl);color:var(--onacc);font-size:10px;font-weight:700;line-height:20px;text-align:center;margin-right:7px;vertical-align:-5px}
-.tlg-lg{width:28px;height:28px;vertical-align:-7px;margin-right:8px}
-.mono-lg{width:28px;height:28px;line-height:28px;font-size:13px;border-radius:8px;vertical-align:-7px;margin-right:8px}
-.lgw .mono{display:none}.lgw.nolg .mono{display:inline-block}
-.h2c{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-.h2c select{background:var(--cd);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;min-width:170px}
-.h2c .vs{font-weight:700;color:var(--mu);font-size:12px}
-.hhead{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 16px}
-.hcard{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--t2)}
-.hcard b{font-size:15px;color:var(--tx)}
-.hcard.a{border-top:3px solid var(--ca)}.hcard.b{border-top:3px solid var(--cb);text-align:right}
-.hrow{display:grid;grid-template-columns:1fr 150px 1fr;gap:8px;align-items:center;margin-bottom:9px}
-.hside{display:flex;align-items:center;gap:7px}.hside.l{justify-content:flex-end}
-.hbar{height:15px;border-radius:3px;min-width:3px}.hbar.a{background:var(--ca)}.hbar.b{background:var(--cb)}
-.hval{font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--t2);white-space:nowrap}
-.hval.win{font-weight:700;color:var(--tx)}.hval.win::after{content:" ●";font-size:8px;vertical-align:2px}
-.hside.l .hval.win::after{content:""}.hside.l .hval.win::before{content:"● ";font-size:8px;vertical-align:2px}
-.hmid{font-size:11.5px;color:var(--t2);text-align:center}
-.hmid small{display:block;color:var(--mu);font-size:9.5px}
-@media (max-width:640px){.hrow{grid-template-columns:1fr 110px 1fr}}
-.sqwrap{margin-top:12px;padding-top:11px;border-top:1px solid var(--gr)}
-.sqh{font-size:10.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;justify-content:space-between}
-.sq{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 4px}
-.pl{text-align:center;min-width:0}
-.pl .av{position:relative;width:48px;height:48px;margin:0 auto 5px;border-radius:50%;background:var(--bl);color:var(--onacc);font-weight:700;font-size:19px;line-height:48px;text-align:center}
-.pl .av.co{background:var(--cb)}
-.pl .av img{position:absolute;inset:0;width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid var(--bd);background:var(--pg)}
-.pl .pos{position:absolute;right:-4px;bottom:-2px;min-width:15px;height:16px;line-height:16px;padding:0 4px;border-radius:8px;font-size:9px;font-weight:700;color:var(--onacc);background:var(--bl);border:2px solid var(--cd);box-sizing:content-box}
-.pl .pos.co{background:var(--cb)}
-.pl .nk{font-size:11px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pl .rn{font-size:9.5px;color:var(--mu);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.h2tally{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:2px 0 14px;padding:14px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--sf)}
-.h2t-side{text-align:center}.h2t-side b{display:block;font-size:32px;font-weight:800;line-height:1;color:var(--ca)}.h2t-side.b b{color:var(--cb)}.h2t-side span{font-size:12px;color:var(--t2)}
-.h2t-mid{text-align:center;font-size:12px;color:var(--mu)}.h2t-mid small{display:block;font-size:11px;margin-top:3px}
-.h2list{display:flex;flex-direction:column;gap:6px}
-.h2m{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--gr);border-radius:9px}
-.h2m-d{font-size:12px;color:var(--t2)}.h2m-d small{display:block;color:var(--mu);font-size:10.5px}
-.h2m-sc{font-variant-numeric:tabular-nums;font-weight:700;font-size:17px;white-space:nowrap;text-align:center}.h2m-sc i{color:var(--mu);font-style:normal;margin:0 7px;font-weight:400}
-.h2m-sc .w{color:var(--aq)}
-.h2m-r{text-align:right;font-size:11.5px;color:var(--mu)}
-.h2sub{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin:20px 0 12px;padding-top:16px;border-top:1px solid var(--gr)}
-.h2sub:first-child{margin-top:0;padding-top:0;border-top:none}
-.hlegend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--t2);margin-bottom:12px}
-.hlegend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0}
-.hlegend .dot.a{background:var(--ca)}.hlegend .dot.b{background:var(--cb)}
-.mu{color:var(--mu)}
-/* ---- Tier list hero ---- */
-.pills{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px}
-.pill{background:var(--sf);border:1px solid var(--bd);color:var(--t2);border-radius:999px;padding:7px 15px;font-size:13px;font-family:inherit;cursor:pointer}
-.pill.on{background:var(--bl);border-color:var(--bl);color:var(--onacc);font-weight:600}
-.tfind{background:var(--cd);color:var(--tx);border:1px solid var(--bd);border-radius:999px;padding:7px 14px;font-family:inherit;font-size:13px;width:180px}
-.tl{display:flex;flex-direction:column;gap:5px}
-.tr{display:grid;grid-template-columns:104px 1fr;gap:5px}
-.tlab{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:9px;font-weight:800;font-size:16px;color:#141414;text-align:center;padding:8px 5px;line-height:1.1}
-.tlab small{font-size:8.5px;font-weight:700;opacity:.7;margin-top:3px;letter-spacing:.02em;line-height:1.25}
-.thg{display:flex;flex-wrap:wrap;gap:4px;background:var(--cd);border:1px solid var(--bd);border-radius:9px;padding:5px;align-content:flex-start}
-.hx{position:relative;width:98px;height:55px;border-radius:5px;overflow:hidden;background:var(--gr);transition:transform .1s,opacity .12s}
-.hx:hover{transform:scale(1.05);z-index:3}
-.hx img{width:100%;height:100%;object-fit:cover;display:block}
-.hx .hnm{position:absolute;left:0;right:0;bottom:0;font-size:8.5px;font-weight:700;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.88));padding:9px 3px 2px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hx .fb{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:var(--t2);padding:3px;text-align:center;line-height:1.15}
-.hx .dt{position:absolute;top:3px;right:3px;width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;font-size:10px;font-weight:800;color:#fff}
-.hx .dt.up{background:#1baf7a}.hx .dt.down{background:#e34948}
-.hx .bn{position:absolute;top:3px;left:3px;font-size:8.5px;font-weight:800;padding:1px 4px;border-radius:4px;background:rgba(0,0,0,.72);color:#ffcf4d}
-.hx.dim{opacity:.14}.hx.noimg .hnm{display:none}.hx.noimg .fb{display:flex}
-.tnote{font-size:12px;color:var(--t2);background:var(--cd);border:1px solid var(--bd);border-left:3px solid var(--acc2);border-radius:8px;padding:10px 13px;margin-top:14px;line-height:1.6}
-.pn{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:4px}
-.pnb{background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:11px 13px}
-.pnb h3{margin:0 0 7px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu)}
-.pnb ul{margin:0;padding-left:17px;font-size:12.5px;color:var(--t2);line-height:1.65}
-.pnb li b{color:var(--tx)}
-.chip{display:inline-block;font-size:11.5px;padding:3px 9px;border-radius:999px;margin:0 5px 5px 0;border:1px solid}
-.chip.up{background:color-mix(in srgb,var(--aq) 13%,transparent);color:var(--aq);border-color:color-mix(in srgb,var(--aq) 32%,transparent)}
-.chip.down{background:color-mix(in srgb,var(--rd) 13%,transparent);color:var(--rd);border-color:color-mix(in srgb,var(--rd) 32%,transparent)}
-.tlgd{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--t2);margin:12px 0 0;padding-top:11px;border-top:1px solid var(--gr)}
-@media (max-width:640px){.tr{grid-template-columns:64px 1fr}.tlab{font-size:12px}.tlab small{display:none}.hx{width:76px;height:43px}}
-.psel{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-.psel select{background:var(--cd);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;min-width:262px;max-width:100%}
-.pch{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:center;border:1px solid var(--bd);border-left:4px solid var(--acc2);border-radius:12px;padding:13px 15px;margin-bottom:14px;background:var(--sf2)}
-.pavw{position:relative;width:72px;height:72px}
-.pavw .pavf,.pavw .pav{position:absolute;inset:0;border-radius:50%}
-.pavf{background:var(--bl);color:var(--onacc);font-weight:700;font-size:26px;line-height:72px;text-align:center}
-.pav{width:72px;height:72px;object-fit:cover;background:var(--cd)}
-.pnk{font-size:20px;font-weight:700;letter-spacing:-.01em}
-.pmt{font-size:12.5px;color:var(--t2);margin-top:4px;display:flex;flex-wrap:wrap;gap:3px 14px;align-items:center}
-.pmt b{color:var(--tx)}
-.fl{width:19px;height:13px;object-fit:cover;border-radius:2px;vertical-align:-1px;margin-right:5px;border:1px solid var(--bd)}
-.psm{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
-.psm span{font-size:11.5px;color:var(--t2);background:var(--sf);border:1px solid var(--bd);border-radius:999px;padding:4px 11px}
-.psm span b{color:var(--tx)}
-.phr{display:grid;grid-template-columns:112px 1fr;gap:13px;padding:13px 0;border-top:1px solid var(--gr);align-items:center}
-.phimg{width:112px;height:63px;object-fit:cover;border-radius:7px;background:var(--gr);display:block}
-.phb{display:flex;flex-wrap:wrap;gap:9px 15px;align-items:center}
-.phn{min-width:150px;flex:1 1 150px}
-.phn .hn{font-size:14.5px;font-weight:700;line-height:1.3}
-.phn .hs{font-size:11px;color:var(--mu);margin-bottom:5px}
-.wbar{height:7px;border-radius:4px;background:var(--gr);overflow:hidden}
-.wbar i{display:block;height:100%;border-radius:4px;background:var(--aq)}
-.wbar.lo i{background:var(--rd)}
-.wpct{font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--t2);margin-top:3px;display:block}
-.wpct b{color:var(--tx)}
-.phm{min-width:58px;text-align:center}
-.phm em{display:block;font-style:normal;font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.03em}
-.phm b{font-size:15px;font-variant-numeric:tabular-nums}
-.phm small{display:block;font-size:10px;color:var(--mu);font-variant-numeric:tabular-nums}
-.phi{display:flex;gap:3px;flex-wrap:wrap;min-width:146px}
-.phi img{width:32px;height:24px;object-fit:cover;border-radius:3px;border:1px solid var(--bd);background:var(--gr)}
-.pldg{border:1px dashed var(--mu);border-radius:10px;padding:24px 18px;text-align:center;color:var(--mu);font-size:13px;line-height:1.6}
-.pldg.er{color:var(--rd);border-color:var(--rd)}
-@media (max-width:560px){.phr{grid-template-columns:1fr}.phimg{width:100%;height:104px}.pch{grid-template-columns:56px 1fr}.pavw,.pav{width:56px;height:56px}.pavf{line-height:56px;font-size:20px}}
-</style>
-</head>
-<body data-t="light">
-<div class="w">
-  <div class="top">
-    <div>
-      <h1>The International 2026 · Phân tích chỉ số các đội</h1>
-      <p class="sub">16 đội tham dự — chỉ số thi đấu 6 tháng gần nhất</p>
-      <p class="snap" id="snap">Đang tải dữ liệu…</p>
-    </div>
-    <button class="tb" id="tbtn">🌙 Chế độ tối</button>
-  </div>
-  <nav id="nav">
-    <button data-v="rank" class="on">Bảng xếp hạng</button>
-    <button data-v="rep">Chi tiết đội</button>
-    <button data-v="h2h">So sánh 2 đội</button>
-    <button data-v="tier">Tier list hero</button>
-    <button data-v="ply">Tra cứu player</button>
-    <button data-v="abt">Về trang này</button>
-  </nav>
-  <div id="err"></div>
-  <section class="v on" id="v-rank">
-    <div class="tiles" id="tiles"></div>
-    <div class="p"><h2>Bảng dữ liệu đầy đủ</h2><p class="d">Bấm tiêu đề cột để sắp xếp. Ô tô đậm theo giá trị.</p><div class="tw"><table id="tbl"></table></div>
-    <p class="ft"><b>Chênh K–D</b>=Kills−Deaths · <b>F10</b>=xác suất giành 10 kill đầu · <b>Thắng|F10</b>=tỉ lệ thắng khi giành F10 · <b>Dur</b>=phút. Tier theo winrate (S≥60, A≥50, B còn lại). Nguồn: DLTV.org.</p></div>
-  </section>
-  <section class="v" id="v-rep"><p class="d" style="margin:6px 0 14px">Báo cáo tự sinh: nhãn phong cách, chỉ số chính và nhận định ngắn dựa trên dữ liệu.</p><div class="tg" id="rep"></div></section>
-  <section class="v" id="v-h2h">
-    <div class="p">
-      <h2>So sánh trực tiếp 2 đội</h2>
-      <p class="d">Lịch sử <b>đối đầu trực tiếp</b> giữa hai đội trong 6 tháng gần nhất (nguồn DLTV): số lần gặp, tỉ số từng trận và đội thắng, kèm <b>chỉ số chỉ tính riêng các ván 2 đội gặp nhau</b>. Một số cặp gặp nhau ít nên mẫu có thể nhỏ (được báo rõ); cặp chưa gặp nhau sẽ hiển thị chỉ số tổng quan toàn giải.</p>
-      <div class="h2c">
-        <select id="selA"></select><span class="vs">VS</span><select id="selB"></select>
-      </div>
-      <div class="hhead" id="h2hHead"></div>
-      <div id="h2hRows"></div>
-      <div class="in" id="h2hVerdict"></div>
-    </div>
-  </section>
-  <section class="v" id="v-tier">
-    <div class="p">
-      <h2>Bảng xếp hạng hero theo tier <span id="tpatch" class="mu" style="font-weight:400;font-size:12.5px"></span></h2>
-      <p class="d" id="tdesc">Xếp hạng S / A / B / C theo từng vị trí, kèm nhóm <b>Đặc thù</b> và <b>Tình huống</b>. Mỗi thẻ hero hiển thị số liệu thật: winrate pub và số lần bị ban ở giải chuyên nghiệp.</p>
-      <div class="pills" id="tpills"></div>
-      <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:13px">
-        <input class="tfind" id="tfind" type="search" placeholder="Tìm hero…" autocomplete="off">
-        <span class="mu" style="font-size:11.5px" id="tcount"></span>
-      </div>
-      <div class="tl" id="tlist"></div>
-      <div class="tlgd">
-        <span><span class="chip up" style="margin:0">↑</span> được buff ở patch này</span>
-        <span><span class="chip down" style="margin:0">↓</span> bị nerf ở patch này</span>
-        <span class="mu">Số vàng góc trái = số lần hero bị ban ở giải chuyên nghiệp · rê chuột lên thẻ để xem chi tiết</span>
-      </div>
-      <div class="tnote" id="tmethod"></div>
-    </div>
-    <div class="p">
-      <h2 id="pntitle">Thay đổi của patch</h2>
-      <p class="d" id="pnsum"></p>
-      <div class="pn" id="pnbox"></div>
-      <div class="tnote" id="pnnote"></div>
-      <p class="ft" id="tsrc"></p>
-    </div>
-  </section>
-  <section class="v" id="v-ply">
-    <div class="p">
-      <h2>Tra cứu chỉ số người chơi</h2>
-      <p class="d">Chọn 1 trong <b>80 tuyển thủ</b> dự TI2026. Số liệu được lấy <b>trực tiếp từ OpenDota API</b> ngay trên trình duyệt của bạn — cửa sổ <b>6 tháng gần nhất</b>, <b>chỉ tính các trận đấu giải</b> (bỏ toàn bộ trận pub). Hiển thị <b>10 hero được dùng nhiều nhất</b>.</p>
-      <div class="psel"><select id="pSel"><option value="">— Chọn tuyển thủ —</option></select></div>
-      <div id="pCard"></div>
-      <div id="pBody"></div>
-      <p class="ft"><b>KDA</b>=(Kill+Assist)/Death · <b>LH/ph</b>=last hit mỗi phút · <b>Thời lượng</b>=độ dài trung bình 1 trận trên hero đó · <b>Items</b>=6 món hay lên nhất (đã bỏ đồ tiêu hao, ward, TP). Ảnh hero/item: Steam CDN · Chỉ số: <a href="https://www.opendota.com" target="_blank" rel="noopener">OpenDota</a>.</p>
-    </div>
-  </section>
-  <section class="v" id="v-abt"><div class="p"><h2>Về trang này</h2><div class="d" style="font-size:13.5px;line-height:1.7">
-    <p>Phân tích 16 đội <b>The International 2026</b>, chỉ số <b>6 tháng gần nhất</b> từ OpenDota và DLTV.org. Dữ liệu phục vụ qua API và được nền tự cập nhật định kỳ; trạng thái lần cập nhật gần nhất xem ở <code>api/health</code>.</p>
-    <p><b>Bản đầy đủ</b> (kèm biểu đồ radar/scatter, scraper, workflow) có trong gói mã nguồn. Trang này là bản gọn tự chứa để demo.</p>
-  </div></div></section>
-  <p class="ft">Dữ liệu: <a href="https://dltv.org" target="_blank" rel="noopener">DLTV.org</a> · Cập nhật lần cuối: <span id="fu">—</span></p>
-</div>
-<script>
-const $=s=>document.querySelector(s),tier=w=>w>=60?"S":w>=50?"A":"B";
-let T=[],R={},H={},TL=null;
-let PL=null,PH={},PI={},pCache={},pCur="";
-fetch("api/teams").then(r=>r.json()).then(d=>{
-  T=d.teams.map(x=>({...x,tier:x.stats?tier(x.stats.winrate):null}));
-  return Promise.all([
-    fetch("api/meta").then(r=>r.json()).catch(()=>({})),
-    fetch("api/rosters").then(r=>r.json()).then(x=>x.rosters||{}).catch(()=>({})),
-    fetch("api/h2h").then(r=>r.json()).then(x=>x.pairs||{}).catch(()=>({})),
-    fetch("api/tiers").then(r=>r.json()).catch(()=>null),
-    fetch("api/players").then(r=>r.json()).catch(()=>null)
-  ]);
-}).then(([m,ros,h2h,tl,pl])=>{
-  R=ros; H=h2h; TL=tl;
-  if(pl&&pl.players){PL=pl.players;PH=pl.h||{};PI=pl.i||{};}
-  const wd=T.filter(t=>t.stats).length,dt=m.updatedAt?new Date(m.updatedAt).toLocaleString("vi-VN",{dateStyle:"medium",timeStyle:"short"}):"—";
-  $("#snap").innerHTML='<span class="lv">●</span> Cập nhật: <b>'+dt+'</b> · '+wd+'/'+T.length+' đội có dữ liệu'+(m.seed?' · (seed)':'');
-  $("#fu").textContent=dt;render();
-}).catch(e=>{$("#err").innerHTML='<p style="color:var(--rd)">Không tải được api/teams — kiểm tra log server hoặc api/health.</p>';});
-const wd=()=>T.filter(t=>t.stats),S=t=>t.stats;
-function lg(t,big){
-  const cm='mono'+(big?' mono-lg':''), ci='tlg'+(big?' tlg-lg':'');
-  const m='<span class="'+cm+'">'+t.name.charAt(0)+'</span>';
-  if(!t.logo) return m;
-  return '<span class="lgw"><img class="'+ci+'" src="'+t.logo+'" alt="" loading="lazy" onerror="this.parentElement.classList.add(\'nolg\');this.remove()">'+m+'</span>';
-}
-function tiles(){const d=wd();if(!d.length)return;const by=f=>[...d].sort(f)[0];
-  const a=[["Winrate cao nhất",x=>S(x).winrate+"%",(x)=>x.name+" · "+S(x).maps+" ván",(p,q)=>S(q).winrate-S(p).winrate],
-  ["Chênh K–D tốt nhất",x=>(S(x).killDiff>0?"+":"")+S(x).killDiff,x=>x.name,(p,q)=>S(q).killDiff-S(p).killDiff],
-  ["Đóng trận chắc nhất",x=>S(x).winWhenF10+"%",x=>x.name+" · thắng khi có F10",(p,q)=>S(q).winWhenF10-S(p).winWhenF10],
-  ["Kết trận nhanh nhất",x=>S(x).duration+"′",x=>x.name,(p,q)=>S(p).duration-S(q).duration],
-  ["Trận nhiều máu nhất",x=>S(x).totalKills.toFixed(1),x=>x.name+" · tổng kills/trận",(p,q)=>S(q).totalKills-S(p).totalKills]];
-  $("#tiles").innerHTML=a.map(([l,v,h,s])=>{const x=by(s);return '<div class="tile"><div class="l">'+l+'</div><div class="n">'+v(x)+'</div><div class="h"><b>'+h(x).split(" · ")[0]+'</b>'+(h(x).includes("·")?" · "+h(x).split(" · ").slice(1).join(" · "):"")+'</div></div>';}).join("");}
-const C=[["name","Đội","tm",v=>v],["tier","Tier","",v=>v?'<span class="bg '+v+'">'+v+'</span>':"—"],["maps","Ván","",v=>v],["winrate","WR%","",v=>v+"%"],["kills","Kills","",v=>v.toFixed(2)],["deaths","Deaths","",v=>v.toFixed(2),1],["killDiff","Chênh K–D","",v=>(v>0?"+":"")+v.toFixed(2)],["totalKills","Tổng kills","",v=>v.toFixed(1)],["assists","Assists","",v=>v.toFixed(1)],["firstBlood","FB%","",v=>v+"%"],["f10","F10%","",v=>v+"%"],["winWhenFb","Thắng|FB","",v=>v+"%"],["winWhenF10","Thắng|F10","",v=>v+"%"],["duration","Dur′","",v=>v]];
-let sk="winrate",sa=0;
-const gv=(t,k)=>k==="name"?t.name:k==="tier"?t.tier:t.stats?t.stats[k]:null;
-function mix(a,b,f){const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)),[r,g,c]=p(a),[R,G,B]=p(b);return`rgb(${Math.round(r+(R-r)*f)},${Math.round(g+(G-g)*f)},${Math.round(c+(B-c)*f)})`;}
-function heat(k,v,inv){if(k==="name"||k==="tier"||v==null)return"";const vs=wd().map(t=>t.stats[k]),mn=Math.min(...vs),mx=Math.max(...vs);let f=(v-mn)/(mx-mn||1);if(inv)f=1-f;const cs=getComputedStyle(document.body);return"background:"+mix(cs.getPropertyValue("--lo").trim(),cs.getPropertyValue("--hi").trim(),f*.85)+";color:var(--onheat)";}
-function tbl(){const rows=[...T].sort((a,b)=>{let x=gv(a,sk),y=gv(b,sk);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return-1;return typeof x=="string"?(sa?x.localeCompare(y):y.localeCompare(x)):(sa?x-y:y-x);});
-  let h="<thead><tr>"+C.map(c=>'<th data-k="'+c[0]+'">'+c[1]+(c[0]===sk?(sa?" ▲":" ▼"):"")+'</th>').join("")+"</tr></thead><tbody>";
-  h+=rows.map(t=>"<tr>"+C.map(c=>{const v=gv(t,c[0]);if(v==null&&c[0]!=="name"&&c[0]!=="tier")return'<td style="color:var(--mu)">—</td>';const cell=(c[0]==="name")?lg(t)+c[3](v):c[3](v);return'<td class="'+c[2]+'" style="'+heat(c[0],v,c[5])+'">'+cell+"</td>";}).join("")+"</tr>").join("")+"</tbody>";
-  const T2=$("#tbl");T2.innerHTML=h;T2.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sk)sa=!sa;else{sk=k;sa=0;}tbl();});}
-function tags(s){const r=[];if(s.winrate>=65)r.push(["Phong độ đỉnh cao",0]);if(s.killDiff>=5)r.push(["Áp đảo giao tranh",0]);if(s.firstBlood>=55||s.f10>=62)r.push(["Áp nhịp sớm",0]);if(s.assists>=64)r.push(["Teamfight gắn kết",0]);if(s.winWhenF10>=85)r.push(["Đóng trận kỷ luật",0]);if(s.duration>=45)r.push(["Vận hành muộn",0]);if(s.duration<=41)r.push(["Kết trận nhanh",0]);if(s.killDiff<=-3)r.push(["Bị áp đảo",1]);if(s.winWhenFb<=45)r.push(["Chuyển hoá kém",1]);if(s.winrate<45)r.push(["Đang sa sút",1]);return r.slice(0,5);}
-function ins(t){const s=t.stats;return t.name+" đạt winrate <b>"+s.winrate+"%</b> qua "+s.maps+" ván, "+(s.killDiff>=3?"áp đảo giao tranh (chênh K–D <b>+"+s.killDiff+"</b>)":s.killDiff<=-3?"bị lép vế giao tranh (chênh K–D <b>"+s.killDiff+"</b>)":"giao tranh cân bằng")+", "+(s.f10>=60?"thường thắng nhịp đầu (F10 <b>"+s.f10+"%</b>)":s.f10<=48?"ít thắng nhịp đầu (F10 "+s.f10+"%)":"nhịp đầu trung bình")+(s.winWhenF10>=85?", và đóng trận rất chắc (thắng khi có F10 <b>"+s.winWhenF10+"%</b>)":s.winWhenFb<=45?", nhưng chuyển hoá lợi thế yếu (thắng|FB "+s.winWhenFb+"%)":", thời lượng TB "+s.duration+" phút")+".";}
-const POS={CORE:["1","Carry"],MID:["2","Mid"],OFFLANE:["3","Offlane"],SUPPORT:["4","Hỗ trợ"],"FULL SUPPORT":["5","Hỗ trợ"],COACH:["HLV","Huấn luyện viên"]};
-const RORD={CORE:1,MID:2,OFFLANE:3,SUPPORT:4,"FULL SUPPORT":5,COACH:6};
-const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-function sq(slug){
-  const r=R[slug]; if(!r||!r.length) return "";
-  const list=[...r].sort((a,b)=>(RORD[a.role]||9)-(RORD[b.role]||9));
-  const cell=p=>{const co=p.role==="COACH"?" co":"",pos=POS[p.role]||["",""],init=esc((p.nick||"?").charAt(0));
-    const img=p.photo?'<img src="'+esc(p.photo)+'" alt="'+esc(p.nick)+'" loading="lazy" onerror="this.remove()">':"";
-    return '<div class="pl"><div class="av'+co+'" title="'+esc(pos[1])+'">'+init+img+'<span class="pos'+co+'">'+pos[0]+'</span></div>'
-      +'<div class="nk" title="'+esc(p.nick)+'">'+esc(p.nick)+'</div>'
-      +'<div class="rn" title="'+esc(p.real)+'">'+(p.real?esc(p.real):"&nbsp;")+'</div></div>';};
-  return '<div class="sqwrap"><div class="sqh"><span>Đội hình thi đấu</span><span>5 tuyển thủ + HLV</span></div><div class="sq">'+list.map(cell).join("")+'</div></div>';
-}
-function rep(){const so=[...T].sort((a,b)=>a.stats&&b.stats?b.stats.winrate-a.stats.winrate:a.stats?-1:b.stats?1:0);
-  $("#rep").innerHTML=so.map(t=>{if(!t.stats)return'<div class="nd"><div class="hd"><span class="nm" style="font-size:15px">'+lg(t,true)+t.name+'</span></div><div style="margin-top:8px">'+t.region+' · Chưa có dữ liệu.</div></div>';
-    const s=t.stats,tg=tags(s).map(([x,w])=>'<span class="t'+(w?" wn":"")+'">'+x+"</span>").join(""),M=(l,v)=>'<div class="m"><div class="ml">'+l+'</div><div class="mv">'+v+"</div></div>";
-    return'<div class="c"><div class="hd"><span class="nm">'+lg(t,true)+t.name+' <span class="bg '+t.tier+'">'+t.tier+'</span></span><span class="rg">'+t.region+" · "+t.qualification+'</span></div><div class="tags">'+(tg||'<span class="t">Cân bằng</span>')+'</div><div class="ms">'+M("Winrate",s.winrate+"%")+M("Chênh K–D",(s.killDiff>0?"+":"")+s.killDiff)+M("Tổng kills",s.totalKills.toFixed(1))+M("F10",s.f10+"%")+M("Thắng|F10",s.winWhenF10+"%")+M("Thời lượng",s.duration+"′")+'</div><div class="in">'+ins(t)+"</div>"+sq(t.slug)+"</div>";}).join("");}
-// ---- So sánh 2 đội (head-to-head) ----
-const FM=[["maps","Số ván (mẫu)","",0,1],["winrate","Winrate","%",0],["kills","Kills / trận","",0],["deaths","Deaths / trận","",1],["killDiff","Chênh K–D","",0],["totalKills","Tổng kills / trận","",0],["assists","Assists / trận","",0],["firstBlood","First Blood","%",0],["f10","F10 — 10 kill đầu","%",0],["winWhenFb","Thắng khi có FB","%",0],["winWhenF10","Thắng khi có F10","%",0],["duration","Thời lượng (phút)","",1]];
-// Chỉ số H2H — khớp thứ tự mảng "order" trong h2h.json: [label, đơn vị, đảo(thấp=tốt), trung tính(bằng nhau)]
-const HM=[["Winrate","%",0,0],["Kills / trận","",0,0],["Deaths / trận","",1,0],["Chênh K–D","",0,0],["Tổng kills / trận","",0,1],["First Blood","%",0,0],["F10 — 10 kill đầu","%",0,0],["Thắng khi có FB","%",0,0],["Thắng khi có F10","%",0,0],["Thời lượng (phút)","",0,1]];
-function h2hInit(){
-  const d=wd(); if(d.length<2) return;
-  const sa=$("#selA"), sb=$("#selB");
-  if(!sa.options.length){
-    d.forEach(t=>{sa.add(new Option(t.name,t.name));sb.add(new Option(t.name,t.name));});
-    sa.value=d[0].name; sb.value=d[1].name;
-    sa.onchange=h2hRender; sb.onchange=h2hRender;
-  }
-  h2hRender();
-}
-function h2hRender(){
-  const A=T.find(t=>t.name===$("#selA").value), B=T.find(t=>t.name===$("#selB").value);
-  if(!A||!B) return;
-  const card=(t,cls)=>'<div class="hcard '+cls+'"><b>'+lg(t,true)+t.name+'</b> '+(t.tier?'<span class="bg '+t.tier+'">'+t.tier+'</span>':'')+'<br>'+t.region+' · '+t.qualification+'</div>';
-  $("#h2hHead").innerHTML=card(A,"a")+card(B,"b");
-  const box=$("#h2hRows"), v=$("#h2hVerdict");
-  if(A.name===B.name){box.innerHTML="";v.innerHTML="Bạn đang chọn cùng một đội — hãy chọn hai đội khác nhau.";return;}
-  // --- Phần 1: Lịch sử đối đầu trực tiếp (6 tháng) ---
-  const key=[A.slug,B.slug].sort().join("|");
-  const s0=key.split("|")[0], s1=key.split("|")[1];
-  const pair=H[key];
-  const list=(pair&&pair.series?pair.series:[]).slice().sort((x,y)=>x[0]<y[0]?1:-1);
-  let h2hHTML='<div class="h2sub">Đối đầu trực tiếp · 6 tháng gần nhất</div>', h2hVerdict;
-  if(!list.length){
-    h2hHTML+='<div class="nd"><b>'+esc(A.name)+'</b> và <b>'+esc(B.name)+'</b> chưa gặp nhau trong 6 tháng gần nhất (nguồn DLTV).</div>';
-    h2hVerdict='Chưa có dữ liệu đối đầu trực tiếp trong 6 tháng gần nhất — xem chỉ số tổng quan bên dưới.';
-  } else {
-    let sa=0,sb=0,ma=0,mb=0;
-    const rows=list.map(mt=>{
-      const date=mt[0], event=mt[1];
-      const va=(A.slug===s0?mt[2]:mt[3]), vv=(A.slug===s0?mt[3]:mt[2]); ma+=va; mb+=vv;
-      const aw=va>vv, bw=vv>va; if(aw)sa++; else if(bw)sb++;
-      const dd=date.slice(8,10)+"/"+date.slice(5,7);
-      return '<div class="h2m"><div class="h2m-d">'+dd+'<small>'+esc(event)+'</small></div>'
-        +'<div class="h2m-sc"><span class="'+(aw?'w':'')+'">'+va+'</span><i>–</i><span class="'+(bw?'w':'')+'">'+vv+'</span></div>'
-        +'<div class="h2m-r">'+(aw?esc(A.short||A.name):bw?esc(B.short||B.name):'Hoà')+'</div></div>';
-    }).join("");
-    h2hHTML+='<div class="h2tally"><div class="h2t-side"><b>'+sa+'</b><span>'+esc(A.name)+'</span></div>'
-      +'<div class="h2t-mid">'+list.length+' lần gặp<small>tổng maps '+ma+'–'+mb+'</small></div>'
-      +'<div class="h2t-side b"><b>'+sb+'</b><span>'+esc(B.name)+'</span></div></div>'
-      +'<div class="h2list">'+rows+'</div>';
-    const lead=sa>sb?A:sb>sa?B:null;
-    h2hVerdict=lead
-      ? '<b>'+esc(lead.name)+'</b> thắng thế trong '+list.length+' lần đối đầu gần đây — <b>'+Math.max(sa,sb)+'–'+Math.min(sa,sb)+'</b> trận thắng (tổng maps '+(lead===A?ma+'–'+mb:mb+'–'+ma)+').'
-      : 'Hai đội bất phân thắng bại: <b>'+sa+'–'+sb+'</b> trong '+list.length+' lần gặp (tổng maps '+ma+'–'+mb+').';
-  }
-  // --- Phần 2: Chỉ số khi HAI ĐỘI TRỰC TIẾP ĐỐI ĐẦU (chỉ tính các ván gặp nhau) ---
-  let statsHTML='', statVerdict='';
-  if(pair&&pair.st&&pair.st[A.slug]&&pair.st[B.slug]){
-    const stA=pair.st[A.slug], stB=pair.st[B.slug], n=pair.n; let wa=0,wb=0;
-    const rows=HM.map((meta,i)=>{
-      const label=meta[0],unit=meta[1],inv=meta[2],neu=meta[3];
-      const va=stA[i], vb=stB[i], cmp=(va!=null&&vb!=null);
-      const aw=!neu&&cmp&&(inv?va<vb:va>vb), bw=!neu&&cmp&&(inv?vb<va:vb>va);
-      if(aw)wa++; if(bw)wb++;
-      const mn=cmp?Math.min(va,vb):0, mx=cmp?Math.max(va,vb):1;
-      const norm=v=>v==null?8:neu?60:8+((v-mn)/(mx-mn||1))*92;
-      const fmt=x=>x==null?'—':((typeof x==="number"&&!Number.isInteger(x)?x.toFixed(2).replace(/\.?0+$/,""):x)+unit);
-      return '<div class="hrow">'
-        +'<div class="hside l"><span class="hval'+(aw?' win':'')+'">'+fmt(va)+'</span><div class="hbar a" style="width:'+norm(va).toFixed(1)+'%"></div></div>'
-        +'<div class="hmid">'+label+(inv?'<small>thấp hơn = tốt hơn</small>':neu?'<small>bằng nhau (2 đội)</small>':'')+'</div>'
-        +'<div class="hside"><div class="hbar b" style="width:'+norm(vb).toFixed(1)+'%"></div><span class="hval'+(bw?' win':'')+'">'+fmt(vb)+'</span></div>'
-        +'</div>';
-    }).join("");
-    const small=n<5;
-    statsHTML='<div class="h2sub">Chỉ số khi đối đầu · '+n+' ván chung'+(small?' · <span style="color:var(--rd)">mẫu nhỏ, chỉ tham khảo</span>':'')+'</div>'
-      +'<div class="hlegend"><span><span class="dot a"></span>'+esc(A.name)+'</span><span><span class="dot b"></span>'+esc(B.name)+'</span><span class="mu">Chỉ tính các ván 2 đội gặp nhau · ● = tốt hơn</span></div>'
-      +rows;
-    const slead=wa>wb?A:wb>wa?B:null;
-    statVerdict=' <span class="mu">· Khi đối đầu: <b>'+esc(A.name)+'</b> nhỉnh '+wa+' chỉ số · <b>'+esc(B.name)+'</b> nhỉnh '+wb+(slead?' — <b>'+esc(slead.name)+'</b> vượt trội hơn khi gặp nhau.':' — khá cân bằng.')+'</span>';
-  } else if(A.stats&&B.stats){
-    const d=wd(); let wa=0,wb=0;
-    const rows=FM.map(([k,label,unit,inv,neu])=>{
-      const va=A.stats[k], vb=B.stats[k];
-      const vs=d.map(t=>t.stats[k]), mn=Math.min(...vs), mx=Math.max(...vs);
-      const norm=x=>8+((x-mn)/(mx-mn||1))*92;
-      const aw=!neu&&(inv?va<vb:va>vb), bw=!neu&&(inv?vb<va:vb>va);
-      if(aw)wa++; if(bw)wb++;
-      const fmt=x=>(typeof x==="number"&&!Number.isInteger(x)?x.toFixed(2).replace(/\.?0+$/,""):x)+unit;
-      return '<div class="hrow">'
-        +'<div class="hside l"><span class="hval'+(aw?' win':'')+'">'+fmt(va)+'</span><div class="hbar a" style="width:'+norm(va).toFixed(1)+'%"></div></div>'
-        +'<div class="hmid">'+label+(inv?'<small>thấp hơn = tốt hơn</small>':'')+'</div>'
-        +'<div class="hside"><div class="hbar b" style="width:'+norm(vb).toFixed(1)+'%"></div><span class="hval'+(bw?' win':'')+'">'+fmt(vb)+'</span></div>'
-        +'</div>';
-    }).join("");
-    statsHTML='<div class="h2sub">Chỉ số tổng quan toàn giải · 6 tháng gần nhất <small>(hai đội chưa gặp nhau)</small></div>'
-      +'<div class="hlegend"><span><span class="dot a"></span>'+esc(A.name)+'</span><span><span class="dot b"></span>'+esc(B.name)+'</span><span class="mu">Thanh dài hơn = cao hơn (chuẩn hoá toàn giải) · ● = tốt hơn</span></div>'
-      +rows;
-    const slead=wa>wb?A:wb>wa?B:null;
-    statVerdict=' <span class="mu">· Chỉ số tổng quan: <b>'+esc(A.name)+'</b> dẫn '+wa+' · <b>'+esc(B.name)+'</b> dẫn '+wb+(slead?' — <b>'+esc(slead.name)+'</b> nhỉnh hơn.':' — cân bằng.')+'</span>';
-  }
-  box.innerHTML=h2hHTML+statsHTML;
-  v.innerHTML=h2hVerdict+statVerdict;
-}
-// ---- Tier list hero ----
-const CDN="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/";
-let tpos=0;
-function himg(el){if(el.dataset.r){el.parentElement.classList.add("noimg");el.remove();}else{el.dataset.r="1";el.src=el.dataset.a;}}
-function tierInit(){
-  if(!TL||!TL.positions){$("#tlist").innerHTML='<div class="nd">Chưa tải được <code>api/tiers</code>.</div>';return;}
-  $("#tpatch").textContent="· patch "+TL.patch+" ("+TL.patchDate+")";
-  $("#tmethod").innerHTML="<b>Cách xếp hạng.</b> "+esc(TL.method)+"<br><br><b>Lưu ý khi đọc.</b> "+esc(TL.caveat);
-  $("#tpills").innerHTML=TL.positions.map((p,i)=>'<button class="pill'+(i===tpos?" on":"")+'" data-i="'+i+'">'+esc(p.short)+'</button>').join("");
-  $("#tpills").onclick=e=>{const b=e.target.closest("button");if(!b)return;tpos=+b.dataset.i;$("#tfind").value="";tierInit();};
-  $("#tfind").oninput=tfilter;
-  const pn=TL.patchNotes,li=l=>l.map(x=>'<li><b>'+esc(x.n)+'</b> — '+esc(x.d)+' <span class="mu">['+(x.t==="buff"?"buff":x.t==="nerf"?"nerf":"thay đổi")+']</span></li>').join("");
-  $("#pntitle").textContent=pn.title;
-  $("#pnsum").textContent=pn.summary;
-  $("#pnbox").innerHTML='<div class="pnb"><h3>Hero được buff</h3>'+pn.buff.map(h=>'<span class="chip up">↑ '+esc(h)+'</span>').join("")+'</div>'
-    +'<div class="pnb"><h3>Hero bị nerf</h3>'+pn.nerf.map(h=>'<span class="chip down">↓ '+esc(h)+'</span>').join("")+'</div>'
-    +'<div class="pnb"><h3>Item '+esc(TL.patch)+' — đã xác minh</h3><ul>'+li(pn.items)+'</ul></div>'
-    +'<div class="pnb"><h3>Item bản 7.41d trước đó</h3><ul>'+li(pn.itemsPrev)+'</ul></div>';
-  $("#pnnote").innerHTML="<b>Giới hạn dữ liệu.</b> "+esc(pn.note);
-  $("#tsrc").innerHTML="Nguồn: "+TL.sources.map(s=>'<a href="'+esc(s.u)+'" target="_blank" rel="noopener">'+esc(s.t)+'</a>').join(" · ");
-  tierRender();
-}
-function tcard(h){
-  const bits=[];
-  if(h.w!=null)bits.push("winrate pub "+h.w+"%");
-  if(h.b!=null)bits.push("bị ban "+h.b+" lần ở giải chuyên nghiệp");
-  if(h.p!=null)bits.push("được pick "+h.p+" lần");
-  const tip=h.n+(bits.length?" — "+bits.join(", "):"")+(h.t?"\n\n"+h.t:"");
-  return '<div class="hx" data-n="'+esc(h.n.toLowerCase())+'" title="'+esc(tip)+'">'
-    +'<span class="fb">'+esc(h.n)+'</span>'
-    +'<img src="'+CDN+'crops/'+h.i+'.png" data-a="'+CDN+h.i+'.png" alt="" loading="lazy" onerror="himg(this)">'
-    +(h.b!=null?'<span class="bn">'+h.b+'</span>':"")
-    +(h.d?'<span class="dt '+h.d+'">'+(h.d==="up"?"↑":"↓")+'</span>':"")
-    +'<span class="hnm">'+esc(h.n)+'</span></div>';
-}
-function tierRender(){
-  const p=TL.positions[tpos];
-  $("#tdesc").innerHTML='<b>'+esc(p.label)+'</b> — '+esc(p.desc)+' Rê chuột lên thẻ hero để xem số liệu và nhận định.';
-  $("#tlist").innerHTML=TL.tierOrder.map(t=>{
-    const m=TL.tierMeta[t],list=p.tiers[t]||[];
-    if(!list.length)return"";
-    return '<div class="tr"><div class="tlab" style="background:'+m.c+'">'+esc(m.n)+'<small>'+esc(m.d)+'</small></div>'
-      +'<div class="thg">'+list.map(tcard).join("")+'</div></div>';
-  }).join("");
-  tfilter();
-}
-function tfilter(){
-  const q=($("#tfind").value||"").trim().toLowerCase(),all=document.querySelectorAll("#tlist .hx");let n=0;
-  all.forEach(el=>{const hit=!q||el.dataset.n.indexOf(q)>=0;el.classList.toggle("dim",!hit);if(hit)n++;});
-  $("#tcount").textContent=q?(n?n+" hero khớp":"Không có hero nào khớp"):all.length+" hero ở vị trí này";
-}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Phân tích chỉ số 16 đội dự The International 2026 — winrate, giao tranh, đối đầu, tier list và biến động phong độ theo thời gian.">
+<title>The International 2026 — Phân tích các đội</title>
 
-/* ===== Tab tra cứu player (OpenDota live) ===== */
-const PCDN="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/";
-const BADIT=new Set([0,30,33,38,39,40,42,43,44,46,117,188,216,218,237,257]);
-const dstr=t=>isFinite(t)&&t>0?new Date(t*1000).toLocaleDateString("vi-VN"):"\u2014";
-function mmss(s){const m=Math.floor(s/60);return m+":"+String(Math.round(s-m*60)).padStart(2,"0");}
-function plyInit(){
-  const sel=$("#pSel");if(!sel)return;
-  if(!PL){$("#pBody").innerHTML='<div class="pldg er">Kh\u00f4ng t\u1ea3i \u0111\u01b0\u1ee3c api/players.</div>';return;}
-  if(!sel.dataset.f){
-    const g={};PL.forEach(p=>{(g[p.tn]=g[p.tn]||[]).push(p);});
-    sel.innerHTML='<option value="">\u2014 Ch\u1ecdn tuy\u1ec3n th\u1ee7 \u2014</option>'+Object.keys(g).map(t=>
-      '<optgroup label="'+esc(t)+'">'+g[t].map(p=>'<option value="'+p.id+'">'+esc(p.n)+" \u2014 "+esc(p.pv)+'</option>').join("")+'</optgroup>').join("");
-    sel.dataset.f="1";
-    sel.onchange=function(){pCur=this.value;pShow();};
-  }
-  sel.value=pCur||"";pShow();
-}
-function pShow(){
-  const body=$("#pBody"),card=$("#pCard");if(!body)return;
-  if(!pCur){card.innerHTML="";body.innerHTML='<div class="pldg">Ch\u1ecdn m\u1ed9t tuy\u1ec3n th\u1ee7 \u1edf \u00f4 tr\u00ean \u0111\u1ec3 xem 10 hero t\u1ee7 c\u1ee7a h\u1ecd.</div>';return;}
-  const p=PL.find(x=>String(x.id)===String(pCur));if(!p){card.innerHTML="";return;}
-  card.innerHTML=pHead(p);
-  const c=pCache[p.id];
-  if(c&&c.ok){body.innerHTML=pTable(c);return;}
-  if(c&&c.err){body.innerHTML='<div class="pldg er">Kh\u00f4ng l\u1ea5y \u0111\u01b0\u1ee3c d\u1eef li\u1ec7u: '+esc(c.err)+'<br><br>OpenDota gi\u1edbi h\u1ea1n 60 l\u01b0\u1ee3t g\u1ecdi/ph\u00fat \u2014 h\u00e3y ch\u1ecdn l\u1ea1i sau v\u00e0i gi\u00e2y.</div>';return;}
-  body.innerHTML='<div class="pldg">\u0110ang t\u1ea3i d\u1eef li\u1ec7u t\u1eeb OpenDota\u2026</div>';
-  pFetch(p);
-}
-function pFetch(p){
-  const F=["hero_id","kills","deaths","assists","gold_per_min","xp_per_min","last_hits","duration","radiant_win","player_slot","item_0","item_1","item_2","item_3","item_4","item_5","start_time"];
-  fetch("https://api.opendota.com/api/players/"+p.id+"/matches?date=180&"+F.map(x=>"project="+x).join("&"))
-    .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
-    .then(ms=>{pCache[p.id]=pAgg(ms);if(String(pCur)===String(p.id))pShow();})
-    .catch(e=>{pCache[p.id]={err:e.message||"l\u1ed7i m\u1ea1ng"};if(String(pCur)===String(p.id))pShow();});
-}
-function pAgg(ms){
-  if(!Array.isArray(ms))return{err:"d\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7"};
-  const L=ms.filter(m=>m&&(m.lobby_type===1||m.lobby_type===2)&&m.duration>0&&m.hero_id);
-  if(!L.length)return{err:"kh\u00f4ng c\u00f3 tr\u1eadn \u0111\u1ea5u gi\u1ea3i n\u00e0o trong 6 th\u00e1ng g\u1ea7n nh\u1ea5t"};
-  const HH={};let W=0,t0=Infinity,t1=0;
-  L.forEach(m=>{
-    const win=(m.player_slot<128)===!!m.radiant_win;if(win)W++;
-    if(m.start_time){if(m.start_time<t0)t0=m.start_time;if(m.start_time>t1)t1=m.start_time;}
-    const h=HH[m.hero_id]||(HH[m.hero_id]={id:m.hero_id,g:0,w:0,k:0,d:0,a:0,gpm:0,xpm:0,lh:0,du:0,it:{}});
-    h.g++;if(win)h.w++;
-    h.k+=m.kills||0;h.d+=m.deaths||0;h.a+=m.assists||0;
-    h.gpm+=m.gold_per_min||0;h.xpm+=m.xp_per_min||0;h.lh+=m.last_hits||0;h.du+=m.duration||0;
-    for(let i=0;i<6;i++){const t=m["item_"+i];if(t&&!BADIT.has(t))h.it[t]=(h.it[t]||0)+1;}
-  });
-  const top=Object.keys(HH).map(k=>HH[k]).sort((a,b)=>b.g-a.g||(b.w/b.g)-(a.w/a.g)).slice(0,10);
-  return{ok:1,n:L.length,W:W,nh:Object.keys(HH).length,t0:t0,t1:t1,top:top};
-}
-function pHead(p){
-  const av='<div class="pavw"><div class="pavf">'+esc(p.n.charAt(0))+'</div>'+(p.ph?'<img class="pav" src="'+esc(p.ph)+'" alt="" onerror="this.remove()">':"")+'</div>';
-  const fl=p.cc?'<img class="fl" src="https://flagcdn.com/w40/'+esc(p.cc)+'.png" alt="" onerror="this.remove()">':"";
-  return '<div class="pch">'+av+'<div><div class="pnk">'+esc(p.n)+'</div><div class="pmt">'+
-    '<span>'+esc(p.r||"\u2014")+'</span>'+
-    '<span>\u0110\u1ed9i: <b>'+esc(p.tn)+'</b></span>'+
-    '<span>V\u1ecb tr\u00ed: <b>'+esc(p.pv)+'</b></span>'+
-    '<span>'+fl+'Qu\u1ed1c t\u1ecbch: <b>'+esc(p.c)+'</b></span>'+
-    '</div></div></div>';
-}
-function pTable(c){
-  return '<div class="psm">'+
-    '<span>Tr\u1eadn \u0111\u1ea5u gi\u1ea3i: <b>'+c.n+'</b></span>'+
-    '<span>Th\u1eafng <b>'+c.W+'</b> \u2013 Thua <b>'+(c.n-c.W)+'</b></span>'+
-    '<span>Winrate: <b>'+(100*c.W/c.n).toFixed(1)+'%</b></span>'+
-    '<span>S\u1ed1 hero \u0111\u00e3 d\u00f9ng: <b>'+c.nh+'</b></span>'+
-    '<span>T\u1eeb <b>'+dstr(c.t0)+'</b> \u0111\u1ebfn <b>'+dstr(c.t1)+'</b></span></div>'+
-    '<div>'+c.top.map(pRow).join("")+'</div>';
-}
-function pmet(l,v,s){return '<div class="phm"><em>'+l+'</em><b>'+v+'</b>'+(s?'<small>'+s+'</small>':"")+'</div>';}
-function pRow(h){
-  const nm=PH[h.id]||["Hero "+h.id,""],wr=100*h.w/h.g;
-  const items=Object.keys(h.it).map(k=>[k,h.it[k]]).sort((a,b)=>b[1]-a[1]).slice(0,6).map(function(e){
-    const k=PI[e[0]];return k?'<img loading="lazy" src="'+PCDN+'items/'+k+'.png" alt="" title="'+esc(k.replace(/_/g," "))+" \u00b7 "+e[1]+"/"+h.g+' tr\u1eadn" onerror="this.remove()">':"";}).join("");
-  return '<div class="phr"><img class="phimg" loading="lazy" alt="'+esc(nm[0])+'" src="'+PCDN+"heroes/crops/"+nm[1]+'.png" data-fb="'+PCDN+"heroes/"+nm[1]+'.png" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=\'\';}">'+
-    '<div class="phb"><div class="phn"><div class="hn">'+esc(nm[0])+'</div>'+
-    '<div class="hs">'+h.g+' tr\u1eadn \u00b7 '+h.w+'T \u2013 '+(h.g-h.w)+'B</div>'+
-    '<div class="wbar'+(wr<50?" lo":"")+'"><i style="width:'+Math.max(2,wr).toFixed(1)+'%"></i></div>'+
-    '<span class="wpct">Winrate <b>'+wr.toFixed(1)+'%</b></span></div>'+
-    pmet("KDA",((h.k+h.a)/Math.max(1,h.d)).toFixed(2),(h.k/h.g).toFixed(1)+" / "+(h.d/h.g).toFixed(1)+" / "+(h.a/h.g).toFixed(1))+
-    pmet("GPM",Math.round(h.gpm/h.g),"")+
-    pmet("XPM",Math.round(h.xpm/h.g),"")+
-    pmet("LH/ph",(h.lh/(h.du/60)).toFixed(1),"")+
-    pmet("Th\u1eddi l\u01b0\u1ee3ng",mmss(h.du/h.g),"")+
-    '<div class="phi">'+(items||'<span class="mu" style="font-size:11px">\u2014</span>')+'</div>'+
-    '</div></div>';
-}
-function render(){tiles();tbl();rep();h2hInit();tierInit();plyInit();}
-$("#nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));document.querySelectorAll(".v").forEach(v=>v.classList.remove("on"));$("#v-"+b.dataset.v).classList.add("on");};
-$("#tbtn").onclick=function(){const d=document.body.getAttribute("data-t")==="dark";document.body.setAttribute("data-t",d?"light":"dark");try{localStorage.setItem("ti26t",d?"light":"dark");}catch(e){}this.textContent=d?"🌙 Chế độ tối":"☀️ Chế độ sáng";render();};
-/* Mặc định luôn là nền sáng "Sapphire nightfall whisper"; chỉ nhớ lựa chọn nếu người dùng tự đổi */
-try{if(localStorage.getItem("ti26t")==="dark"){document.body.setAttribute("data-t","dark");$("#tbtn").textContent="☀️ Chế độ sáng";}}catch(e){}
-</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Open+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Bỏ qua điều hướng, tới nội dung chính</a>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <!-- Icon SVG, không dùng emoji: emoji phụ thuộc font hệ điều hành và
+             không điều khiển được bằng design token -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 17l5-5 4 3 6-7"></path>
+          <path d="M14 8h4v4"></path>
+        </svg>
+      </div>
+      <div>
+        <h1>The International 2026</h1>
+        <p class="subtitle">Phân tích chỉ số 16 đội &middot; cửa sổ 6 tháng gần nhất</p>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <span class="chip" id="status-chip">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="status-text">Đang tải…</span>
+      </span>
+      <button class="icon-btn" id="theme-toggle" type="button"
+              aria-label="Chuyển sang giao diện tối">
+        <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <nav role="tablist" aria-label="Khu vực phân tích">
+    <button role="tab" type="button" data-view="overview" aria-selected="true" aria-controls="view-overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
+      Tổng quan
+    </button>
+    <button role="tab" type="button" data-view="table" aria-selected="false" aria-controls="view-table">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18M9 10v10"></path></svg>
+      Bảng chỉ số
+    </button>
+    <button role="tab" type="button" data-view="teams" aria-selected="false" aria-controls="view-teams">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      Đội hình
+    </button>
+    <button role="tab" type="button" data-view="h2h" aria-selected="false" aria-controls="view-h2h">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"></path><path d="M6 8L2 12L6 16"></path><path d="M14.5 4l-5 16"></path></svg>
+      Đối đầu
+    </button>
+    <button role="tab" type="button" data-view="form" aria-selected="false" aria-controls="view-form">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 14l4-4 3 3 5-6"></path></svg>
+      Phong độ
+    </button>
+    <button role="tab" type="button" data-view="tiers" aria-selected="false" aria-controls="view-tiers">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.6.7-4.9 4.6 1.3 6.4L12 16.8 6.1 20l1.3-6.4L2.5 9l6.6-.7z"></path></svg>
+      Tier list
+    </button>
+  </nav>
+
+  <main id="main">
+    <div id="global-error" hidden></div>
+
+    <!-- ===== Tổng quan ===== -->
+    <section class="view active" id="view-overview" role="tabpanel" aria-labelledby="tab-overview">
+      <div class="bento" id="kpi-grid"></div>
+      <div class="card">
+        <header>
+          <h2>Xếp hạng theo winrate</h2>
+          <p class="desc">Cửa sổ 6 tháng gần nhất. Thanh dài hơn nghĩa là tỷ lệ thắng cao hơn.</p>
+        </header>
+        <div id="ranking"></div>
+      </div>
+    </section>
+
+    <!-- ===== Bảng chỉ số ===== -->
+    <section class="view" id="view-table" role="tabpanel" aria-labelledby="tab-table" hidden>
+      <div class="card">
+        <header>
+          <h2>Bảng chỉ số đầy đủ</h2>
+          <p class="desc">Bấm vào tiêu đề cột để sắp xếp. Ô nền đậm hơn nghĩa là giá trị cao hơn trong nhóm.</p>
+        </header>
+        <div id="stats-note"></div>
+        <div class="table-scroll">
+          <table id="stats-table">
+            <caption class="sr-only">Chỉ số 6 tháng gần nhất của 16 đội dự The International 2026</caption>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Đội hình ===== -->
+    <section class="view" id="view-teams" role="tabpanel" aria-labelledby="tab-teams" hidden>
+      <div class="team-grid" id="team-grid"></div>
+    </section>
+
+    <!-- ===== Đối đầu ===== -->
+    <section class="view" id="view-h2h" role="tabpanel" aria-labelledby="tab-h2h" hidden>
+      <div class="card">
+        <header>
+          <h2>So sánh hai đội</h2>
+          <p class="desc">Chọn hai đội để so từng chỉ số. Chấm tròn đánh dấu bên có lợi thế.</p>
+        </header>
+        <div class="controls">
+          <label class="sr-only" for="h2h-a">Đội thứ nhất</label>
+          <select id="h2h-a"></select>
+          <span class="h2h-vs">so với</span>
+          <label class="sr-only" for="h2h-b">Đội thứ hai</label>
+          <select id="h2h-b"></select>
+        </div>
+        <div id="h2h-body"></div>
+      </div>
+    </section>
+
+    <!-- ===== Phong độ ===== -->
+    <section class="view" id="view-form" role="tabpanel" aria-labelledby="tab-form" hidden>
+      <div class="card">
+        <header>
+          <h2>Biến động phong độ theo thời gian</h2>
+          <p class="desc">Dữ liệu tích luỹ từ các lần cập nhật. Ngày không có dữ liệu thì đường bị ngắt — không nối thẳng qua.</p>
+        </header>
+        <div class="controls" id="form-controls">
+          <button class="pill" type="button" data-window="30" aria-pressed="true">30 ngày</button>
+          <button class="pill" type="button" data-window="90" aria-pressed="false">90 ngày</button>
+          <button class="pill" type="button" data-window="180" aria-pressed="false">180 ngày</button>
+          <label class="sr-only" for="form-metric">Chỉ số</label>
+          <select id="form-metric">
+            <option value="winrate">Winrate (%)</option>
+            <option value="killDiff">Chênh lệch K–D</option>
+            <option value="kills">Kills trung bình</option>
+            <option value="deaths">Deaths trung bình</option>
+            <option value="totalKills">Tổng kills mỗi trận</option>
+            <option value="duration">Thời lượng (phút)</option>
+          </select>
+        </div>
+        <div id="form-body"></div>
+      </div>
+    </section>
+
+    <!-- ===== Tier list ===== -->
+    <section class="view" id="view-tiers" role="tabpanel" aria-labelledby="tab-tiers" hidden>
+      <div class="card">
+        <header>
+          <h2>Tier list hero theo vị trí</h2>
+          <p class="desc" id="tier-patch"></p>
+        </header>
+        <div class="controls" id="tier-positions"></div>
+        <div class="controls">
+          <label class="sr-only" for="tier-search">Tìm hero</label>
+          <input type="search" id="tier-search" placeholder="Tìm hero…" autocomplete="off">
+        </div>
+        <div id="tier-body"></div>
+        <div id="tier-caveat"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Nguồn: OpenDota &amp; DLTV.org &middot; Cập nhật lần cuối <span id="footer-updated">—</span></p>
+  </footer>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>

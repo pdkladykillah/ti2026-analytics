@@ -106,6 +106,19 @@ function renderStatus() {
 
 const withStats = () => state.teams.filter((t) => t.stats);
 
+/**
+ * Số ván tối thiểu để một đội được xét vào bảng "dẫn đầu".
+ *
+ * Không có ngưỡng này thì đội mới thành lập với 10-17 ván sẽ chiếm các ô KPI chỉ nhờ nhiễu
+ * thống kê — và một con số dẫn đầu dựa trên 10 ván trông y hệt con số dựa trên 124 ván.
+ * Đội dưới ngưỡng vẫn hiện đầy đủ ở bảng chỉ số và thẻ đội, chỉ không được tuyên bố là
+ * "cao nhất giải".
+ */
+const MIN_MAPS_FOR_LEADERBOARD = 30;
+
+const eligibleForLeaderboard = () =>
+  withStats().filter((t) => t.stats.maps >= MIN_MAPS_FOR_LEADERBOARD);
+
 const tierOf = (wr) => (wr >= 60 ? 'S' : wr >= 50 ? 'A' : 'B');
 
 const TIER_COLOR = { S: '#e0574f', A: '#e2913f', B: '#4d7fd6' };
@@ -164,36 +177,70 @@ function renderOverview() {
     return;
   }
 
-  grid.innerHTML = KPIS.map((k) => {
-    const t = [...data].sort(k.pick)[0];
+  const pool = eligibleForLeaderboard();
+  const excluded = data.length - pool.length;
+
+  grid.innerHTML = (pool.length ? KPIS : []).map((k) => {
+    const t = [...pool].sort(k.pick)[0];
     return `<article class="kpi ${k.cls}">
       <div class="kpi-label">${esc(k.label)}</div>
       <div class="kpi-value">${k.value(t)}</div>
       <div class="kpi-team">${esc(t.name)}</div>
-      <div class="kpi-note">${esc(k.note(t))}</div>
+      <div class="kpi-note">${esc(k.note(t))} · ${t.stats.maps} ván</div>
     </article>`;
   }).join('');
 
-  const sorted = [...data].sort((a, b) => b.stats.winrate - a.stats.winrate);
-  const max = sorted[0].stats.winrate || 1;
+  $('#kpi-caveat').innerHTML = excluded > 0
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+       <div>Bảng dẫn đầu chỉ xét đội có từ <b>${MIN_MAPS_FOR_LEADERBOARD} ván</b> trở lên
+       (${excluded} đội chưa đủ mẫu). Số dựa trên 10–20 ván trông y hệt số dựa trên 120 ván,
+       nhưng độ tin cậy khác hẳn. Các đội đó vẫn hiện đầy đủ ở những mục khác.</div>`
+    : '';
+  $('#kpi-caveat').className = excluded > 0 ? 'note' : '';
 
-  ranking.innerHTML = sorted.map((t, i) => {
+  renderRanking(data);
+}
+
+/**
+ * Thanh xếp hạng phân kỳ quanh mốc 50%.
+ *
+ * Bản đầu vẽ thanh tỉ lệ với winrate/max. Với dải thật 26–67%, mọi thanh đều dài 39–100%
+ * nên nhìn gần như bằng nhau — biểu đồ không kể được câu chuyện nào. Cắt trục để phóng đại
+ * chênh lệch thì lại là kiểu bóp méo kinh điển.
+ *
+ * Neo vào 50% giải quyết cả hai: 50% là mốc CÓ NGHĨA THẬT trong winrate (trên/dưới hoà),
+ * nên độ dài thanh đọc thẳng ra là "hơn hoà bao nhiêu", và hai phía tách nhau rõ ràng.
+ */
+function renderRanking(data) {
+  const sorted = [...data].sort((a, b) => b.stats.winrate - a.stats.winrate);
+  const spread = Math.max(...sorted.map((t) => Math.abs(t.stats.winrate - 50)), 1);
+
+  $('#ranking').innerHTML = sorted.map((t, i) => {
     const wr = t.stats.winrate;
-    const pct = Math.max((wr / max) * 100, 3);
+    const diff = wr - 50;
+    const width = (Math.abs(diff) / spread) * 100;
     const tier = tierOf(wr);
-    return `<div class="h2h-row" style="grid-template-columns:28px 1fr 74px">
-      <span class="num" style="color:var(--muted);font-size:12.5px">${i + 1}</span>
-      <div class="h2h-bar-wrap">
+    const thin = t.stats.maps < MIN_MAPS_FOR_LEADERBOARD;
+
+    return `<div class="rank-row">
+      <span class="rank-no num">${i + 1}</span>
+      <div class="rank-team">
         ${teamLogo(t)}
-        <span style="font-weight:600;font-size:13.5px;min-width:120px">${esc(t.name)}</span>
-        <span class="h2h-bar a" style="width:${pct}%;max-width:calc(100% - 170px)"></span>
+        <span class="rank-name">${esc(t.name)}</span>
+        ${thin ? `<span class="rank-thin" title="Ít ván nên chỉ số dao động mạnh">${t.stats.maps} ván</span>` : ''}
       </div>
-      <span class="num" style="text-align:right;font-weight:600">
+      <div class="rank-track">
+        <div class="rank-half left">${diff < 0 ? `<span class="rank-bar neg" style="width:${width}%"></span>` : ''}</div>
+        <div class="rank-axis" aria-hidden="true"></div>
+        <div class="rank-half right">${diff >= 0 ? `<span class="rank-bar pos" style="width:${width}%"></span>` : ''}</div>
+      </div>
+      <span class="rank-val num">
         <span class="tier-badge" style="background:${TIER_COLOR[tier]}">${tier}</span>
         ${fmt(wr, 0, '%')}
       </span>
     </div>`;
-  }).join('');
+  }).join('') + `<p class="desc" style="margin-top:var(--s-3);text-align:center">
+      Vạch giữa là mốc hoà 50%. Thanh sang phải là thắng nhiều hơn thua.</p>`;
 }
 
 /* ============================ Bảng chỉ số ============================ */

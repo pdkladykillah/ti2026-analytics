@@ -17,13 +17,22 @@ public class OpenDotaIngester(
 {
     public async Task<int> IngestAsync(CancellationToken ct)
     {
-        // Phân giải team_id trước, và chỉ gọi endpoint /teams khi còn đội chưa phân giải —
-        // nó là response lớn, không cần tải lại mỗi 6 giờ.
-        if (await db.Teams.AnyAsync(t => t.OpenDotaTeamId == null, ct))
+        // Gọi /teams khi còn đội chưa phân giải HOẶC còn đội chưa có logo dùng được.
+        // Response ~250 KB nên không tải lại mỗi 6 giờ khi mọi thứ đã đủ.
+        //
+        // Logo: dltv.org chặn hotlink theo referrer nên ảnh của họ KHÔNG hiện trên trình
+        // duyệt (chỉ ra chữ cái thay thế), và robots.txt của họ cấm /uploads/ nên cũng
+        // không được phép cache về. OpenDota trả logo_url trỏ Steam CDN, tải trực tiếp
+        // được — dùng nguồn đó.
+        var needTeams = await db.Teams.AnyAsync(
+            t => t.OpenDotaTeamId == null || t.LogoUrl == null || !t.LogoUrl.Contains("steam"), ct);
+
+        if (needTeams)
         {
             var odTeams = await client.GetTeamsAsync(ct);
-            logger.LogInformation("OpenDota trả về {Count} đội để phân giải", odTeams.Count);
+            logger.LogInformation("OpenDota trả về {Count} đội", odTeams.Count);
             await resolver.ResolveAsync(odTeams, ct);
+            await UpdateLogosAsync(odTeams, ct);
         }
 
         var teams = await db.Teams
@@ -50,6 +59,32 @@ public class OpenDotaIngester(
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Nạp xong {Written} ván từ {Teams} đội", written, teams.Count);
         return written;
+    }
+
+    /// <summary>
+    /// Thay logo dltv (bị chặn hotlink) bằng logo Steam CDN của OpenDota.
+    /// Chỉ ghi đè khi OpenDota thực sự có logo — không xoá logo cũ để lấy chỗ trống.
+    /// </summary>
+    private async Task UpdateLogosAsync(List<OpenDotaTeam> odTeams, CancellationToken ct)
+    {
+        var byId = odTeams.Where(t => !string.IsNullOrWhiteSpace(t.LogoUrl))
+                          .ToDictionary(t => t.TeamId, t => t.LogoUrl!);
+
+        var updated = 0;
+        foreach (var team in await db.Teams.Where(t => t.OpenDotaTeamId != null).ToListAsync(ct))
+        {
+            if (!byId.TryGetValue(team.OpenDotaTeamId!.Value, out var logo)) continue;
+            if (team.LogoUrl == logo) continue;
+
+            team.LogoUrl = logo;
+            updated++;
+        }
+
+        if (updated > 0)
+        {
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Cập nhật logo Steam CDN cho {Count} đội", updated);
+        }
     }
 
     private async Task<int> UpsertMatchesAsync(

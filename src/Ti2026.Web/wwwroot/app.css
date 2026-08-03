@@ -451,6 +451,38 @@ select, input[type="search"], input[type="text"] {
 .hero.noimg .fallback { display: flex; }
 .hero.dim { opacity: .16; }
 
+/* ============================ Xếp hạng phân kỳ ============================ */
+
+.rank-row {
+  display: grid; grid-template-columns: 26px minmax(150px, 1fr) minmax(160px, 2fr) 78px;
+  gap: var(--s-3); align-items: center; padding: 5px 0;
+}
+.rank-row + .rank-row { border-top: 1px solid var(--border); }
+
+.rank-no { color: var(--muted); font-size: 12.5px; text-align: right; }
+.rank-team { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.rank-name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-thin {
+  font-size: 10.5px; padding: 2px 7px; border-radius: var(--r-pill); flex: none;
+  background: var(--warn-soft); color: var(--warn); font-weight: 600;
+}
+
+.rank-track { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: center; }
+.rank-half { display: flex; height: 16px; }
+.rank-half.left { justify-content: flex-end; }
+.rank-axis { height: 22px; background: var(--border-strong); }
+
+.rank-bar { height: 16px; border-radius: 4px; min-width: 2px; transition: width .3s var(--ease); }
+.rank-bar.pos { background: var(--pos); border-radius: 0 4px 4px 0; }
+.rank-bar.neg { background: var(--neg); border-radius: 4px 0 0 4px; }
+
+.rank-val { text-align: right; font-weight: 600; font-size: 13px; white-space: nowrap; }
+
+@media (max-width: 700px) {
+  .rank-row { grid-template-columns: 22px 1fr 64px; }
+  .rank-track { display: none; }
+}
+
 /* ============================ Biểu đồ form ============================ */
 
 .chart-wrap { position: relative; width: 100%; overflow-x: auto; }

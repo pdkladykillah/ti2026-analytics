@@ -243,6 +243,74 @@ public class EditorialSeederRegressionTests : IDisposable
         (await db.Players.CountAsync()).Should().Be(playersBefore);
     }
 
+    // ---------- openDotaTeamId: chỉ định tay ----------
+
+    [Fact]
+    public async Task Chi_dinh_tay_openDotaTeamId_duoc_ghi_vao_DB()
+    {
+        File.WriteAllText(Path.Combine(_dir, "teams.json"), """
+        {"teams":[{"name":"Alpha","slug":"alpha","openDotaTeamId":7119388}]}
+        """);
+
+        using var db = NewDb();
+        await Seeder(db).SeedAsync(CancellationToken.None);
+
+        (await db.Teams.FirstAsync()).OpenDotaTeamId.Should().Be(7119388);
+    }
+
+    [Fact]
+    public async Task De_trong_thi_KHONG_xoa_gia_tri_resolver_da_gan()
+    {
+        WriteTeams();
+        using var db = NewDb();
+        await Seeder(db).SeedAsync(CancellationToken.None);
+
+        // Resolver gán tự động
+        var team = await db.Teams.FirstAsync(t => t.Slug == "alpha");
+        team.OpenDotaTeamId = 555;
+        await db.SaveChangesAsync();
+
+        WriteTeams("?v=2");   // teams.json đổi nhưng vẫn KHÔNG có openDotaTeamId
+        await Seeder(db).SeedAsync(CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        (await db.Teams.FirstAsync(t => t.Slug == "alpha")).OpenDotaTeamId.Should().Be(555,
+            "để trống nghĩa là \"không có ý kiến\", không phải \"hãy xoá đi\"");
+    }
+
+    /// <summary>
+    /// Unique index không cho hai đội cùng trỏ một id. Nếu resolver đã gán nhầm id đó cho
+    /// đội khác thì chỉ định tay phải gỡ ra được, nếu không app sẽ nổ DbUpdateException
+    /// ngay lúc startup và không lên nổi.
+    /// </summary>
+    [Fact]
+    public async Task Chi_dinh_tay_go_duoc_id_khoi_doi_dang_giu_nham()
+    {
+        WriteTeams();
+        using var db = NewDb();
+        await Seeder(db).SeedAsync(CancellationToken.None);
+
+        // Resolver gán nhầm 7119388 cho beta
+        var beta = await db.Teams.FirstAsync(t => t.Slug == "beta");
+        beta.OpenDotaTeamId = 7119388;
+        await db.SaveChangesAsync();
+
+        // Người biên tập chỉ định id đó cho alpha
+        File.WriteAllText(Path.Combine(_dir, "teams.json"), """
+        {"teams":[
+          {"name":"Alpha","slug":"alpha","openDotaTeamId":7119388},
+          {"name":"Beta","slug":"beta"}
+        ]}
+        """);
+
+        var act = () => Seeder(db).SeedAsync(CancellationToken.None);
+        await act.Should().NotThrowAsync();
+
+        db.ChangeTracker.Clear();
+        (await db.Teams.FirstAsync(t => t.Slug == "alpha")).OpenDotaTeamId.Should().Be(7119388);
+        (await db.Teams.FirstAsync(t => t.Slug == "beta")).OpenDotaTeamId.Should().BeNull();
+    }
+
     // ---------- #7 ----------
 
     [Fact]

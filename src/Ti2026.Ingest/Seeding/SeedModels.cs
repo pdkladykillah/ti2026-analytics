@@ -41,6 +41,16 @@ public class TeamDto
     public bool? SlugVerified { get; set; }
     public TeamStatsDto? Stats { get; set; }
     public string? Logo { get; set; }
+
+    /// <summary>
+    /// team_id của OpenDota do người biên tập chỉ định. Khi có giá trị, nó GHI ĐÈ kết quả
+    /// của TeamResolver — phán quyết của con người thắng bộ so khớp tự động.
+    ///
+    /// Dùng khi OpenDota có nhiều đội trùng tên (ví dụ hai "LGD Gaming", một đang thi đấu
+    /// một đã ngừng từ 2024) hoặc khi tên trên OpenDota khác hẳn tên thi đấu. Resolver cố ý
+    /// từ chối đoán trong các ca đó, vì chọn sai sẽ gán toàn bộ ván của một đội cho đội khác.
+    /// </summary>
+    public int? OpenDotaTeamId { get; set; }
 }
 
 /// <summary>

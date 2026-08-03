@@ -1,7 +1,7 @@
 {
   "event": "The International 2026",
   "source": "dltv.org",
-  "_note": "Dữ liệu chỉ số 6 tháng gần nhất (DLTV), cập nhật 02/08/2026. 16/16 đội có dữ liệu (TEAM VISION = PARIVISION; HULIGANI = L1GA TEAM). Logo hotlink từ DLTV.",
+  "_note": "Dữ liệu chỉ số 6 tháng gần nhất, cập nhật 03/08/2026. 16/16 đội có dữ liệu. Logo hotlink từ DLTV.",
   "teams": [
     {
       "name": "Team Falcons",
@@ -182,10 +182,11 @@
         "winWhenFb": 67,
         "winWhenF10": 79,
         "duration": 43,
-        "totalKills": 53.0,
+        "totalKills": 53,
         "killDiff": 0.56
       },
-      "logo": "https://dltv.org/uploads/teams/7ANCLxgwRDMqqlQvF0pHmasYyXrZ8V3A.png.webp"
+      "logo": "https://dltv.org/uploads/teams/7ANCLxgwRDMqqlQvF0pHmasYyXrZ8V3A.png.webp",
+      "openDotaTeamId": 7119388
     },
     {
       "name": "PARIVISION",
@@ -208,7 +209,8 @@
         "totalKills": 49.13,
         "killDiff": 6.83
       },
-      "logo": "https://dltv.org/uploads/teams/LsVqzDTPzN7qzT7EsqLuyeOpGkht5AVt.png.webp"
+      "logo": "https://dltv.org/uploads/teams/LsVqzDTPzN7qzT7EsqLuyeOpGkht5AVt.png.webp",
+      "openDotaTeamId": 9572001
     },
     {
       "name": "Nigma Galaxy",
@@ -346,7 +348,8 @@
         "totalKills": 53.21,
         "killDiff": 3.03
       },
-      "logo": "https://dltv.org/uploads/teams/6dA6cd7zwFvaAuFFPldKLrbygXopSqBr.png"
+      "logo": "https://dltv.org/uploads/teams/6dA6cd7zwFvaAuFFPldKLrbygXopSqBr.png",
+      "openDotaTeamId": 10150538
     },
     {
       "name": "GamerLegion",
@@ -367,9 +370,10 @@
         "winWhenF10": 70,
         "duration": 40,
         "totalKills": 50.14,
-        "killDiff": 3.0
+        "killDiff": 3
       },
       "logo": "https://dltv.org/uploads/teams/small/SL5XvIyOVg02fCankoCetSnjT3x7FdVY.png"
     }
-  ]
+  ],
+  "_openDotaNote": "openDotaTeamId: chỉ định tay, ghi đè bộ so khớp tự động (TeamResolver). Đặt khi OpenDota có nhiều đội trùng tên hoặc tên khác tên thi đấu. ĐÃ QUYẾT: team-spirit=7119388 (ứng viên kia #2621843 trận cuối 2019-01-02); lgd-gaming=10150538 (ứng viên kia #15 dừng từ 2024-08-03, cửa sổ 6 tháng cần đội đang thi đấu); parivision=9572001 (OpenDota ghi tên \"TEAM VISION\", khớp ghi chú TEAM VISION = PARIVISION). CÒN TRỐNG, cần xác nhận: betboom-team (ứng viên #8255888 tên OpenDota là \"BoomBoys\" tag BB, đang thi đấu, rating 1480 — tên không khớp nên chưa dám gán); nigma (#10136357 đá 2026-08-02 W/L 33/25 vs #7554697 lịch sử 630/574 nhưng dừng 2026-05-08); 1win-team (không nằm trong top 1000 của endpoint /teams nên chưa tìm được id)."
 }

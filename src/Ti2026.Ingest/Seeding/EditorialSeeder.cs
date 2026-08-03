@@ -99,6 +99,14 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
             team.Qualification = dto.Qualification;
             team.LogoUrl = dto.Logo;
 
+            // Chỉ định tay ghi đè kết quả tự động. KHÔNG xoá giá trị resolver đã gán khi
+            // JSON để trống — trống nghĩa là "không có ý kiến", không phải "hãy xoá đi".
+            if (dto.OpenDotaTeamId is int explicitId && team.OpenDotaTeamId != explicitId)
+            {
+                await ReleaseIdFromOtherTeamsAsync(explicitId, team.Slug, ct);
+                team.OpenDotaTeamId = explicitId;
+            }
+
             EnsureAlias(team, dto.Name);
             if (!string.IsNullOrWhiteSpace(dto.Short)) EnsureAlias(team, dto.Short!);
 
@@ -353,6 +361,23 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
         return File.Exists(path)
             ? JsonSerializer.Deserialize<T>(File.ReadAllText(path), SeedJson.Options)
             : default;
+    }
+
+    /// <summary>
+    /// Gỡ OpenDotaTeamId khỏi đội khác đang giữ nó.
+    ///
+    /// Cần thiết vì unique index không cho hai đội cùng trỏ về một id: nếu resolver đã gán
+    /// nhầm id này cho đội khác thì việc chỉ định tay sẽ nổ DbUpdateException ngay lúc
+    /// startup, và app không lên được. Chỉ định tay phải luôn thắng.
+    /// </summary>
+    private async Task ReleaseIdFromOtherTeamsAsync(int openDotaTeamId, string keepSlug, CancellationToken ct)
+    {
+        var others = await db.Teams
+            .Where(t => t.OpenDotaTeamId == openDotaTeamId && t.Slug != keepSlug)
+            .ToListAsync(ct);
+
+        foreach (var other in others) other.OpenDotaTeamId = null;
+        if (others.Count > 0) await db.SaveChangesAsync(ct);
     }
 
     /// <summary>

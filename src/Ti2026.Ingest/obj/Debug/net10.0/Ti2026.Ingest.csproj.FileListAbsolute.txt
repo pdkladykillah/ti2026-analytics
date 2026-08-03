@@ -1,0 +1,16 @@
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\bin\Debug\net10.0\Ti2026.Ingest.deps.json
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\bin\Debug\net10.0\Ti2026.Ingest.dll
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\bin\Debug\net10.0\Ti2026.Ingest.pdb
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\bin\Debug\net10.0\Ti2026.Data.dll
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\bin\Debug\net10.0\Ti2026.Data.pdb
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.Ingest.csproj.AssemblyReference.cache
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.Ingest.GeneratedMSBuildEditorConfig.editorconfig
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.Ingest.AssemblyInfoInputs.cache
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.Ingest.AssemblyInfo.cs
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.Ingest.csproj.CoreCompileInputs.cache
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.Ingest.sourcelink.json
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.I.346221CF.Up2Date
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.Ingest.dll
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\refint\Ti2026.Ingest.dll
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\Ti2026.Ingest.pdb
+C:\Project\ti2026-analytics\src\Ti2026.Ingest\obj\Debug\net10.0\ref\Ti2026.Ingest.dll

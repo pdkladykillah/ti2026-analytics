@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ti2026.Data/Ti2026.Data.csproj" />
+    <Project Path="src/Ti2026.Ingest/Ti2026.Ingest.csproj" />
+    <Project Path="src/Ti2026.Web/Ti2026.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ti2026.Tests/Ti2026.Tests.csproj" />
+  </Folder>
+</Solution>

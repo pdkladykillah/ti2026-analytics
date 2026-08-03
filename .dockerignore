@@ -1,0 +1,12 @@
+# Giảm build context: VPS chỉ có 2 vCPU / 1.9 GB, context nhỏ thì build nhanh và ít RAM hơn.
+**/bin
+**/obj
+**/App_Data
+.git
+.github
+docs
+tests
+*.md
+!README.md
+.vs
+.idea

@@ -1,0 +1,65 @@
+# ============================================================================
+# ti2026-analytics — chạy chung một VPS với project phuongkhanh-travel.
+#
+# (IP, đường dẫn và tên key nằm trong VPS-DEPLOY-GUIDE.md của repo private bên kia,
+#  cố ý KHÔNG nhắc ở đây vì repo này public.)
+#
+# Tuân theo VPS-DEPLOY-GUIDE.md của project kia:
+#   §3  không publish port 80/443, không đặt tên compose là "phuongkhanh"
+#   §5B chưa có domain -> Caddy route theo đường dẫn /ti2026/*
+#   §7.2 giới hạn log để không đầy đĩa
+# ============================================================================
+
+# BẮT BUỘC đặt tên: tên compose project quyết định tên container và volume.
+# Để trống sẽ lấy theo tên thư mục và có thể trộn với project đang chạy.
+name: ti2026
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: src/Ti2026.Web/Dockerfile
+    restart: unless-stopped
+
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+
+      # Caddy dùng `handle` (KHÔNG cắt prefix) nên app phải tự khai path base.
+      - Ti2026__PathBase=/ti2026
+
+      - Ti2026__IngestEnabled=true
+      - Ti2026__IngestIntervalHours=6
+      - Ti2026__IngestToken=${TI2026_INGEST_TOKEN:?Thieu TI2026_INGEST_TOKEN trong .env}
+      - Ti2026__OpenDota__RequestsPerSecond=1
+
+      # dltv chỉ bật sau khi đã kiểm robots.txt (M3, chưa làm)
+      - Ti2026__Dltv__Enabled=false
+
+    volumes:
+      - app_data:/app/App_Data
+
+    # expose, KHÔNG dùng ports: — publish ra host sẽ đi vòng qua ufw (bẫy §5C)
+    expose:
+      - "8080"
+
+    networks:
+      - default
+      - web
+
+    # Log Docker mặc định không giới hạn dung lượng -> đầy đĩa sau vài tháng (§7.2)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Trần bộ nhớ: VPS không có swap, để container này không kéo sập
+    # phuongkhanh-web-1 khi ingest gặp response lớn bất thường.
+    mem_limit: 512m
+
+volumes:
+  app_data:
+
+networks:
+  web:
+    external: true

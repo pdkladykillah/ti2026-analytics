@@ -299,6 +299,13 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
         }
 
         existing.ValidTo = today;
+
+        // Phải flush việc đóng hàng cũ TRƯỚC khi thêm hàng mới. Unique index
+        // (TeamId, PlayerId) lọc ValidTo IS NULL không cho phép hai hàng mở cùng tồn tại, và
+        // nếu để cả UPDATE lẫn INSERT trong một SaveChanges thì việc nó không nổ chỉ là do
+        // thứ tự lệnh nội bộ của EF đang thuận — một bảo đảm không hề được ghi ở đâu.
+        await db.SaveChangesAsync(ct);
+
         db.RosterEntries.Add(new RosterEntry
         {
             TeamId = teamId, PlayerId = player.Id, Role = role, ValidFrom = today

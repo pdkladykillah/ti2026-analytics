@@ -24,13 +24,12 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
 
-      # Caddy dùng `handle` (KHÔNG cắt prefix) nên app phải tự khai path base.
-      - Ti2026__PathBase=/ti2026
-
       - Ti2026__IngestEnabled=true
       - Ti2026__IngestIntervalHours=6
       - Ti2026__IngestToken=${TI2026_INGEST_TOKEN:?Thieu TI2026_INGEST_TOKEN trong .env}
-      - Ti2026__OpenDota__RequestsPerSecond=1
+      # KHÔNG đặt RequestsPerSecond ở đây. Dòng cũ ghi "=1" và nó ghi đè đúng mặc định 0.8
+      # đặt trong code để tránh 429 — hạn mức OpenDota là 60/phút, mà 1 req/s bằng đúng 60/phút.
+      # Một giá trị cấu hình ghi đè một quyết định đã được đo là cách âm thầm huỷ bản sửa.
 
       # dltv chỉ bật sau khi đã kiểm robots.txt (M3, chưa làm)
       - Ti2026__Dltv__Enabled=false

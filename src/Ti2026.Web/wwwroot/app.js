@@ -1359,7 +1359,7 @@ function fmtClock(iso) {
   return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 }
 
-const RUN_TONE = { Succeeded: 'ok', Failed: 'bad', Running: 'run' };
+const RUN_TONE = { Succeeded: 'ok', Failed: 'bad', Running: 'run', Interrupted: 'bad' };
 
 async function loadSchedule() {
   const body = $('#sched-body');
@@ -1384,7 +1384,7 @@ async function loadSchedule() {
 
     const rows = (d.runs || []).map((r) => `<tr>
       <td><span class="run-dot ${RUN_TONE[r.status] || ''}" aria-hidden="true"></span>${esc(r.source)}</td>
-      <td>${esc(r.status === 'Succeeded' ? 'Xong' : r.status === 'Failed' ? 'Lỗi' : 'Đang chạy')}</td>
+      <td>${esc(r.status === 'Succeeded' ? 'Xong' : r.status === 'Failed' ? 'Lỗi' : r.status === 'Interrupted' ? 'Gián đoạn' : 'Đang chạy')}</td>
       <td class="num">${fmtClock(r.startedAt)}</td>
       <td class="num">${r.finishedAt
         ? Math.max(1, Math.round((new Date(r.finishedAt) - new Date(r.startedAt)) / 1000)) + 's'

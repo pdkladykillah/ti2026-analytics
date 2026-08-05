@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Ti2026.Data;
+using Ti2026.Data.Entities;
 using Ti2026.Ingest;
 using Ti2026.Ingest.OpenDota;
 
@@ -58,24 +59,43 @@ public static class OpsEndpoints
         app.MapGet("/api/ingest/status", async (
             Ti2026DbContext db, IngestGate gate, IngestStatusTracker status) =>
         {
-            var runs = await db.IngestRuns
+            var raw = await db.IngestRuns
                 .OrderByDescending(r => r.StartedAt)
                 .Take(24)
                 .Select(r => new
                 {
+                    r.Source, r.Status, r.StartedAt, r.FinishedAt, r.ItemsWritten, r.ErrorMessage,
+                })
+                .ToListAsync();
+
+            // CHỈ vòng mới nhất mới có thể đang thật sự chạy, và chỉ khi cổng đang bị giữ.
+            // Mọi dòng "Running" khác là tàn dư của một vòng bị gián đoạn — hiện chúng là "đang
+            // chạy" thì trang nói dối, mà sửa thẳng vào DB thì là viết lại lịch sử. Diễn giải
+            // lúc đọc là cách duy nhất vừa trung thực vừa tự khỏi khi có bản ghi mới.
+            var newest = raw.FirstOrDefault();
+
+            var runs = raw.Select(r =>
+            {
+                var stale = r.Status == IngestStatus.Running
+                            && !(gate.IsRunning && ReferenceEquals(r, newest));
+
+                return new
+                {
                     source = r.Source,
-                    status = r.Status.ToString(),
+                    status = stale ? "Interrupted" : r.Status.ToString(),
                     startedAt = r.StartedAt,
                     finishedAt = r.FinishedAt,
                     itemsWritten = r.ItemsWritten,
 
                     // Cắt ngắn: thông báo lỗi đầy đủ là stack trace vài nghìn ký tự, không hợp
                     // để hiện trên trang — nhưng câu đầu thường đã nói đủ nguyên nhân.
-                    error = r.ErrorMessage == null
-                        ? null
-                        : (r.ErrorMessage.Length > 220 ? r.ErrorMessage.Substring(0, 220) + "…" : r.ErrorMessage),
-                })
-                .ToListAsync();
+                    error = stale
+                        ? "Vòng bị gián đoạn, không ghi được kết quả cuối"
+                        : r.ErrorMessage == null
+                            ? null
+                            : (r.ErrorMessage.Length > 220 ? r.ErrorMessage[..220] + "…" : r.ErrorMessage),
+                };
+            }).ToList();
 
             var pending = await db.Matches.CountAsync(
                 m => m.DetailsIngestedAt == null

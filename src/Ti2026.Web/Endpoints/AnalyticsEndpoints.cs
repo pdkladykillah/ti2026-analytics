@@ -65,8 +65,11 @@ public static class AnalyticsEndpoints
             var eloA = snaps.TryGetValue(teamA.Id, out var sa) ? sa.Elo : null;
             var eloB = snaps.TryGetValue(teamB.Id, out var sb) ? sb.Elo : null;
 
+            // Dùng thang ĐÃ HIỆU CHUẨN, không phải thang 400 chuẩn sách vở: hiệu chuẩn hồi tố
+            // cho thấy thang 400 làm mô hình tự tin quá mức (nói 80% thì thực tế 67%).
             double? probA = eloA is double ea && eloB is double eb
-                ? Math.Round(EloEngine.ExpectedScore(ea, eb) * 100, 1)
+                ? Math.Round(
+                    EloEngine.ExpectedScore(ea, eb, EloEngine.DefaultProbabilityScale) * 100, 1)
                 : null;
 
             // Đối đầu trực tiếp
@@ -349,7 +352,24 @@ public static class AnalyticsEndpoints
                 r.RadiantWin ? r.RadiantTeamId!.Value : r.DireTeamId!.Value,
                 r.RadiantWin ? r.DireTeamId!.Value : r.RadiantTeamId!.Value));
 
-            var results = EloEngine.Backtest(rated, teamIds);
+            var ratedList = rated.ToList();
+
+            // So nhiều thang quy đổi trên CÙNG bộ trận, để việc chọn thang là kết luận từ dữ
+            // liệu chứ không phải con số đặt theo cảm tính. Brier thấp hơn = dự đoán tốt hơn.
+            var scaleComparison = new[] { 400.0, 500, 600, 700, 800 }
+                .Select(s =>
+                {
+                    var res = EloEngine.Backtest(ratedList, teamIds, probabilityScale: s);
+                    return new
+                    {
+                        scale = s,
+                        brier = res.Count == 0 ? (double?)null : Math.Round(
+                            res.Average(r => Math.Pow(r.PredictedProbability / 100 - (r.Correct ? 1 : 0), 2)), 4),
+                    };
+                })
+                .ToList();
+
+            var results = EloEngine.Backtest(ratedList, teamIds);
 
             if (results.Count == 0)
                 return Results.Ok(new
@@ -383,10 +403,16 @@ public static class AnalyticsEndpoints
                 evaluated = results.Count,
                 method = "Hồi tố: mỗi trận được dự đoán bằng Elo TẠI THỜI ĐIỂM TRƯỚC trận đó, "
                        + "rồi mới dùng kết quả để cập nhật rating. Không nhìn trộm đáp án.",
+                probabilityScale = EloEngine.DefaultProbabilityScale,
                 hitRate = Math.Round(hitRate, 1),
                 brierScore = Math.Round(brier, 4),
                 brierNote = "0 là hoàn hảo; 0.25 tương đương tung đồng xu. Thấp hơn 0.25 nghĩa "
                           + "là mô hình có thông tin thật.",
+                scaleComparison,
+                scaleNote = "Thang quy đổi được chọn bằng cách so Brier trên chính bộ trận này. "
+                          + "Một tham số khớp trên 1700 trận thì rủi ro quá khớp thấp, nhưng "
+                          + "đây vẫn là đo trên dữ liệu đã dùng để chọn — hãy đọc nó như "
+                          + "'thang nào ít tệ nhất', không phải 'độ chính xác ngoài mẫu'.",
                 buckets,
             });
         });

@@ -28,11 +28,27 @@ public static class EloEngine
     public const double KFactor = 24;
 
     /// <summary>
-    /// Xác suất đội A thắng, theo công thức Elo chuẩn.
-    /// Chênh 100 điểm ≈ 64%, chênh 200 điểm ≈ 76%.
+    /// Thang quy đổi chênh lệch rating sang xác suất khi CẬP NHẬT rating.
+    /// Giữ 400 chuẩn ở đây để rating có thang quen thuộc, so được với hệ Elo khác.
     /// </summary>
-    public static double ExpectedScore(double ratingA, double ratingB) =>
-        1.0 / (1.0 + Math.Pow(10, (ratingB - ratingA) / 400.0));
+    public const double UpdateScale = 400;
+
+    /// <summary>
+    /// Thang quy đổi khi CÔNG BỐ xác suất ra ngoài — cố tình khác UpdateScale.
+    ///
+    /// Hiệu chuẩn hồi tố trên 1715 trận thật cho thấy thang 400 làm mô hình tự tin quá mức,
+    /// và càng tự tin càng sai: nói 70–80% thì thực tế 65%, nói 80–90% thì thực tế 67%.
+    /// Dota biến động cao, đặc biệt Bo1, nên chênh lệch rating không chuyển thành ưu thế
+    /// mạnh như công thức chuẩn giả định.
+    ///
+    /// Giá trị này được CHỌN TỪ DỮ LIỆU (xem api/calibration, phần scaleComparison) chứ
+    /// không phải đặt theo cảm tính.
+    /// </summary>
+    public const double DefaultProbabilityScale = 600;
+
+    /// <summary>Xác suất đội A thắng. Thang càng lớn thì dự đoán càng dè dặt.</summary>
+    public static double ExpectedScore(double ratingA, double ratingB, double scale = UpdateScale) =>
+        1.0 / (1.0 + Math.Pow(10, (ratingB - ratingA) / scale));
 
     /// <summary>
     /// Chạy toàn bộ trận theo THỨ TỰ THỜI GIAN và trả rating cuối cùng.
@@ -81,8 +97,13 @@ public static class EloEngine
     /// hiểu biết nào, chỉ làm loãng kết quả.
     /// </summary>
     public static List<(double PredictedProbability, bool Correct)> Backtest(
-        IEnumerable<RatedMatch> matches, IEnumerable<int> allTeamIds, int warmupGamesPerTeam = 5)
+        IEnumerable<RatedMatch> matches,
+        IEnumerable<int> allTeamIds,
+        int warmupGamesPerTeam = 5,
+        double? probabilityScale = null)
     {
+        var scale = probabilityScale ?? DefaultProbabilityScale;
+
         var ratings = allTeamIds.ToDictionary(id => id, _ => InitialRating);
         var games = ratings.Keys.ToDictionary(id => id, _ => 0);
         var results = new List<(double, bool)>();
@@ -103,11 +124,12 @@ public static class EloEngine
                 // Ghi lại dưới góc nhìn của đội ĐƯỢC ĐÁNH GIÁ CAO HƠN, để bucket xác suất
                 // trải đều 50-100% thay vì đối xứng quanh 50 và triệt tiêu lẫn nhau.
                 var favouriteIsWinner = rw >= rl;
-                var pFavourite = ExpectedScore(Math.Max(rw, rl), Math.Min(rw, rl));
+                var pFavourite = ExpectedScore(Math.Max(rw, rl), Math.Min(rw, rl), scale);
                 results.Add((pFavourite * 100, favouriteIsWinner));
             }
 
-            var delta = KFactor * (1.0 - ExpectedScore(rw, rl));
+            // Cập nhật rating luôn dùng thang chuẩn, độc lập với thang công bố
+            var delta = KFactor * (1.0 - ExpectedScore(rw, rl, UpdateScale));
             ratings[m.WinnerTeamId] = rw + delta;
             ratings[m.LoserTeamId] = rl - delta;
             games[m.WinnerTeamId]++;

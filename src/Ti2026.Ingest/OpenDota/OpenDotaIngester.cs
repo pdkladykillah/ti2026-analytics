@@ -133,8 +133,13 @@ public class OpenDotaIngester(
     {
         const int maxPerRun = 60;
 
+        // Gác trên PhotoMediaAssetId — thứ THẬT SỰ cần — chứ không trên AvatarUrl.
+        //
+        // Bản trước gác trên AvatarUrl == null, và nó im lặng không làm gì: lượt deploy trước đó
+        // đã điền AvatarUrl cho cả 96 người, nên "còn ai cần làm" trả về rỗng trong khi chưa một
+        // tệp ảnh nào được tải. Cổng chặn phải gác trên đích, không gác trên bước trung gian.
         var missing = await db.Players
-            .Where(p => p.OpenDotaAccountId != null && p.AvatarUrl == null)
+            .Where(p => p.OpenDotaAccountId != null && p.PhotoMediaAssetId == null)
             .OrderBy(p => p.Id)
             .Take(maxPerRun)
             .ToListAsync(ct);
@@ -149,22 +154,29 @@ public class OpenDotaIngester(
 
             try
             {
-                var profile = await client.GetPlayerAsync(player.OpenDotaAccountId!.Value, ct);
-                var avatar = profile?.Profile?.AvatarFull;
+                // Đã biết URL từ vòng trước thì KHÔNG gọi lại hồ sơ — tiết kiệm đúng 96 request.
+                var avatar = player.AvatarUrl;
 
-                // Hồ sơ để riêng tư thì không có avatar. Bỏ qua, để null, và vòng sau thử lại —
-                // đặt một chuỗi rỗng để "đánh dấu đã thử" sẽ khiến ảnh không bao giờ về nữa nếu
-                // sau này người đó mở hồ sơ.
-                if (string.IsNullOrWhiteSpace(avatar)) continue;
+                if (string.IsNullOrWhiteSpace(avatar))
+                {
+                    var profile = await client.GetPlayerAsync(player.OpenDotaAccountId!.Value, ct);
+                    avatar = profile?.Profile?.AvatarFull;
 
-                player.AvatarUrl = avatar;
+                    // Hồ sơ để riêng tư thì không có avatar. Bỏ qua, để null, và vòng sau thử
+                    // lại — đánh dấu "đã thử" bằng chuỗi rỗng sẽ khiến ảnh không bao giờ về nữa
+                    // nếu sau này người đó mở hồ sơ.
+                    if (string.IsNullOrWhiteSpace(avatar)) continue;
+
+                    player.AvatarUrl = avatar;
+                }
 
                 // Tải về máy mình. Avatar Steam CHỈ có trên avatars.steamstatic.com — đường
                 // akamai chỉ 301 trả về đúng host đó — mà cả họ *.steamstatic.com không tới được
                 // từ mạng người dùng. Không có host thay thế, nên hotlink là bế tắc.
                 var asset = await media.EnsureAsync(avatar, mediaPaths.MediaDirectory, ct);
-                if (asset is not null) player.PhotoMediaAssetId = asset.Id;
+                if (asset is null) continue;
 
+                player.PhotoMediaAssetId = asset.Id;
                 done++;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

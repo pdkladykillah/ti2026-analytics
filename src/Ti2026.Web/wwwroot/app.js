@@ -1951,13 +1951,18 @@ async function loadFantasyRoster() {
 
       ${b ? `<h3 style="margin-top:var(--s-6)">Đối chiếu: ${esc(b.label)}</h3>
       <div class="bento">${b.roster.map(card).join('')}</div>
-      <div class="bento" style="margin-top:var(--s-4)">
+
+      ${b.comparable ? `<div class="bento" style="margin-top:var(--s-4)">
         <article class="kpi p2">
           <div class="kpi-label">Tổng điểm ${esc(b.label)}</div>
           <div class="kpi-value">${b.projectedTotal}</div>
           <div class="kpi-note">cùng thang đo với con số phía trên</div>
         </article>
-      </div>
+      </div>` : `<div class="note warn" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+        <div><b>Chưa hiện tổng điểm ${esc(b.label)} — cố ý.</b><br>${esc(b.incomparableNote || '')}</div>
+      </div>`}
+
       <div class="note" style="margin-top:var(--s-3)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(b.note || '')}</div>

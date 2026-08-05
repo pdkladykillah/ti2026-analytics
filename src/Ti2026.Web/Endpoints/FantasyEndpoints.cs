@@ -144,8 +144,16 @@ public static class FantasyEndpoints
                 });
 
             var slots = LoadSlots(paths);
-            var now = BuildLineup(await ScorePlayersAsync(db, config, days));
-            var ti2025 = BuildLineup(await ScorePlayersAsync(db, config, days, Ti2025LeagueId));
+
+            var scoredNow = await ScorePlayersAsync(db, config, days);
+            var scoredTi = await ScorePlayersAsync(db, config, days, Ti2025LeagueId);
+
+            var now = BuildLineup(scoredNow);
+            var ti2025 = BuildLineup(scoredTi);
+
+            // Hai cửa sổ có thể đang ở hai mức schema khác nhau. Khi đó cộng hai tổng ra để
+            // cạnh nhau là mời người đọc kết luận sai, nên phải tự kiểm trước khi bày ra.
+            var gaps = NotComparable(config, Coverage(scoredNow), Coverage(scoredTi));
 
             return Results.Ok(new
             {
@@ -165,7 +173,21 @@ public static class FantasyEndpoints
                 {
                     label = "The International 2025",
                     roster = ti2025.Picked,
-                    projectedTotal = ti2025.Total,
+
+                    // Chỉ đưa tổng ra khi hai bên thật sự cùng thang đo. Còn thiếu chỉ số thì
+                    // trả null: một ô trống buộc người đọc dừng lại, còn một con số thấp thì
+                    // họ sẽ đọc thành "năm ngoái các tuyển thủ chơi kém hơn" và không bao giờ
+                    // biết mình vừa so hai thứ khác nhau.
+                    projectedTotal = gaps.Count == 0 ? ti2025.Total : (double?)null,
+                    comparable = gaps.Count == 0,
+                    missingStats = gaps,
+                    incomparableNote = gaps.Count == 0 ? null
+                        : "CHƯA so được tổng điểm. Các ván TI2025 đang ở mức nạp cũ nên thiếu hẳn: "
+                        + string.Join(", ", gaps)
+                        + ". Bên thiếu chỉ số luôn thấp hơn một cách có hệ thống, nên đặt hai tổng "
+                        + "cạnh nhau lúc này sẽ dẫn tới kết luận sai. Đợt nạp bù v5 sẽ đưa cả hai "
+                        + "cửa sổ về cùng mức, khi đó tổng sẽ tự hiện ra.",
+
                     shortfall = ti2025.Shortfall,
                     note = TiBaselineNote,
                 },
@@ -290,6 +312,42 @@ public static class FantasyEndpoints
         3 => "core",
         _ => "support",
     };
+
+    /// <summary>
+    /// Tỷ lệ ĐO ĐƯỢC của từng chỉ số trong một tập ván: bao nhiêu phần trăm số ô có số thật
+    /// thay vì null.
+    ///
+    /// Cần thứ này vì hai cửa sổ thời gian có thể được nạp ở hai mức schema khác nhau, và khi
+    /// đó tổng điểm của chúng KHÔNG so sánh được — bên nào thiếu chỉ số sẽ thấp hơn một cách
+    /// có hệ thống, mà cả hai con số đều trông hoàn toàn bình thường. Đó đúng là kiểu sai đã
+    /// suýt lọt: TI2025 đang ở schema v2 nên thiếu hẳn tham chiến, stun, stack và rune —
+    /// riêng tham chiến đã là hệ số lớn nhất bảng (2124 điểm).
+    /// </summary>
+    private static Dictionary<string, double> Coverage(IEnumerable<ScoredPlayer> scored)
+    {
+        var parts = scored.SelectMany(p => p.Games_).SelectMany(g => g.Parts).ToList();
+        if (parts.Count == 0) return [];
+
+        return parts
+            .GroupBy(p => p.Key)
+            .ToDictionary(g => g.Key, g => (double)g.Count(x => x.Points is not null) / g.Count());
+    }
+
+    /// <summary>
+    /// Chỉ số mà cửa sổ đối chiếu gần như không đo được trong khi cửa sổ hiện tại thì có.
+    /// Còn cái nào trong danh sách này thì hai tổng điểm chưa so được với nhau.
+    /// </summary>
+    private static List<string> NotComparable(
+        FantasyConfig config,
+        Dictionary<string, double> now,
+        Dictionary<string, double> baseline)
+    {
+        return config.Stats
+            .Where(s => now.GetValueOrDefault(s.Key) >= 0.5
+                        && baseline.GetValueOrDefault(s.Key) < 0.25)
+            .Select(s => s.Label)
+            .ToList();
+    }
 
     /// <summary>
     /// Gói kết quả xếp đội hình thành JSON. Luật xếp nằm ở <see cref="FantasyLineup"/> chứ

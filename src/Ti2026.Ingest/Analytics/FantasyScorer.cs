@@ -8,7 +8,8 @@ namespace Ti2026.Ingest.Analytics;
 /// nếu lắp bảng hệ số vào mà không sửa thì điểm chết sẽ ra âm ở mọi ván và không ai biết vì sao.
 /// </summary>
 public readonly record struct FantasyStat(
-    string Key, string Label, double Per, double? Points, double Base = 0);
+    string Key, string Label, double Per, double? Points, double Base = 0,
+    string? Color = null, string? Field = null);
 
 /// <summary>
 /// Bảng hệ số fantasy. <see cref="Ready"/> false nghĩa là chưa điền đủ — khi đó KHÔNG được
@@ -24,6 +25,14 @@ public sealed record FantasyConfig(
         Stats.Where(s => s.Points is null).Select(s => s.Key).ToList();
 
     public bool Ready => Stats.Count > 0 && MissingCoefficients.Count == 0;
+
+    /// <summary>
+    /// Chỉ số có hệ số nhưng CHƯA có nguồn dữ liệu. Đây là thiên lệch có hệ thống, không phải
+    /// nhiễu: nếu chúng dồn về một màu thì cả nhóm vị trí dùng màu đó bị chấm thiếu điểm, và
+    /// đội hình gợi ý sẽ nghiêng đi mà không ai thấy vì sao.
+    /// </summary>
+    public IReadOnlyList<FantasyStat> UnsourcedStats =>
+        Stats.Where(s => string.IsNullOrEmpty(s.Field)).ToList();
 }
 
 /// <summary>Chỉ số thô của một người trong MỘT ván.</summary>

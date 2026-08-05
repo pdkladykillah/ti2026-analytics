@@ -1333,7 +1333,8 @@ async function loadProPub() {
       <div class="note" style="margin-top:var(--s-4)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.method || '')}<br><br>${esc(d.caveat || '')}</div>
-      </div>`;
+      </div>
+      ${biasNote(d.bias)}`;
   } catch (err) {
     body.innerHTML = `<div class="error">Không tải được <code>api/pro-pub</code>.<br><small>${esc(err.serverMessage || err.message)}</small></div>`;
   }
@@ -1820,6 +1821,19 @@ async function loadItems(heroId) {
 
 /* ============================ Fantasy ============================ */
 
+/** Dải cảnh báo thiên lệch — hiện ở cả ba mục vì cả ba đều bị ảnh hưởng. */
+function biasNote(bias) {
+  if (!bias) return "";
+  const groups = (bias.byColor || [])
+    .map((c) => "<b>" + esc(c.colorLabel) + "</b>: " + c.stats.map((x) => esc(x)).join(", "))
+    .join("<br>");
+
+  return "<div class='note warn' style='margin-top:var(--s-4)'>"
+    + "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'><path d='M12 3l9 16H3z'/><path d='M12 9v4M12 16.5v.01'/></svg>"
+    + "<div><b>" + bias.count + "/" + bias.total + " chỉ số chưa có nguồn dữ liệu.</b><br>" + groups
+    + "<br><br>" + esc(bias.message) + "</div></div>";
+}
+
 async function loadFantasy() {
   loadFantasyConfig();
   loadFantasyRoster();
@@ -1917,7 +1931,8 @@ async function loadFantasyRoster() {
       <div class="note" style="margin-top:var(--s-4)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.method || '')}<br><br><b>${esc(d.limitation || '')}</b></div>
-      </div>`;
+      </div>
+      ${biasNote(d.bias)}`;
   } catch (err) {
     body.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
   }

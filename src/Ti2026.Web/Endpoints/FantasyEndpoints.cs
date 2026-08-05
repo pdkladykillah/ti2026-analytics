@@ -40,7 +40,8 @@ public static class FantasyEndpoints
                 missingCoefficients = config.MissingCoefficients,
                 slots = LoadSlots(paths).Select(s => new { group = s.Key, count = s.Value }),
                 slotsConfirmed = SlotsConfirmed(paths),
-                stats = config.Stats.Select(s => new { s.Key, s.Label, s.Per, s.Points }),
+                bias = BiasWarning(config),
+                stats = config.Stats.Select(s => new { s.Key, s.Label, s.Per, s.Points, s.Color, sourced = !string.IsNullOrEmpty(s.Field) }),
 
                 // Giới hạn của NGUỒN, không phải của bảng hệ số — điền hệ số cũng không cứu được
                 unavailable = new[]
@@ -79,6 +80,7 @@ public static class FantasyEndpoints
                 countBestGames = config.CountBestGames,
                 minMatches = MinMatchesForRanking,
                 source = config.Source,
+                bias = BiasWarning(config),
 
                 players = scored.Select(p => new
                 {
@@ -176,6 +178,7 @@ public static class FantasyEndpoints
                 slots = slots.Select(s => new { group = s.Key, count = s.Value }),
                 slotsConfirmed = SlotsConfirmed(paths),
                 roster = picked,
+                bias = BiasWarning(config),
                 projectedTotal = Math.Round(total, 2),
                 shortfall,
 
@@ -298,6 +301,45 @@ public static class FantasyEndpoints
         // data/fantasy.json muc _nguonDuLieu de biet cai nao nap duoc, cai nao khong.
     };
 
+    /// <summary>
+    /// Cảnh báo thiên lệch: chỉ số nào có hệ số nhưng chưa có nguồn, và chúng dồn về màu nào.
+    ///
+    /// Đây KHÔNG phải chuyện nhỏ. Màu xanh dương là chỉ số của hỗ trợ; thiếu ba trong sáu chỉ số
+    /// đó nghĩa là mọi người chơi hỗ trợ bị chấm thiếu điểm một cách CÓ HỆ THỐNG, và đội hình
+    /// gợi ý sẽ nghiêng về core mà người đọc không thấy vì sao. Nhiễu thì trung bình sẽ bù,
+    /// thiên lệch thì không bao giờ.
+    /// </summary>
+    private static object? BiasWarning(FantasyConfig config)
+    {
+        var missing = config.UnsourcedStats;
+        if (missing.Count == 0) return null;
+
+        var byColor = missing
+            .GroupBy(s => s.Color ?? "?")
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Label).ToList());
+
+        var colorName = new Dictionary<string, string>
+        {
+            ["red"] = "đỏ (core)", ["blue"] = "xanh dương (hỗ trợ)", ["green"] = "xanh lá (chung)",
+        };
+
+        return new
+        {
+            count = missing.Count,
+            total = config.Stats.Count,
+            stats = missing.Select(s => new { s.Key, s.Label, s.Color }),
+            byColor = byColor.Select(kv => new
+            {
+                color = kv.Key,
+                colorLabel = colorName.GetValueOrDefault(kv.Key, kv.Key),
+                stats = kv.Value,
+            }),
+            message = "Những chỉ số này CÓ hệ số nhưng CHƯA có nguồn dữ liệu, nên bị bỏ khỏi "
+                    + "phép tính. Đây là thiên lệch có hệ thống chứ không phải nhiễu: nhóm vị trí "
+                    + "nào dùng nhiều chỉ số đang thiếu sẽ bị chấm thấp hơn thực tế.",
+        };
+    }
+
     private static object Blocked(string note) => new
     {
         ready = false,
@@ -365,7 +407,12 @@ public static class FantasyEndpoints
                         s.Value.TryGetProperty("base", out var bs)
                             && bs.ValueKind == JsonValueKind.Number
                             ? bs.GetDouble()
-                            : 0));
+                            : 0,
+                        s.Value.TryGetProperty("color", out var cl) ? cl.GetString() : null,
+                        s.Value.TryGetProperty("field", out var fd)
+                            && fd.ValueKind == JsonValueKind.String
+                            ? fd.GetString()
+                            : null));
                 }
             }
 

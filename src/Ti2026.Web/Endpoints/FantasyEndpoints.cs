@@ -73,6 +73,7 @@ public static class FantasyEndpoints
                     mp.LastHits, mp.Denies,
                     mp.ObserversPlaced, mp.CampsStacked, mp.RunePickups,
                     mp.StunSeconds, mp.TeamfightParticipation,
+                    mp.TowerKills, mp.RoshanKills, mp.CourierKills, mp.FirstBloodClaimed,
                 })
                 .ToListAsync();
 
@@ -163,9 +164,12 @@ public static class FantasyEndpoints
     }
 
     /// <summary>
-    /// Ánh xạ cột DB sang khoá trong bảng hệ số. Chỉ số CHƯA CÓ trong DB (phá trụ, hạ Roshan,
-    /// first blood, hạ courier) cố tình KHÔNG xuất hiện ở đây — thiếu khoá thì scorer để null
-    /// và khai ra, còn điền 0 thì nó lặng lẽ thành "làm được 0 lần".
+    /// Ánh xạ cột DB sang khoá trong bảng hệ số.
+    ///
+    /// Khoá KHÔNG có ở đây thì scorer để null và khai ra ở phần phân rã — đúng thứ cần cho
+    /// Madstone: OpenDota không lộ sự kiện nhặt lotus, không ở cấp người chơi lẫn cấp trận,
+    /// nên không ai đo chính xác được (công cụ fantasy khác cũng tự nhận là ước lượng).
+    /// Điền 0 cho nó thì cả bảng lặng lẽ thành "chưa ai nhặt lotus bao giờ".
     /// </summary>
     private static Dictionary<string, double?> Values(dynamic r) => new()
     {
@@ -178,6 +182,11 @@ public static class FantasyEndpoints
         ["runes"] = r.RunePickups,
         ["stuns"] = r.StunSeconds,
         ["teamfight"] = r.TeamfightParticipation,
+
+        ["towerKills"] = r.TowerKills,
+        ["roshanKills"] = r.RoshanKills,
+        ["courierKills"] = r.CourierKills,
+        ["firstBlood"] = r.FirstBloodClaimed is bool fb ? (fb ? 1.0 : 0.0) : (double?)null,
     };
 
     private static FantasyConfig? LoadConfig(Ti2026Paths paths, out string? error)

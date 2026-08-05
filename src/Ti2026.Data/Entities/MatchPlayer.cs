@@ -72,4 +72,19 @@ public class MatchPlayer
 
     /// <summary>Tỷ lệ tham gia giao tranh, 0–1 theo cách tính của OpenDota.</summary>
     public double? TeamfightParticipation { get; set; }
+
+    // ---------- Chỉ số fantasy ----------
+    // Cả năm đều nằm sẵn trong payload matches/{id} — chỉ là DTO trước đây không khai.
+    //
+    // KHÔNG có ở đây: Lotus/Madstone. OpenDota không lộ sự kiện nhặt, không ở cấp người chơi
+    // lẫn cấp trận. Công cụ fantasy khác cũng chỉ ước lượng được. Nếu bảng hệ số của Valve có
+    // Madstone thì phải đánh dấu là ƯỚC LƯỢNG, không được trộn vào số đo.
+    public int? TowerKills { get; set; }
+    public int? RoshanKills { get; set; }
+    public int? CourierKills { get; set; }
+    public int? ObserverKills { get; set; }
+    public int? SentryKills { get; set; }
+
+    /// <summary>Người này có lấy first blood không. null = ván chưa parse.</summary>
+    public bool? FirstBloodClaimed { get; set; }
 }

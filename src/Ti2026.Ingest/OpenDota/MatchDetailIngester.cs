@@ -28,8 +28,9 @@ public class MatchDetailIngester(
     /// 1 = chỉ số cơ bản + first blood + mốc 10 mạng
     /// 2 = thêm bàn draft, mốc mua đồ, chỉ số lane
     /// 3 = thêm chỉ số hỗ trợ, mốc Roshan đầu tiên, và vàng dẫn trước bị mất
+    /// 4 = thêm chỉ số fantasy: phá trụ, hạ Roshan/courier/mắt, và first blood theo người
     /// </summary>
-    public const int SchemaVersion = 3;
+    public const int SchemaVersion = 4;
 
     /// <summary>
     /// Số lỗi LIÊN TIẾP thì dừng mẻ. Lỗi rải rác là chuyện thường (một ván OpenDota chưa parse
@@ -229,6 +230,14 @@ public class MatchDetailIngester(
             existing.Buybacks = p.Buybacks;
             existing.StunSeconds = p.StunSeconds;
             existing.TeamfightParticipation = p.TeamfightParticipation;
+            existing.TowerKills = p.TowerKills;
+            existing.RoshanKills = p.RoshanKills;
+            existing.CourierKills = p.CourierKills;
+            existing.ObserverKills = p.ObserverKills;
+            existing.SentryKills = p.SentryKills;
+
+            // OpenDota trả 0/1; ván chưa parse thì thiếu hẳn trường và phải giữ null
+            existing.FirstBloodClaimed = p.FirstBloodClaimed is int fb ? fb != 0 : null;
         }
     }
 

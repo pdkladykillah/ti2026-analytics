@@ -99,6 +99,14 @@ public class OpenDotaMatchPlayer
     [JsonPropertyName("buyback_count")] public int? Buybacks { get; set; }
     [JsonPropertyName("stuns")] public double? StunSeconds { get; set; }
     [JsonPropertyName("teamfight_participation")] public double? TeamfightParticipation { get; set; }
+    [JsonPropertyName("tower_kills")] public int? TowerKills { get; set; }
+    [JsonPropertyName("roshan_kills")] public int? RoshanKills { get; set; }
+    [JsonPropertyName("courier_kills")] public int? CourierKills { get; set; }
+    [JsonPropertyName("observer_kills")] public int? ObserverKills { get; set; }
+    [JsonPropertyName("sentry_kills")] public int? SentryKills { get; set; }
+
+    /// <summary>OpenDota trả 0/1 chứ không phải true/false, nên đọc thành số rồi tự quy đổi.</summary>
+    [JsonPropertyName("firstblood_claimed")] public int? FirstBloodClaimed { get; set; }
 
     public bool OnRadiant => IsRadiant ?? PlayerSlot < 128;
 }

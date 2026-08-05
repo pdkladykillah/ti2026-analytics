@@ -2,6 +2,8 @@
   "event": "The International 2026",
   "source": "CHƯA ĐIỀN — dán bảng hệ số chính thức của Valve vào đây",
   "updatedAt": null,
+  "_madstone": "KHÔNG có trong bảng stats vì OpenDota không lộ sự kiện nhặt lotus — không ở cấp người chơi lẫn cấp trận. Công cụ fantasy khác cũng chỉ ước lượng được. Nếu Valve chấm điểm Madstone thì phải trình bày là ƯỚC LƯỢNG, tách khỏi số đo.",
+  "_khongMoHinhHoaDuoc": ["first blood trước tiếng còi", "giết ở fountain"],
   "_note": "Hệ số null nghĩa là CHƯA BIẾT, khác hẳn 0 (biết và bằng không). Endpoint api/fantasy sẽ từ chối tính điểm khi còn hệ số null, thay vì trả về những con số 0 trông như số đo. Điền xong thì đổi updatedAt và source.",
 
   "series": {
@@ -26,7 +28,7 @@
   },
 
   "tiers": {
-    "_note": "Emblem tier nhân thêm phần trăm vào chỉ số của emblem đó.",
+    "_note": "Emblem tier nhân thêm phần trăm vào chỉ số của emblem đó. Trait nhân SAU khi đã áp tier, không cộng song song — thứ tự này đổi kết quả.",
     "I": 0.10,
     "II": 0.30,
     "III": 0.60,

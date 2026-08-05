@@ -718,3 +718,12 @@ tr.row-current .chip {
   font-size: 12px; color: var(--neg); max-width: 320px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* Sắc thái cho thẻ hero dùng chung (tier list + hero thực chiến) */
+.tl-hero.good { background: var(--pos-soft); }
+.tl-hero.bad  { background: var(--neg-soft); }
+.tl-hero.dim  { opacity: .3; }
+
+/* Tiêu đề bảng bấm được: con trỏ và vùng bấm phải nói rõ nó là nút */
+thead th[data-sort-ready] { cursor: pointer; user-select: none; }
+thead th[data-sort-ready]:hover { color: var(--accent-ink); background: var(--surface-2); }

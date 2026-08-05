@@ -617,14 +617,16 @@ function renderTiers() {
 
     const meta = (t.tierMeta && t.tierMeta[tierKey]) || { n: tierKey, d: '', c: '#999' };
 
+    // Dùng CHUNG kiểu thẻ với tier list tính từ dữ liệu: chân dung dọc, tên nằm DƯỚI ảnh.
+    // Bản trước dùng ảnh khổ ngang "crops/" và đè tên lên trên — chữ trắng trên nền tuỳ ảnh
+    // nên chỗ đọc được chỗ không, và hai tab cùng là tier list lại trông như hai trang khác nhau.
     const cards = heroes.map((h) => {
       const dim = q && !h.n.toLowerCase().includes(q) ? ' dim' : '';
       const title = `${h.n}${h.w ? ` · winrate pub ${h.w}%` : ''}${h.t ? `\n${h.t}` : ''}`;
-      return `<div class="hero${dim}" title="${esc(title)}">
-        <img src="${HERO_CDN}crops/${esc(h.i)}.png" alt="${esc(h.n)}" loading="lazy"
-             onerror="this.closest('.hero').classList.add('noimg');this.remove()">
-        <span class="name">${esc(h.n)}</span>
-        <span class="fallback">${esc(h.n)}</span>
+      return `<div class="tl-hero${dim}" title="${esc(title)}">
+        ${heroImg(HERO_CDN + h.i + '.png', 58, 33)}
+        <span class="tl-name">${esc(h.n)}</span>
+        <span class="tl-num">${h.w ? `pub ${h.w}%` : ''}</span>
       </div>`;
     }).join('');
 
@@ -1233,12 +1235,11 @@ async function loadHeroPool(team) {
       const name = meta ? meta[0] : `Hero ${h.heroId}`;
       const img = meta ? meta[1] : null;
       const tone = h.winrate >= 55 ? 'good' : h.winrate <= 45 ? 'bad' : '';
-      return `<div class="hero ${tone}" title="${esc(name)} · ${h.games} ván · winrate ${h.winrate}%">
-        ${img ? `<img src="${HERO_CDN}crops/${esc(img)}.png" alt="${esc(name)}" loading="lazy"
-             onerror="this.closest('.hero').classList.add('noimg');this.remove()">` : ''}
-        <span class="name">${esc(name)}</span>
-        <span class="fallback">${esc(name)}</span>
-        <span class="hero-badge num">${h.games}·${Math.round(h.winrate)}%</span>
+      // Cùng kiểu thẻ với hai tier list — ba chỗ hiện hero thì phải trông như một
+      return `<div class="tl-hero ${tone}" title="${esc(name)} · ${h.games} ván · winrate ${h.winrate}%">
+        ${heroImg(img ? HERO_CDN + img + '.png' : null, 58, 33)}
+        <span class="tl-name">${esc(name)}</span>
+        <span class="tl-num">${h.games} ván · ${Math.round(h.winrate)}%</span>
       </div>`;
     }).join('') + '</div>';
   } catch (err) {
@@ -1817,6 +1818,143 @@ async function loadItems(heroId) {
   }
 }
 
+/* ============================ Sắp xếp bảng ============================ */
+
+/**
+ * Đọc một ô thành giá trị so sánh được.
+ *
+ * Trả { empty } cho ô trống hoặc "—". Ô KHÔNG BIẾT không phải ô nhỏ nhất: xếp "chưa đo được"
+ * lên đầu khi sắp giảm dần sẽ đẩy đúng những hàng vô nghĩa lên chỗ dễ thấy nhất.
+ */
+function sortCellValue(td) {
+  const raw = (td?.textContent || '').trim();
+  if (!raw || raw === '—') return { empty: true };
+
+  // mm:ss — mốc thời gian phải so theo giây, không so theo chuỗi ("9:30" > "12:20" nếu so chuỗi)
+  const clock = raw.match(/^(\d+):([0-5]\d)$/);
+  if (clock) return { num: Number(clock[1]) * 60 + Number(clock[2]) };
+
+  // Bỏ mọi thứ không phải số, dấu phân cách hay dấu âm. Giữ cả '−' (U+2212) vì đó là dấu trừ
+  // thật trong văn bản tiếng Việt, khác với '-' của bàn phím.
+  let s = raw.replace(/[+%\s]/g, '').replace(/−/g, '-');
+
+  // "1.234" trong tiếng Việt là một nghìn hai trăm ba tư, không phải 1.234. Chỉ coi dấu chấm
+  // là phân cách nghìn khi nó khớp đúng khuôn nhóm ba chữ số — mọi trường hợp khác giữ nguyên
+  // vì phần lớn số trên trang này do JS sinh ra với dấu chấm thập phân.
+  if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+
+  const num = Number(s);
+  if (s !== '' && Number.isFinite(num)) return { num };
+
+  return { text: raw.toLocaleLowerCase('vi') };
+}
+
+/** Cột chỉ đáng sắp xếp khi có ít nhất một ô đọc được — cột chỉ chứa thanh vẽ thì không. */
+function columnSortable(rows, index) {
+  return rows.some((tr) => {
+    const v = sortCellValue(tr.cells[index]);
+    return !v.empty;
+  });
+}
+
+function sortTable(table, index, asc) {
+  const tbody = table.tBodies[0];
+  if (!tbody) return;
+
+  const rows = [...tbody.rows];
+
+  rows.sort((a, b) => {
+    const x = sortCellValue(a.cells[index]);
+    const y = sortCellValue(b.cells[index]);
+
+    // Ô không biết luôn nằm cuối, BẤT KỂ chiều sắp xếp
+    if (x.empty && y.empty) return 0;
+    if (x.empty) return 1;
+    if (y.empty) return -1;
+
+    if ('num' in x && 'num' in y) return asc ? x.num - y.num : y.num - x.num;
+
+    const cmp = String(x.text ?? x.num).localeCompare(String(y.text ?? y.num), 'vi');
+    return asc ? cmp : -cmp;
+  });
+
+  rows.forEach((tr) => tbody.appendChild(tr));
+}
+
+function markSortableHeaders(table) {
+  const tbody = table.tBodies[0];
+  const rows = tbody ? [...tbody.rows] : [];
+  if (rows.length < 2) return;
+
+  [...(table.tHead?.rows[0]?.cells || [])].forEach((th, i) => {
+    if (th.dataset.sortReady) return;
+    if (!columnSortable(rows, i)) return;
+
+    th.dataset.sortReady = '1';
+    th.dataset.index = String(i);
+    th.tabIndex = 0;
+    th.setAttribute('role', 'button');
+    th.title = 'Bấm để sắp xếp';
+    if (!$('.sort', th)) th.insertAdjacentHTML('beforeend', '<span class="sort" aria-hidden="true">↕</span>');
+  });
+}
+
+function applySort(th) {
+  const table = th.closest('table');
+  const index = Number(th.dataset.index);
+
+  // Bấm lại cùng cột thì đảo chiều; sang cột mới thì bắt đầu bằng GIẢM DẦN, vì với bảng số
+  // liệu câu hỏi đầu tiên gần như luôn là "cái nào lớn nhất".
+  const asc = th.getAttribute('aria-sort') === 'descending';
+
+  [...(table.tHead?.rows[0]?.cells || [])].forEach((other) => {
+    other.removeAttribute('aria-sort');
+    const icon = $('.sort', other);
+    if (icon) icon.textContent = '↕';
+  });
+
+  th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
+  const icon = $('.sort', th);
+  if (icon) icon.textContent = asc ? '↑' : '↓';
+
+  sortTable(table, index, asc);
+}
+
+/**
+ * Uỷ quyền ở cấp document thay vì gắn vào từng bảng.
+ *
+ * Chín bảng trong trang được vẽ bằng chuỗi HTML ở chín chỗ khác nhau, và còn bảng sẽ thêm về
+ * sau. Gắn tay thì mỗi lần thêm bảng lại phải nhớ gọi — và lần quên đầu tiên sẽ là một bảng
+ * im lặng không sắp xếp được. Uỷ quyền thì bảng mới tự có, không cần biết gì.
+ *
+ * Bảng nào tự lo việc sắp xếp (bảng chỉ số render lại từ mô hình dữ liệu) thì khai
+ * data-sort="custom" để đứng ngoài.
+ */
+function setupTableSorting() {
+  const handle = (th) => {
+    if (!th || th.closest('table[data-sort="custom"]')) return;
+    if (!th.dataset.sortReady) markSortableHeaders(th.closest('table'));
+    if (th.dataset.sortReady) applySort(th);
+  };
+
+  document.addEventListener('click', (e) => {
+    handle(e.target.closest('thead th'));
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const th = e.target.closest?.('thead th');
+    if (!th || th.closest('table[data-sort="custom"]')) return;
+    e.preventDefault();
+    handle(th);
+  });
+
+  // Gắn dấu hiệu bấm được cho mọi bảng đã có và mọi bảng vẽ thêm sau này
+  const mark = () => $$('table:not([data-sort="custom"])').forEach(markSortableHeaders);
+  new MutationObserver(mark).observe($('#main'), { childList: true, subtree: true });
+  mark();
+}
+
 /* ============================ Tab & theme ============================ */
 
 /** Tab nào đã nạp dữ liệu rồi, để không gọi lại mỗi lần người dùng bấm qua bấm lại. */
@@ -1916,4 +2054,5 @@ function applyTheme(theme) {
 setupTheme();
 setupTabs();
 setupSubTabs();
+setupTableSorting();
 boot();

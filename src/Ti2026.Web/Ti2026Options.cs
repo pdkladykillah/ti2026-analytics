@@ -56,8 +56,15 @@ public class Ti2026Options
 
 public class OpenDotaOptions
 {
-    /// <summary>Chủ động giới hạn, không đợi bị 429 rồi mới xử lý.</summary>
-    public double RequestsPerSecond { get; set; } = 1;
+    /// <summary>
+    /// Chủ động giới hạn, không đợi bị 429 rồi mới xử lý.
+    ///
+    /// 0.8 chứ không phải 1: hạn mức miễn phí của OpenDota là 60 request/phút, và 1 req/s
+    /// bằng ĐÚNG 60/phút — ngồi ngay trên vạch nên thỉnh thoảng vẫn ăn 429 tuỳ cách nguồn
+    /// tính cửa sổ thời gian. Đã gặp thật khi nạp bù: chạy êm hơn trăm ván rồi 429.
+    /// 0.8 tương đương 48/phút, đủ dưới vạch, và một lượt nạp bù 1790 ván chỉ dài thêm 7 phút.
+    /// </summary>
+    public double RequestsPerSecond { get; set; } = 0.8;
 
     public string BaseUrl { get; set; } = "https://api.opendota.com/api/";
 }

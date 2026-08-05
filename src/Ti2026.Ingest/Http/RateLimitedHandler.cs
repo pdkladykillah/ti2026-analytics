@@ -17,6 +17,9 @@ public sealed class RateLimitedHandler(double requestsPerSecond) : DelegatingHan
 
     private DateTimeOffset _lastSent = DateTimeOffset.MinValue;
 
+    /// <summary>Khi nguồn không nói Retry-After thì tự chọn mức lùi này.</summary>
+    public static readonly TimeSpan DefaultBackoff = TimeSpan.FromSeconds(30);
+
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken ct)
     {
@@ -39,11 +42,37 @@ public sealed class RateLimitedHandler(double requestsPerSecond) : DelegatingHan
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
-            var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(30);
-            await Task.Delay(retryAfter, ct);
+            // TUYỆT ĐỐI KHÔNG ngủ ở đây.
+            //
+            // Bản đầu tiên gọi Task.Delay(30s) tại chỗ này. Nhưng Task.Delay bên trong
+            // SendAsync tính vào HttpClient.Timeout, mà timeout cũng là 30 giây — nên mọi 429
+            // đều biến thành TaskCanceledException. Hậu quả thật, đã thấy trên production:
+            // tầng trên mất khả năng phân biệt "bị giới hạn tốc độ" với "mạng chết", exception
+            // vượt qua khối catch (chỉ bắt HttpRequestException), và cả mẻ 200 ván bị rollback
+            // sau khi đã tải xong hơn một trăm ván.
+            //
+            // Cách đúng: đẩy mốc cho phép của request KẾ TIẾP ra xa, rồi trả 429 về NGAY để
+            // tầng trên tự quyết định.
+            var retryAfter = response.Headers.RetryAfter?.Delta ?? DefaultBackoff;
+            await DeferNextRequestAsync(retryAfter, ct);
         }
 
         return response;
+    }
+
+    /// <summary>Lùi mốc gửi để request kế tiếp phải chờ đúng <paramref name="delay"/>.</summary>
+    private async Task DeferNextRequestAsync(TimeSpan delay, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var next = DateTimeOffset.UtcNow + delay - _minInterval;
+            if (next > _lastSent) _lastSent = next;
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     protected override void Dispose(bool disposing)

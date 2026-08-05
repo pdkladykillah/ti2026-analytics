@@ -30,6 +30,13 @@ public class MatchDetailIngester(
     /// </summary>
     public const int SchemaVersion = 2;
 
+    /// <summary>
+    /// Số lỗi LIÊN TIẾP thì dừng mẻ. Lỗi rải rác là chuyện thường (một ván OpenDota chưa parse
+    /// xong), nhưng ba lỗi liền nhau gần như luôn là hết hạn mức trong ngày hoặc nguồn đang
+    /// sập — cố thêm 190 lần nữa chỉ làm tệ hơn và có thể bị chặn IP.
+    /// </summary>
+    public const int MaxConsecutiveFailures = 3;
+
     public async Task<int> IngestAsync(int maxMatchesPerRun, CancellationToken ct)
     {
         await RelinkOrphanPlayersAsync(ct);
@@ -61,6 +68,7 @@ public class MatchDetailIngester(
             .ToDictionaryAsync(p => p.OpenDotaAccountId!.Value, p => p.Id, ct);
 
         var done = 0;
+        var failuresInARow = 0;
 
         foreach (var matchId in pending)
         {
@@ -70,22 +78,51 @@ public class MatchDetailIngester(
             try
             {
                 detail = await client.GetMatchAsync(matchId, ct);
+                failuresInARow = 0;
             }
-            catch (HttpRequestException ex)
+            // Host đang tắt: phải để lan ra, không được coi là lỗi tạm thời.
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-                // Một ván lỗi không được phép làm hỏng cả mẻ. Không đánh dấu đã nạp để
-                // vòng sau thử lại.
-                logger.LogWarning(ex, "Không lấy được match detail {MatchId}, sẽ thử lại vòng sau", matchId);
+                throw;
+            }
+            // Mọi lỗi mạng tạm thời khác. Bắt rộng có chủ đích: bản trước chỉ bắt
+            // HttpRequestException, và một TaskCanceledException do timeout đã lọt qua rồi xoá
+            // sạch công của hơn một trăm ván đã tải xong — vì orchestrator rollback cả mẻ.
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException
+                                             or TimeoutException)
+            {
+                failuresInARow++;
+                logger.LogWarning(ex,
+                    "Không lấy được match detail {MatchId} (lỗi liên tiếp thứ {Count}/{Max})",
+                    matchId, failuresInARow, MaxConsecutiveFailures);
+
+                // Dừng ĐẸP thay vì cố thêm 190 lần nữa. Thoát bằng break để hàm trả về bình
+                // thường, nhờ đó orchestrator COMMIT phần đã nạp được. Ném ra ở đây thì phần
+                // đó mất trắng — mà nguyên nhân thường chỉ là hết hạn mức trong ngày, tức là
+                // thử lại vòng sau chắc chắn được.
+                if (failuresInARow >= MaxConsecutiveFailures)
+                {
+                    logger.LogWarning(
+                        "Dừng mẻ sau {Count} lỗi liên tiếp — giữ {Done} ván đã nạp, phần còn lại "
+                        + "để vòng sau. Thường là do hết hạn mức của nguồn.",
+                        failuresInARow, done);
+                    break;
+                }
+
                 continue;
             }
 
             await ApplyAsync(matchId, detail, playersByAccount, ct);
 
-            // Lưu theo TỪNG ván, không dồn tới cuối mẻ. Hai lý do, cả hai đều do mốc mua đồ:
-            // một ván sinh ~570 hàng, dồn 200 ván là hơn 100 nghìn thực thể trong change
-            // tracker — chậm dần và ăn hết bộ nhớ của container 512 MB. Và với một lượt nạp bù
-            // kéo dài nửa tiếng, mất mạng ở ván thứ 150 không được phép xoá công của 149 ván
-            // trước đó.
+            // Đẩy xuống DB theo TỪNG ván rồi xoá change tracker, thay vì dồn tới cuối mẻ.
+            // Lý do là mốc mua đồ: một ván sinh ~570 hàng, dồn 200 ván là hơn 100 nghìn thực
+            // thể trong change tracker — chậm dần theo cấp số và ăn hết bộ nhớ của container
+            // 512 MB.
+            //
+            // LƯU Ý phạm vi: IngestOrchestrator bọc cả vòng trong MỘT transaction, nên đây
+            // KHÔNG phải là commit. Mất mạng giữa mẻ vẫn rollback toàn bộ mẻ đó. Cái thu được
+            // ở đây là bộ nhớ, không phải tính bền vững — và trần maxMatchesPerRun mới là thứ
+            // giới hạn thiệt hại khi mẻ dài bị gãy.
             await db.SaveChangesAsync(ct);
             db.ChangeTracker.Clear();
 

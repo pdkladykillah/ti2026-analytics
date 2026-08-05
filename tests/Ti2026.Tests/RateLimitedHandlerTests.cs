@@ -55,22 +55,51 @@ public class RateLimitedHandlerTests
             "gọi song song vẫn phải bị nối đuôi, nếu không thì rate limit vô nghĩa");
     }
 
+    /// <summary>
+    /// Bản trước của test này assert "bị 429 thì phải chờ đúng Retry-After TRƯỚC KHI trả về" —
+    /// tức mã hoá chính cái lỗi thành kỳ vọng, và test vẫn xanh trong lúc production gãy.
+    ///
+    /// Vì sao chờ tại chỗ là sai: Task.Delay bên trong SendAsync tính vào HttpClient.Timeout.
+    /// Mức lùi mặc định 30 giây bằng đúng timeout 30 giây, nên MỌI 429 đều biến thành
+    /// TaskCanceledException. Tầng trên chỉ bắt HttpRequestException nên exception lọt qua, và
+    /// orchestrator rollback cả mẻ 200 ván sau khi đã tải xong hơn một trăm ván.
+    /// </summary>
     [Fact]
-    public async Task Ton_trong_Retry_After_khi_bi_429()
+    public async Task Bi_429_thi_tra_ve_ngay_khong_ngu_trong_request()
     {
         var handler = new RateLimitedHandler(requestsPerSecond: 1000)
         {
-            InnerHandler = new TooManyRequestsHandler(TimeSpan.FromMilliseconds(150)),
+            InnerHandler = new TooManyRequestsHandler(TimeSpan.FromSeconds(30)),
         };
-        using var client = new HttpClient(handler);
+        using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(1) };
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var res = await client.GetAsync("https://example.test/x");
         sw.Stop();
 
-        res.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
-        sw.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(140,
-            "bị 429 thì phải chờ đúng Retry-After trước khi trả về");
+        res.StatusCode.Should().Be(HttpStatusCode.TooManyRequests,
+            "tầng trên phải NHÌN THẤY 429 để phân biệt bị giới hạn với mạng chết");
+        sw.ElapsedMilliseconds.Should().BeLessThan(500,
+            "mức lùi 30 giây không được tiêu vào timeout của chính request đó");
+    }
+
+    [Fact]
+    public async Task Bi_429_thi_lui_request_KE_TIEP_dung_Retry_After()
+    {
+        var inner = new FlakyHandler(retryAfter: TimeSpan.FromMilliseconds(300));
+        var handler = new RateLimitedHandler(requestsPerSecond: 1000) { InnerHandler = inner };
+        using var client = new HttpClient(handler);
+
+        var first = await client.GetAsync("https://example.test/1");
+        first.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var second = await client.GetAsync("https://example.test/2");
+        sw.Stop();
+
+        second.StatusCode.Should().Be(HttpStatusCode.OK);
+        sw.ElapsedMilliseconds.Should().BeGreaterThanOrEqualTo(250,
+            "sau 429 thì request kế tiếp mới là chỗ phải chờ — chờ ở đó không tốn timeout của ai");
     }
 
     private sealed class TooManyRequestsHandler(TimeSpan retryAfter) : HttpMessageHandler
@@ -78,6 +107,23 @@ public class RateLimitedHandlerTests
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage r, CancellationToken ct)
         {
+            var res = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+            res.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(retryAfter);
+            return Task.FromResult(res);
+        }
+    }
+
+    /// <summary>429 lần đầu, rồi OK — để đo xem mức lùi có rơi vào request kế tiếp không.</summary>
+    private sealed class FlakyHandler(TimeSpan retryAfter) : HttpMessageHandler
+    {
+        private int _calls;
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage r, CancellationToken ct)
+        {
+            if (Interlocked.Increment(ref _calls) > 1)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+
             var res = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
             res.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(retryAfter);
             return Task.FromResult(res);

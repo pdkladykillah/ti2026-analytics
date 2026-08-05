@@ -80,7 +80,7 @@ public class MatchDetailIngesterTests : IDisposable
     }
     """;
 
-    private static MatchDetailIngester Ingester(Ti2026DbContext db, StubHandler handler) =>
+    private static MatchDetailIngester Ingester(Ti2026DbContext db, HttpMessageHandler handler) =>
         new(db,
             new OpenDotaClient(new HttpClient(handler) { BaseAddress = new Uri("https://x/api/") }),
             NullLogger<MatchDetailIngester>.Instance);
@@ -244,6 +244,94 @@ public class MatchDetailIngesterTests : IDisposable
         (await db.DraftEvents.CountAsync()).Should().Be(0);
         (await db.ItemPurchases.CountAsync()).Should().Be(0);
         (await db.MatchPlayers.CountAsync()).Should().Be(1);
+    }
+
+    /// <summary>
+    /// 429 phải được coi là lỗi tạm thời, KHÔNG được ném ra khỏi hàm.
+    ///
+    /// Đây là lỗi đã xảy ra thật trên production: mức lùi 30 giây của RateLimitedHandler biến
+    /// 429 thành TaskCanceledException, khối catch chỉ bắt HttpRequestException nên nó lọt qua,
+    /// và IngestOrchestrator rollback cả mẻ — hơn một trăm ván đã tải xong bị xoá sạch.
+    /// </summary>
+    [Fact]
+    public async Task Bi_429_thi_dung_dep_va_GIU_phan_da_nap()
+    {
+        using var db = NewDb();
+
+        // 3 ván: hai ván đầu OK, từ ván thứ ba trở đi luôn 429
+        for (var i = 0; i < 3; i++)
+        {
+            db.Matches.Add(new Match
+            {
+                Id = 900001 + i,
+                StartTime = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(-i),
+                RadiantWin = true,
+            });
+        }
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var handler = new ThrottleAfterHandler(okCalls: 2);
+        var done = await Ingester(db, handler).IngestAsync(10, CancellationToken.None);
+
+        done.Should().Be(2, "hai ván nạp được phải được giữ, không bị mất vì ván thứ ba lỗi");
+
+        db.ChangeTracker.Clear();
+        (await db.Matches.CountAsync(m => m.DetailSchemaVersion == MatchDetailIngester.SchemaVersion))
+            .Should().Be(2);
+        (await db.Matches.CountAsync(m => m.DetailSchemaVersion == 0))
+            .Should().Be(1, "ván lỗi phải còn nguyên trong hàng chờ để vòng sau thử lại");
+    }
+
+    /// <summary>
+    /// Nhiều lỗi liên tiếp thì dừng, không cố hết 200 ván. Cố thêm chỉ làm nguồn chặn IP —
+    /// và mất IP là mất luôn nguồn dữ liệu, không phải chỉ một vòng ingest.
+    /// </summary>
+    [Fact]
+    public async Task Dung_sau_so_lan_loi_lien_tiep_thay_vi_co_het_me()
+    {
+        using var db = NewDb();
+
+        for (var i = 0; i < 20; i++)
+        {
+            db.Matches.Add(new Match
+            {
+                Id = 900001 + i,
+                StartTime = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(-i),
+                RadiantWin = true,
+            });
+        }
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var handler = new ThrottleAfterHandler(okCalls: 0);
+        await Ingester(db, handler).IngestAsync(20, CancellationToken.None);
+
+        handler.Calls.Should().Be(MatchDetailIngester.MaxConsecutiveFailures,
+            "phải dừng đúng sau ngưỡng lỗi liên tiếp, không gọi tiếp 17 lần nữa");
+    }
+
+    /// <summary>Trả OK cho <c>okCalls</c> lần đầu, sau đó luôn 429.</summary>
+    private sealed class ThrottleAfterHandler(int okCalls) : HttpMessageHandler
+    {
+        public int Calls { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage r, CancellationToken ct)
+        {
+            Calls++;
+
+            if (Calls <= okCalls)
+            {
+                // match_id trong payload không quan trọng: ingester dùng id từ hàng chờ.
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(Payload, System.Text.Encoding.UTF8, "application/json"),
+                });
+            }
+
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.TooManyRequests));
+        }
     }
 
     public void Dispose()

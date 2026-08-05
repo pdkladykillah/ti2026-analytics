@@ -55,5 +55,18 @@ public class Match
     /// </summary>
     public int DetailSchemaVersion { get; set; }
 
+    /// <summary>Giây tới lần hạ Roshan ĐẦU TIÊN. null = ván không ai hạ Roshan.</summary>
+    public int? FirstRoshanSeconds { get; set; }
+
+    /// <summary>
+    /// Vàng dẫn trước lớn nhất mà bên THUA từng có — OpenDota gọi là "throw".
+    /// Đây là chất kể chuyện: "dẫn trước 12 nghìn vàng rồi thua" là một trận đáng nhớ,
+    /// còn bảng tỷ số thì chỉ ghi 0–1.
+    /// </summary>
+    public int? ThrowGold { get; set; }
+
+    /// <summary>Vàng bị dẫn lớn nhất mà bên THẮNG từng chịu — mặt kia của throw.</summary>
+    public int? ComebackGold { get; set; }
+
     public List<MatchPlayer> Players { get; set; } = [];
 }

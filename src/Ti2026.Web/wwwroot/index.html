@@ -145,7 +145,7 @@
         <br><br><b>Điểm gắn với ĐỘI, không gắn với đội hình.</b> Đổi người thì điểm vẫn giữ nguyên, nên với đội vừa thay đội hình, con số này đang nói về phiên bản cũ của họ.</div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Bảng Elo">
         <header>
           <h2>Sức mạnh theo Elo</h2>
           <p class="desc">Winrate không biết đối thủ là ai. Elo thưởng khi thắng đội mạnh, nên hai con số mới so sánh được. Mốc 1500 là quy ước — chỉ <b>khoảng cách</b> giữa hai đội mới có nghĩa.</p>
@@ -153,7 +153,7 @@
         <div id="ratings-body"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Dự đoán">
         <header>
           <h2>Dự đoán cặp đấu</h2>
           <p class="desc">Xác suất tính từ chênh lệch Elo. Các mức kèo dựa trên phân phối thực tế, không phải trung bình.</p>
@@ -168,7 +168,7 @@
         <div id="predict-body"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Độ tin cậy">
         <header>
           <h2>Mô hình này đáng tin đến đâu</h2>
           <p class="desc">Kiểm hồi tố <b>ngoài mẫu</b>: tham số được chọn trên 70% trận cũ nhất, rồi chấm điểm trên 30% trận mới nhất mà phần đó không tham gia việc chọn. Mỗi trận được dự đoán bằng Elo <b>tại thời điểm trước trận đó</b>. Một dự đoán không đo được là một dự đoán không bác bỏ được.</p>
@@ -176,7 +176,7 @@
         <div id="calibration-body"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Bản game">
         <header>
           <h2>Bản game và sức nặng của dữ liệu</h2>
           <p class="desc">Meta đổi theo từng bản, nên dữ liệu bản cũ đáng ra phải nhẹ hơn. Đây là kết quả đo xem điều đó có đúng trong thực tế không.</p>
@@ -255,7 +255,20 @@
 
     <!-- ===== Tier list ===== -->
     <section class="view" id="view-tiers" role="tabpanel" aria-labelledby="tab-tiers" hidden>
-      <div class="card">
+      <div class="card" data-sec="Tính từ dữ liệu">
+        <header>
+          <h2>Tier list tính từ dữ liệu</h2>
+          <p class="desc" id="tl-desc">Tính lại mỗi vòng ingest từ chính bản game đang chạy. Tự chuyển sang bản mới khi có ván đầu tiên của bản đó.</p>
+        </header>
+        <div class="controls" id="tl-source">
+          <button class="pill" type="button" data-src="pro" aria-pressed="true">Chỉ giải chuyên nghiệp</button>
+          <button class="pill" type="button" data-src="combined" aria-pressed="false">Gộp giải + pub</button>
+        </div>
+        <div class="controls" id="tl-positions"></div>
+        <div id="tl-body"></div>
+      </div>
+
+      <div class="card" data-sec="Biên tập (đóng băng)">
         <header>
           <h2>Tier list hero theo vị trí</h2>
           <p class="desc" id="tier-patch"></p>
@@ -269,7 +282,7 @@
         <div id="tier-caveat"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Hero thực chiến">
         <header>
           <h2>Hero thực chiến</h2>
           <p class="desc">Đo từ trận thật của giải, khác với tier list ở trên vốn là nhận định dựa trên winrate pub.</p>
@@ -289,7 +302,7 @@
         <div><b>Đọc trang này thế nào.</b> Đây là dữ liệu Captains Mode chuyên nghiệp, không phải dữ liệu pub. Nó trả lời tốt hai câu — <i>bản này cái gì mạnh</i> và <i>mốc thời gian chuẩn là bao nhiêu</i> — và trả lời tệ mọi thứ cần 5 người phối hợp.</div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Cấm / chọn">
         <header>
           <h2>Hero nào đang được coi trọng</h2>
           <p class="desc" id="draft-desc">Bị <b>cấm</b> cũng là được coi trọng — và với hero mạnh nhất thì đó lại là hình thức chủ yếu, nên winrate một mình sẽ bỏ sót chúng. Cấm càng sớm nghĩa là càng bị e dè.</p>
@@ -297,7 +310,7 @@
         <div id="draft-body"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Mốc lên đồ">
         <header>
           <h2>Pro lên đồ theo mốc nào</h2>
           <p class="desc">Mốc giây thật, tách ván thắng khỏi ván thua. Cùng một món mà ván thắng lên sớm hơn rõ rệt nghĩa là mốc đó thật sự quyết định.</p>
@@ -309,7 +322,7 @@
         <div id="item-body"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Thắng lane">
         <header>
           <h2>Ai thắng lane ở bản này</h2>
           <p class="desc">Hiệu suất lane của OpenDota: phần trăm vàng, kinh nghiệm và lính đạt được so với mức lý tưởng. So với <b>trung vị của chính vị trí đó</b> — đem hero đi mid so với hero hỗ trợ bằng số tuyệt đối là so hai thứ khác nhau.</p>
@@ -318,7 +331,15 @@
         <div id="lane-body"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-sec="Pro đang luyện gì">
+        <header>
+          <h2>Pro đang luyện hero gì</h2>
+          <p class="desc">Ván xếp hạng thường của chính 96 tuyển thủ dự giải. Trận chính thức là chỉ báo <b>trễ</b> — đội chỉ mang ra sân thứ họ đã tin. Đây là chỉ báo <b>sớm</b>.</p>
+        </header>
+        <div id="propub-body"></div>
+      </div>
+
+      <div class="card" data-sec="So với bạn">
         <header>
           <h2>So hero pool của bạn với pro</h2>
           <p class="desc">Nhập Dota account ID hoặc Steam ID64. Chỉ đọc hồ sơ <b>công khai</b> và <b>không lưu</b> gì xuống cơ sở dữ liệu.</p>

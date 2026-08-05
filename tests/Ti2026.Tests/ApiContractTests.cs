@@ -249,6 +249,38 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
     /// chặn TRƯỚC khi phát sinh request thật — nếu không thì ai cũng ép VPS gọi OpenDota bằng
     /// rác, và bị chặn IP là mất nguồn dữ liệu cho cả ứng dụng.
     /// </summary>
+    /// <summary>
+    /// Tier list tính động và job pub của pro đều phải xuống cấp tử tế khi chưa có dữ liệu —
+    /// đây là trạng thái của mọi lần deploy đầu tiên.
+    /// </summary>
+    [Fact]
+    public async Task api_tierlist_va_pro_pub_chua_co_du_lieu_thi_noi_thang()
+    {
+        var client = factory.CreateClient();
+
+        using var tl = JsonDocument.Parse(await client.GetStringAsync("/api/tierlist"));
+        tl.RootElement.GetProperty("heroes").GetArrayLength().Should().Be(0);
+        tl.RootElement.GetProperty("note").GetString().Should().NotBeNullOrWhiteSpace();
+
+        using var pp = JsonDocument.Parse(await client.GetStringAsync("/api/pro-pub"));
+        pp.RootElement.GetProperty("heroes").GetArrayLength().Should().Be(0);
+        pp.RootElement.GetProperty("note").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    /// <summary>
+    /// api/me hứa KHÔNG lưu gì xuống DB, nên nó cũng không được trả URL avatar: cache thì phá
+    /// lời hứa, mà hotlink thì không hiện được. Test này khoá lời hứa đó lại.
+    /// </summary>
+    [Fact]
+    public async Task api_me_khong_tra_ve_avatar()
+    {
+        var res = await factory.CreateClient().GetAsync("/api/me?id=86745912");
+
+        // Không có mạng trong test nên tra cứu sẽ trượt; điều cần khoá là shape, không phải dữ liệu
+        var body = await res.Content.ReadAsStringAsync();
+        body.Should().NotContain("\"avatar\"");
+    }
+
     [Fact]
     public async Task api_me_tu_choi_id_khong_hop_le_truoc_khi_goi_ra_ngoai()
     {

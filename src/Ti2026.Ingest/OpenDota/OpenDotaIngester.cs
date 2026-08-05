@@ -40,6 +40,7 @@ public class OpenDotaIngester(
 
         await UpdateHeroesAsync(ct);
         await UpdateItemsAsync(ct);
+        await UpdateHeroStatsAsync(ct);
         await UpdatePlayerAvatarsAsync(ct);
         await UpdateLeaguesAsync(ct);
 
@@ -117,6 +118,54 @@ public class OpenDotaIngester(
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Nạp {Count} hero vào bảng Heroes", heroes.Count);
+    }
+
+    /// <summary>
+    /// Nạp số liệu tổng hợp mỗi hero: pub theo bậc rank, và pro theo cách đo của OpenDota.
+    ///
+    /// Đây là nguồn PUB duy nhất của cả dự án, và là thứ biến tier list từ một bản chụp đóng
+    /// băng thành bảng tự cập nhật. Tier list biên tập cũ lấy winrate pub từ Dotabuff nhập tay
+    /// nên nó đứng yên kể từ ngày nhập.
+    ///
+    /// Gọi MỖI VÒNG, không gác: response ~165 KB và số liệu này đổi liên tục — gác lại thì
+    /// đúng cái nó sinh ra để giải quyết lại quay về.
+    /// </summary>
+    private async Task UpdateHeroStatsAsync(CancellationToken ct)
+    {
+        var stats = await client.GetHeroStatsAsync(ct);
+        if (stats.Count == 0)
+        {
+            logger.LogWarning("OpenDota trả về 0 hero stat — giữ nguyên bảng cũ");
+            return;
+        }
+
+        var existing = await db.HeroStats.ToDictionaryAsync(x => x.HeroId, ct);
+        var now = DateTime.UtcNow;
+
+        foreach (var s in stats)
+        {
+            if (!existing.TryGetValue(s.Id, out var row))
+            {
+                row = new HeroStat { HeroId = s.Id };
+                db.HeroStats.Add(row);
+            }
+
+            row.ProPick = s.ProPick ?? 0;
+            row.ProWin = s.ProWin ?? 0;
+            row.ProBan = s.ProBan ?? 0;
+            row.PubPick = s.PubPick ?? 0;
+            row.PubWin = s.PubWin ?? 0;
+
+            // Bậc 7 + 8 = Divine + Immortal. Pub toàn bậc trộn cả người mới chơi, mà hero mạnh
+            // ở bậc thấp thường chỉ là hero tự chơi được một mình — không nói gì về meta.
+            row.HighPick = s.SumBrackets("pick", 7, 8);
+            row.HighWin = s.SumBrackets("win", 7, 8);
+
+            row.FetchedAt = now;
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Nạp số liệu cho {Count} hero", stats.Count);
     }
 
     /// <summary>

@@ -27,6 +27,27 @@ public static class MatchDetailAnalyzer
         FirstBloodTimeSeconds: m.FirstBloodTime);
 
     /// <summary>
+    /// Giây tới lần hạ Roshan ĐẦU TIÊN.
+    ///
+    /// Lấy min chứ không lấy phần tử đầu: objectives không được hứa là đã sắp xếp, và một ván
+    /// có tới ba, bốn lần hạ Roshan.
+    ///
+    /// Trả null khi ván không ai hạ Roshan HOẶC khi ván chưa được parse — hai chuyện khác nhau
+    /// nhưng cùng dẫn tới "không biết", và gán 0 sẽ tạo ra những ván "hạ Roshan ở giây 0".
+    /// </summary>
+    public static int? FirstRoshanSeconds(OpenDotaMatchDetail m)
+    {
+        var times = m.Objectives?
+            .Where(o => string.Equals(o.Type, "CHAT_MESSAGE_ROSHAN_KILL",
+                StringComparison.OrdinalIgnoreCase))
+            .Select(o => o.Time)
+            .Where(t => t > 0)
+            .ToList();
+
+        return times is { Count: > 0 } ? times.Min() : null;
+    }
+
+    /// <summary>
     /// Phe lấy first blood, đọc từ objective CHAT_MESSAGE_FIRSTBLOOD.
     ///
     /// Dùng objectives chứ không suy từ kills_log: objectives ghi thẳng player_slot của người

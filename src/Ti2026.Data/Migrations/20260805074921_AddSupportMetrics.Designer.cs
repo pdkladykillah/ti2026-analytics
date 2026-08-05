@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Ti2026.Data;
 
@@ -10,9 +11,11 @@ using Ti2026.Data;
 namespace Ti2026.Data.Migrations
 {
     [DbContext(typeof(Ti2026DbContext))]
-    partial class Ti2026DbContextModelSnapshot : ModelSnapshot
+    [Migration("20260805074921_AddSupportMetrics")]
+    partial class AddSupportMetrics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
@@ -512,45 +515,6 @@ namespace Ti2026.Data.Migrations
                     b.ToTable("Predictions");
                 });
 
-            modelBuilder.Entity("Ti2026.Data.Entities.ProPubMatch", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("GameMode")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("HeroId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("LobbyType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("MatchId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("PlayerId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Won")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("HeroId");
-
-                    b.HasIndex("StartTime");
-
-                    b.HasIndex("PlayerId", "MatchId")
-                        .IsUnique();
-
-                    b.ToTable("ProPubMatches");
-                });
-
             modelBuilder.Entity("Ti2026.Data.Entities.RosterEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -844,17 +808,6 @@ namespace Ti2026.Data.Migrations
                     b.Navigation("TeamA");
 
                     b.Navigation("TeamB");
-                });
-
-            modelBuilder.Entity("Ti2026.Data.Entities.ProPubMatch", b =>
-                {
-                    b.HasOne("Ti2026.Data.Entities.Player", "Player")
-                        .WithMany()
-                        .HasForeignKey("PlayerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Player");
                 });
 
             modelBuilder.Entity("Ti2026.Data.Entities.RosterEntry", b =>

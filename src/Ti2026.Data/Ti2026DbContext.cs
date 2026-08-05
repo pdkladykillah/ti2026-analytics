@@ -23,6 +23,8 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<DraftEvent> DraftEvents => Set<DraftEvent>();
     public DbSet<ItemPurchase> ItemPurchases => Set<ItemPurchase>();
     public DbSet<Item> Items => Set<Item>();
+    public DbSet<HeroStat> HeroStats => Set<HeroStat>();
+    public DbSet<ProPubMatch> ProPubMatches => Set<ProPubMatch>();
 
     /// <summary>
     /// Mọi DateTime ghi xuống đều chuyển sang UTC, mọi DateTime đọc lên đều được gắn
@@ -103,6 +105,22 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<ItemPurchase>()
             .HasOne(x => x.Match).WithMany()
             .HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
+
+        // Một người + một ván là duy nhất. Chốt này biến việc chạy lại job thành vô hại.
+        b.Entity<ProPubMatch>().HasIndex(x => new { x.PlayerId, x.MatchId }).IsUnique();
+        b.Entity<ProPubMatch>().HasIndex(x => x.StartTime);
+        b.Entity<ProPubMatch>().HasIndex(x => x.HeroId);
+        b.Entity<ProPubMatch>()
+            .HasOne(x => x.Player).WithMany()
+            .HasForeignKey(x => x.PlayerId).OnDelete(DeleteBehavior.Cascade);
+
+        // Khoá chính là hero id của OpenDota, không tự tăng. Ba tỷ lệ là thuộc tính tính toán
+        // nên không lưu: lưu cả tử số, mẫu số lẫn thương số là ba chỗ có thể lệch nhau.
+        b.Entity<HeroStat>().HasKey(x => x.HeroId);
+        b.Entity<HeroStat>().Property(x => x.HeroId).ValueGeneratedNever();
+        b.Entity<HeroStat>().Ignore(x => x.PubWinrate);
+        b.Entity<HeroStat>().Ignore(x => x.HighWinrate);
+        b.Entity<HeroStat>().Ignore(x => x.ProWinrate);
 
         // Khoá chính là chuỗi vì đó là thứ ItemPurchase lưu; thêm một id số chỉ tạo thêm một
         // bước tra cứu mà không giải quyết gì.

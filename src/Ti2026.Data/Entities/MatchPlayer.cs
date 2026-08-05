@@ -57,4 +57,19 @@ public class MatchPlayer
     public int? HeroDamage { get; set; }
     public int? TowerDamage { get; set; }
     public int? ObserversPlaced { get; set; }
+
+    // ---------- Chỉ số HỖ TRỢ ----------
+    // Khối này tồn tại vì K/D/A và GPM không đo được công của người chơi hỗ trợ. Một người
+    // stack rừng, cắm mắt và giữ địch đứng hình 40 giây có thể có bảng điểm trông rất tệ.
+
+    public int? SentriesPlaced { get; set; }
+    public int? CampsStacked { get; set; }
+    public int? RunePickups { get; set; }
+    public int? Buybacks { get; set; }
+
+    /// <summary>Tổng số GIÂY giữ địch đứng hình. Là số thực, không phải số nguyên.</summary>
+    public double? StunSeconds { get; set; }
+
+    /// <summary>Tỷ lệ tham gia giao tranh, 0–1 theo cách tính của OpenDota.</summary>
+    public double? TeamfightParticipation { get; set; }
 }

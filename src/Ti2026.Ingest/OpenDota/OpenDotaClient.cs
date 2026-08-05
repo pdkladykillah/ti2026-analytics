@@ -19,6 +19,14 @@ public class OpenDotaClient(HttpClient http)
     public Task<List<OpenDotaHero>> GetHeroesAsync(CancellationToken ct) =>
         GetListAsync<OpenDotaHero>("heroes", ct);
 
+    public Task<List<OpenDotaHeroStat>> GetHeroStatsAsync(CancellationToken ct) =>
+        GetListAsync<OpenDotaHeroStat>("heroStats", ct);
+
+    /// <summary>Ván gần đây của một người chơi, mới nhất trước.</summary>
+    public Task<List<OpenDotaPlayerMatch>> GetPlayerMatchesAsync(
+        long accountId, int limit, CancellationToken ct) =>
+        GetListAsync<OpenDotaPlayerMatch>("players/" + accountId + "/matches?limit=" + limit, ct);
+
     public Task<List<OpenDotaLeague>> GetLeaguesAsync(CancellationToken ct) =>
         GetListAsync<OpenDotaLeague>("leagues", ct);
 

@@ -27,8 +27,9 @@ public class MatchDetailIngester(
     ///
     /// 1 = chỉ số cơ bản + first blood + mốc 10 mạng
     /// 2 = thêm bàn draft, mốc mua đồ, chỉ số lane
+    /// 3 = thêm chỉ số hỗ trợ, mốc Roshan đầu tiên, và vàng dẫn trước bị mất
     /// </summary>
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = 3;
 
     /// <summary>
     /// Số lỗi LIÊN TIẾP thì dừng mẻ. Lỗi rải rác là chuyện thường (một ván OpenDota chưa parse
@@ -187,6 +188,9 @@ public class MatchDetailIngester(
         match.PatchVersion = detail.Patch?.ToString();
         match.DetailsIngestedAt = DateTime.UtcNow;
         match.DetailSchemaVersion = SchemaVersion;
+        match.FirstRoshanSeconds = MatchDetailAnalyzer.FirstRoshanSeconds(detail);
+        match.ThrowGold = detail.Throw;
+        match.ComebackGold = detail.Comeback;
 
         foreach (var p in detail.Players)
         {
@@ -219,6 +223,12 @@ public class MatchDetailIngester(
             existing.HeroDamage = p.HeroDamage;
             existing.TowerDamage = p.TowerDamage;
             existing.ObserversPlaced = p.ObserversPlaced;
+            existing.SentriesPlaced = p.SentriesPlaced;
+            existing.CampsStacked = p.CampsStacked;
+            existing.RunePickups = p.RunePickups;
+            existing.Buybacks = p.Buybacks;
+            existing.StunSeconds = p.StunSeconds;
+            existing.TeamfightParticipation = p.TeamfightParticipation;
         }
     }
 

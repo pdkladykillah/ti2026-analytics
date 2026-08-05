@@ -8,6 +8,7 @@ public class IngestPipeline(
     IngestOrchestrator orchestrator,
     OpenDotaIngester openDota,
     MatchDetailIngester matchDetails,
+    ProPubIngester proPub,
     SnapshotWriter snapshots,
     IngestSchedule schedule,
     IngestGate gate,
@@ -58,6 +59,12 @@ public class IngestPipeline(
             "match-detail",
             c => matchDetails.IngestAsync(schedule.MaxMatchDetailsPerRun, c),
             SanityKind.None, ct);
+
+        // Job theo khung giờ, tự bỏ qua nếu chưa tới hạn — xem ProPubIngester.MinInterval.
+        // Đặt ở đây chứ không thành BackgroundService riêng để nó dùng chung IngestGate: hai
+        // vòng ghi SQLite cùng lúc là cách chắc chắn để gặp lỗi khoá sau 30 giây.
+        await orchestrator.RunSourceAsync(
+            ProPubIngester.Source, proPub.IngestAsync, SanityKind.None, ct);
 
         await orchestrator.RunSourceAsync(
             "snapshot",

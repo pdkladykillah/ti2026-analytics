@@ -28,6 +28,11 @@ public class OpenDotaMatchDetail
     /// Toàn bộ bàn draft, 24 lượt ở thể thức Captains Mode. null ở các thể thức không có draft.
     /// </summary>
     [JsonPropertyName("picks_bans")] public List<OpenDotaPickBan>? PicksBans { get; set; }
+
+    /// <summary>Vàng dẫn trước lớn nhất bên thua từng có. OpenDota tự tính sẵn.</summary>
+    [JsonPropertyName("throw")] public int? Throw { get; set; }
+
+    [JsonPropertyName("comeback")] public int? Comeback { get; set; }
 }
 
 public class OpenDotaPickBan
@@ -88,6 +93,12 @@ public class OpenDotaMatchPlayer
     [JsonPropertyName("hero_damage")] public int? HeroDamage { get; set; }
     [JsonPropertyName("tower_damage")] public int? TowerDamage { get; set; }
     [JsonPropertyName("obs_placed")] public int? ObserversPlaced { get; set; }
+    [JsonPropertyName("sen_placed")] public int? SentriesPlaced { get; set; }
+    [JsonPropertyName("camps_stacked")] public int? CampsStacked { get; set; }
+    [JsonPropertyName("rune_pickups")] public int? RunePickups { get; set; }
+    [JsonPropertyName("buyback_count")] public int? Buybacks { get; set; }
+    [JsonPropertyName("stuns")] public double? StunSeconds { get; set; }
+    [JsonPropertyName("teamfight_participation")] public double? TeamfightParticipation { get; set; }
 
     public bool OnRadiant => IsRadiant ?? PlayerSlot < 128;
 }

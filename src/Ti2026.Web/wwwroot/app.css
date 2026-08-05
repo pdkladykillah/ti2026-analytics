@@ -621,6 +621,43 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 /* Cảnh báo mạnh hơn ghi chú thường: dùng khi tham số mô hình đã lệch khỏi dữ liệu */
 .note.warn { background: var(--neg-soft); color: var(--neg); }
 
+/* ============================ Mục con trong một tab ============================ */
+
+/* Thanh mục con: nhạt hơn nav chính có chủ đích. Hai thanh điều hướng cùng độ đậm thì người
+   dùng không biết cái nào là cấp trên. */
+.subnav {
+  display: flex; flex-wrap: wrap; gap: var(--s-2);
+  margin-bottom: var(--s-4); padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--border);
+}
+.subpill {
+  border: 1px solid transparent; background: transparent; color: var(--muted);
+  padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600;
+  transition: background .15s, color .15s;
+}
+.subpill:hover { background: var(--surface-2); color: var(--ink-2); }
+.subpill[aria-selected="true"] {
+  background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-soft);
+}
+
+/* ============================ Tier list tính động ============================ */
+
+.tl-hero {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: var(--s-2) var(--s-3); border-radius: var(--r-md);
+  background: var(--surface-2); min-width: 88px;
+}
+.tl-hero img { border-radius: var(--r-sm); }
+.tl-name {
+  font-size: 12px; font-weight: 600; color: var(--ink); text-align: center;
+  line-height: 1.25; max-width: 92px;
+}
+/* Con số luôn đi kèm hero: một cái tên trần không nói được vì sao nó ở tier đó */
+.tl-num { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.who { font-size: 12px; color: var(--muted); max-width: 260px; }
+
 /* ============================ Bản game ============================ */
 
 .minibar {

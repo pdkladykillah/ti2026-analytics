@@ -1277,7 +1277,165 @@ async function loadLearn() {
   loadDraft();
   loadItemHeroes();
   loadLanes();
+  loadProPub();
   setupMe();
+}
+
+async function loadProPub() {
+  const body = $('#propub-body');
+  if (!body) return;
+  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+
+  try {
+    const d = await getJson('api/pro-pub');
+
+    if (!d.heroes || !d.heroes.length) {
+      body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa có dữ liệu.')}</div>`;
+      return;
+    }
+
+    const max = Math.max(...d.heroes.map((h) => h.players));
+
+    const rows = d.heroes.slice(0, 25).map((h) => `<tr>
+      <td class="hero-cell">${heroImg(h.image)}<span>${esc(h.name)}</span></td>
+      <td class="num"><b>${h.players}</b></td>
+      <td><div class="minibar"><span style="width:${Math.round((h.players / max) * 100)}%"></span></div></td>
+      <td class="num">${h.games}</td>
+      <td class="num">${h.winrate}%</td>
+      <td class="who">${(h.who || []).map((w) => esc(w)).join(', ')}</td>
+    </tr>`).join('');
+
+    body.innerHTML = `
+      <div class="bento">
+        <article class="kpi p2">
+          <div class="kpi-label">Ván pub đã ghi</div>
+          <div class="kpi-value">${d.totalGames}</div>
+          <div class="kpi-note">${d.days} ngày gần nhất</div>
+        </article>
+        <article class="kpi p4">
+          <div class="kpi-label">Tuyển thủ có dữ liệu</div>
+          <div class="kpi-value">${d.totalPlayers}</div>
+          <div class="kpi-note">${esc(d.schedule || '')}</div>
+        </article>
+      </div>
+
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Hero được nhiều tuyển thủ chuyên nghiệp chơi trong pub gần đây</caption>
+        <thead><tr>
+          <th scope="col">Hero</th><th scope="col">Số người</th><th scope="col">Mức lan</th>
+          <th scope="col">Ván</th><th scope="col">Thắng</th><th scope="col">Ai chơi</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(d.method || '')}<br><br>${esc(d.caveat || '')}</div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/pro-pub</code>.<br><small>${esc(err.serverMessage || err.message)}</small></div>`;
+  }
+}
+
+/* ============================ Tier list tính động ============================ */
+
+const TL = { source: 'pro', position: null };
+
+function setupTierList() {
+  const src = $('#tl-source');
+  const pos = $('#tl-positions');
+  if (!src || src.dataset.ready) return;
+  src.dataset.ready = '1';
+
+  $$('button', src).forEach((btn) => {
+    btn.onclick = () => {
+      TL.source = btn.dataset.src;
+      $$('button', src).forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      loadTierList();
+    };
+  });
+
+  // Nút vị trí: "Tất cả" cộng 5 vị trí. Tên lấy từ hằng số phía server qua lần tải đầu.
+  const positions = [
+    [null, 'Tất cả'], [1, 'Carry'], [2, 'Mid'], [3, 'Offlane'], [4, 'Hỗ trợ 4'], [5, 'Hỗ trợ 5'],
+  ];
+
+  pos.innerHTML = positions.map(([p, label], i) =>
+    `<button class="pill" type="button" data-pos="${p ?? ''}" aria-pressed="${i === 0}">${label}</button>`
+  ).join('');
+
+  $$('button', pos).forEach((btn) => {
+    btn.onclick = () => {
+      TL.position = btn.dataset.pos ? Number(btn.dataset.pos) : null;
+      $$('button', pos).forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      loadTierList();
+    };
+  });
+
+  loadTierList();
+}
+
+const TIER_META = {
+  S: ['Thống trị', 'var(--neg)'],
+  A: ['Rất mạnh', 'var(--pastel-1-ink)'],
+  B: ['Ổn', 'var(--warn)'],
+  C: ['Yếu thế', 'var(--muted)'],
+};
+
+async function loadTierList() {
+  const body = $('#tl-body');
+  body.innerHTML = '<div class="skeleton" style="height:280px"></div>';
+
+  const q = new URLSearchParams({ source: TL.source });
+  if (TL.position) q.set('position', TL.position);
+
+  try {
+    const d = await getJson(`api/tierlist?${q}`);
+
+    if (!d.heroes || !d.heroes.length) {
+      body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa đủ dữ liệu.')}</div>`;
+      return;
+    }
+
+    // Cùng khung nhìn cho cả hai nguồn — đổi nguồn chỉ đổi GIÁ TRỊ, không đổi diện mạo.
+    // Diện mạo đổi thì người đọc tưởng đang xem một thứ khác chứ không phải cùng thứ đo khác đi.
+    const rows = ['S', 'A', 'B', 'C'].map((tier) => {
+      const heroes = d.heroes.filter((h) => h.tier === tier);
+      if (!heroes.length) return '';
+
+      const [label, color] = TIER_META[tier];
+
+      const cards = heroes.map((h) => {
+        const bits = [];
+        if (h.proContestRate !== null) bits.push(`giải ${h.proContestRate}%`);
+        if (TL.source === 'combined' && h.highWinrate !== null) bits.push(`pub ${h.highWinrate}%`);
+        if (h.positionGames) bits.push(`${h.positionGames} ván`);
+
+        return `<div class="tl-hero" title="${esc(h.name + ' · ' + bits.join(' · '))}">
+          ${heroImg(h.image, 58, 33)}
+          <span class="tl-name">${esc(h.name)}</span>
+          <span class="tl-num">${bits[0] || ''}</span>
+        </div>`;
+      }).join('');
+
+      return `<div class="tier-row">
+        <div class="tier-label" style="background:${color}">${tier}<small>${label}</small></div>
+        <div class="hero-strip">${cards}</div>
+      </div>`;
+    }).join('');
+
+    body.innerHTML = rows + `
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div><b>${esc(d.patch)}</b> · ${d.draftsAnalysed} bàn draft.
+        ${d.positionName ? `Vị trí <b>${esc(d.positionName)}</b> — ${esc(d.positionDesc || '')}.` : ''}
+        <br><br>${esc(d.method || '')}
+        <br><br>${esc(d.patchNote || '')}
+        <br><br><small>${esc(d.limitation || '')}</small></div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/tierlist</code>.<br><small>${esc(err.serverMessage || err.message)}</small></div>`;
+  }
 }
 
 async function loadLanes(role) {
@@ -1397,7 +1555,6 @@ async function loadMe(rawId) {
 
     body.innerHTML = `
       <div class="chip" style="margin-bottom:var(--s-4)">
-        ${d.avatar ? `<img src="${esc(d.avatar)}" alt="" width="20" height="20" style="border-radius:50%">` : ''}
         <b>${esc(d.name || ('ID ' + d.accountId))}</b> · so với ${d.proMatches} bàn draft ${esc(d.patch)}
       </div>
 
@@ -1562,6 +1719,48 @@ async function loadItems(heroId) {
 /** Tab nào đã nạp dữ liệu rồi, để không gọi lại mỗi lần người dùng bấm qua bấm lại. */
 const loadedViews = new Set();
 
+/**
+ * Chia mỗi tab nhiều thẻ thành các mục con bấm được, thay vì bắt cuộn dài.
+ *
+ * Vì sao làm chung một chỗ cho mọi tab thay vì viết riêng: một tab được thêm thẻ thứ ba là
+ * chuyện sẽ xảy ra, và nếu cơ chế nằm rải rác thì lần đó lại phải sửa từng nơi. Ở đây chỉ cần
+ * gắn data-sec vào thẻ mới là nó tự có mục con.
+ */
+function setupSubTabs() {
+  $$('.view').forEach((view) => {
+    const sections = $$('[data-sec]', view);
+    if (sections.length < 2) return;
+
+    const nav = document.createElement('div');
+    nav.className = 'subnav';
+    nav.setAttribute('role', 'tablist');
+    nav.setAttribute('aria-label', 'Mục trong trang');
+
+    sections.forEach((sec, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'subpill';
+      btn.textContent = sec.dataset.sec;
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(i === 0));
+
+      btn.onclick = () => {
+        $$('.subpill', nav).forEach((b) =>
+          b.setAttribute('aria-selected', String(b === btn)));
+        sections.forEach((s) => { s.hidden = s !== sec; });
+
+        // Đưa về đầu mục: đổi mục xong mà vẫn ở giữa trang thì người dùng tưởng không có gì đổi
+        view.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      };
+
+      nav.appendChild(btn);
+      sec.hidden = i !== 0;
+    });
+
+    view.prepend(nav);
+  });
+}
+
 function setupTabs() {
   $$('nav button[role="tab"]').forEach((btn) => {
     btn.onclick = () => {
@@ -1576,6 +1775,11 @@ function setupTabs() {
       // Nạp muộn: hai truy vấn của tab này quét bảng mua đồ cả triệu hàng, không có lý gì
       // bắt mọi người mở trang phải chờ nó khi họ chỉ muốn xem bảng xếp hạng.
       const view = btn.dataset.view;
+      if (view === 'tiers' && !loadedViews.has('tiers')) {
+        loadedViews.add('tiers');
+        setupTierList();
+      }
+
       if (view === 'learn' && !loadedViews.has('learn')) {
         loadedViews.add('learn');
         loadLearn();
@@ -1608,4 +1812,5 @@ function applyTheme(theme) {
 
 setupTheme();
 setupTabs();
+setupSubTabs();
 boot();

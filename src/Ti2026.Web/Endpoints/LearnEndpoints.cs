@@ -46,6 +46,7 @@ public static class LearnEndpoints
         var api = app.MapGroup("/api");
 
         MapLanes(api);
+        MapProPub(api);
         MapMe(api);
 
         // ---------- Ưu tiên cấm/chọn ----------
@@ -506,7 +507,11 @@ public static class LearnEndpoints
             {
                 accountId = snapshot.AccountId,
                 name = snapshot.Name,
-                avatar = snapshot.Avatar,
+
+                // KHÔNG trả avatar. Hai lý do cùng chỉ về một hướng: endpoint này hứa không lưu
+                // gì xuống DB nên không được cache ảnh người dùng, mà hotlink thẳng
+                // avatars.steamstatic.com thì không hiện được từ mạng người dùng. Trả một URL
+                // chắc chắn vỡ còn tệ hơn không trả gì.
                 patch = PatchIndex.Name(currentPatch),
                 proMatches = proTotal,
                 heroes = mine,
@@ -517,6 +522,77 @@ public static class LearnEndpoints
                        + "dở. Winrate pub và winrate chuyên nghiệp không cùng thang: pro đánh "
                        + "Captains Mode với 5 người phối hợp, còn hero mạnh ở pub thường là hero "
                        + "tự chơi được một mình.",
+            });
+        });
+    }
+
+    /// <summary>
+    /// Pro đang LUYỆN hero gì trong pub — chỉ báo sớm hơn trận chính thức.
+    /// </summary>
+    private static void MapProPub(RouteGroupBuilder api)
+    {
+        api.MapGet("/pro-pub", async (Ti2026DbContext db, int days = 21, int minGames = 3) =>
+        {
+            var since = DateTime.UtcNow.AddDays(-Math.Clamp(days, 1, 120));
+
+            var rows = await db.ProPubMatches
+                .Where(x => x.StartTime >= since)
+                // Chỉ xếp hạng thường. Trận đấu giải và các chế độ vui cũng lọt vào danh sách
+                // ván gần đây của một người, và tính lẫn vào thì "luyện tập" mất nghĩa.
+                .Where(x => x.LobbyType == ProPubIngester.RankedLobbyType)
+                .Select(x => new { x.HeroId, x.PlayerId, x.Won, x.Player!.Nick })
+                .ToListAsync();
+
+            if (rows.Count == 0)
+                return Results.Ok(new
+                {
+                    days,
+                    heroes = Array.Empty<object>(),
+                    note = "Chưa có dữ liệu ván pub. Job này chạy theo khung giờ, tối đa "
+                         + $"{ProPubIngester.MinInterval.TotalHours:0} giờ một lần.",
+                });
+
+            var names = await db.Heroes.ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name });
+
+            var heroes = rows
+                .GroupBy(r => r.HeroId)
+                .Where(g => g.Count() >= minGames)
+                .Select(g =>
+                {
+                    names.TryGetValue(g.Key, out var meta);
+                    return new
+                    {
+                        heroId = g.Key,
+                        name = meta?.LocalizedName ?? meta?.Name ?? $"hero {g.Key}",
+                        image = DotaImages.Hero(meta?.Name),
+                        games = g.Count(),
+                        winrate = Math.Round(g.Count(x => x.Won) * 100.0 / g.Count(), 1),
+
+                        // Số NGƯỜI khác nhau mới là tín hiệu thật: một người spam 20 ván một
+                        // hero nói lên sở thích cá nhân, còn mười người cùng chơi nói lên meta.
+                        players = g.Select(x => x.PlayerId).Distinct().Count(),
+                        who = g.Select(x => x.Nick).Distinct().OrderBy(n => n).Take(6),
+                    };
+                })
+                .OrderByDescending(h => h.players).ThenByDescending(h => h.games)
+                .Take(30)
+                .ToList();
+
+            return Results.Ok(new
+            {
+                days,
+                minGames,
+                totalGames = rows.Count,
+                totalPlayers = rows.Select(r => r.PlayerId).Distinct().Count(),
+                heroes,
+                method = "Xếp theo SỐ TUYỂN THỦ khác nhau đã chơi hero đó, không theo số ván: "
+                       + "một người spam 20 ván nói lên sở thích cá nhân, mười người cùng chơi "
+                       + "mới nói lên meta.",
+                caveat = "Đây là ván xếp hạng thường, không phải ý định thi đấu. Pro cũng chơi "
+                       + "lệch vai, chơi thử, chơi cho vui — và đôi khi là người khác mượn tài "
+                       + "khoản. Đọc nó như 'đang được để mắt tới', đừng đọc như 'sẽ pick ở TI'.",
+                schedule = $"Cập nhật tối đa {ProPubIngester.MinInterval.TotalHours:0} giờ một lần "
+                         + "theo lịch, không theo lượt truy cập.",
             });
         });
     }

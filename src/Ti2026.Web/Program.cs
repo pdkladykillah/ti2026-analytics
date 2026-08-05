@@ -49,6 +49,7 @@ builder.Services.AddSingleton<PlayerLookup>();
 builder.Services.AddScoped<TeamResolver>();
 builder.Services.AddScoped<OpenDotaIngester>();
 builder.Services.AddScoped<MatchDetailIngester>();
+builder.Services.AddScoped<ProPubIngester>();
 builder.Services.AddScoped<SnapshotWriter>();
 builder.Services.AddScoped<IngestOrchestrator>();
 builder.Services.AddScoped<IngestPipeline>();
@@ -130,6 +131,7 @@ app.MapH2hEndpoints();
 app.MapTrendEndpoints();
 app.MapAnalyticsEndpoints();
 app.MapLearnEndpoints();
+app.MapTierListEndpoints();
 app.MapOpsEndpoints();
 
 app.Run();

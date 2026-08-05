@@ -46,6 +46,18 @@ Logo đội, chân dung hero, ảnh item đều trỏ trực tiếp Steam CDN.
 **không được phép cache về**. Logo lấy từ OpenDota thay thế được (16/16 đội). Ảnh tuyển thủ thì
 không có nguồn thay thế hợp lệ, nên vẫn là avatar chữ cái.
 
+### Ghi công
+
+Luật fantasy TI2026 (18 hệ số, màu emblem, tier, trait, prefix/suffix) lấy từ
+[dota2-fantasy-optimizer-2026](https://github.com/Kadadji1/dota2-fantasy-optimizer-2026) —
+chủ dự án xác nhận cho phép dùng.
+
+Cách rút năm chỉ số fantasy khó tìm — hoa sen là `famango`, watcher là `ability_lamp_use`,
+Tormentor là `npc_dota_miniboss` — học từ
+[bydoodle/dota2fantasy](https://github.com/bydoodle/dota2fantasy), công cụ fantasy TI2025.
+Kho đó **không có LICENSE** nên ta không chép dòng mã hay dữ liệu nào; chỉ đối chiếu để biết
+tên trường, rồi tự cài đặt và tự tính từ dữ liệu của mình.
+
 ### Quy mô hiện tại
 
 Tính tới 05/08/2026:

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
 using Ti2026.Ingest.Analytics;
+using Ti2026.Ingest.OpenDota;
 
 namespace Ti2026.Web.Endpoints;
 
@@ -43,6 +44,9 @@ public static class LearnEndpoints
     public static void MapLearnEndpoints(this IEndpointRouteBuilder app)
     {
         var api = app.MapGroup("/api");
+
+        MapLanes(api);
+        MapMe(api);
 
         // ---------- Ưu tiên cấm/chọn ----------
         api.MapGet("/draft", async (
@@ -290,6 +294,241 @@ public static class LearnEndpoints
             });
         });
     }
+
+    /// <summary>
+    /// Hiệu suất lane theo hero và theo vị trí.
+    ///
+    /// CỐ TÌNH KHÔNG làm thống kê cặp hero khắc chế nhau ở lane, dù đó là câu hỏi hay hơn.
+    /// Lý do: khoảng 1100 ván × 3 lane chia cho hơn 120 hero thì gần như mọi cặp có mẫu dưới 5.
+    /// Bảng đó sẽ hiện ra rất thuyết phục và hoàn toàn là nhiễu.
+    /// </summary>
+    private static void MapLanes(RouteGroupBuilder api)
+    {
+        api.MapGet("/lanes", async (
+            Ti2026DbContext db, int? role = null, string? patch = null, int minGames = 8) =>
+        {
+            var currentPatch = patch ?? await CurrentPatchAsync(db);
+
+            var rows = await db.MatchPlayers
+                .Where(mp => mp.LaneRole != null && mp.LaneEfficiencyPct != null)
+                .Where(mp => currentPatch == null || mp.Match!.PatchVersion == currentPatch)
+                .Where(mp => role == null || mp.LaneRole == role)
+                .Select(mp => new
+                {
+                    mp.HeroId,
+                    Role = mp.LaneRole!.Value,
+                    Efficiency = mp.LaneEfficiencyPct!.Value,
+                    Won = mp.IsRadiant == mp.Match!.RadiantWin,
+                })
+                .ToListAsync();
+
+            if (rows.Count == 0)
+                return Results.Ok(new
+                {
+                    patch = PatchIndex.Name(currentPatch),
+                    lanes = Array.Empty<object>(),
+                    note = "Chưa có ván nào nạp được chỉ số lane. Cần nạp lại match detail.",
+                });
+
+            var heroNames = await db.Heroes
+                .ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name, h.ImageUrl });
+
+            // Mốc so sánh của TỪNG vị trí. Không có mốc thì "hiệu suất lane 62%" là con số
+            // trống rỗng — người đọc không biết đó là tốt hay tệ.
+            var baselines = rows
+                .GroupBy(r => r.Role)
+                .ToDictionary(g => g.Key, g => DistributionStats.Describe(
+                    g.Select(x => x.Efficiency).ToList()));
+
+            var lanes = rows
+                .GroupBy(r => new { r.HeroId, r.Role })
+                .Where(g => g.Count() >= minGames)
+                .Select(g =>
+                {
+                    var dist = DistributionStats.Describe(g.Select(x => x.Efficiency).ToList());
+                    heroNames.TryGetValue(g.Key.HeroId, out var meta);
+                    var baseline = baselines[g.Key.Role].Median;
+
+                    return new
+                    {
+                        heroId = g.Key.HeroId,
+                        name = meta?.LocalizedName ?? meta?.Name ?? $"hero {g.Key.HeroId}",
+                        image = meta?.ImageUrl,
+
+                        role = g.Key.Role,
+                        roleName = RoleName(g.Key.Role),
+                        games = g.Count(),
+
+                        medianEfficiency = Math.Round(dist.Median, 1),
+                        p25 = Math.Round(dist.P25, 1),
+                        p75 = Math.Round(dist.P75, 1),
+
+                        // Hơn/kém mốc trung vị của chính vị trí đó — đây mới là con số đọc được
+                        vsBaseline = Math.Round(dist.Median - baseline, 1),
+
+                        winrate = Math.Round(g.Count(x => x.Won) * 100.0 / g.Count(), 1),
+                    };
+                })
+                .OrderByDescending(x => x.vsBaseline)
+                .ToList();
+
+            return Results.Ok(new
+            {
+                patch = PatchIndex.Name(currentPatch),
+                minGames,
+                baselines = baselines.OrderBy(kv => kv.Key).Select(kv => new
+                {
+                    role = kv.Key,
+                    roleName = RoleName(kv.Key),
+                    medianEfficiency = Math.Round(kv.Value.Median, 1),
+                    samples = kv.Value.Count,
+                }),
+                lanes,
+                note = "Hiệu suất lane là thước đo của OpenDota: phần trăm lượng vàng/kinh "
+                     + "nghiệm/lính đạt được so với mức lý tưởng của lane đó. vsBaseline là "
+                     + "hơn hoặc kém trung vị CỦA CHÍNH VỊ TRÍ đó — so hero đi mid với hero đi "
+                     + "hỗ trợ bằng con số tuyệt đối là so hai thứ khác nhau.",
+                caveat = "Không có bảng cặp hero khắc chế nhau ở lane, dù đó là câu hỏi hay hơn: "
+                       + "chia hơn 1000 ván cho ba lane và hơn 120 hero thì gần như mọi cặp có "
+                       + "mẫu dưới 5, và bảng đó sẽ trông thuyết phục trong khi hoàn toàn là nhiễu.",
+            });
+        });
+    }
+
+    /// <summary>
+    /// So hero pool của MỘT người chơi với cách pro đối xử với cùng những hero đó.
+    ///
+    /// Đây là endpoint duy nhất gọi ra nguồn ngoài theo yêu cầu của người dùng, nên nó có trần
+    /// và có bộ nhớ đệm — xem <see cref="PlayerLookup"/>. Không lưu gì xuống DB.
+    /// </summary>
+    private static void MapMe(RouteGroupBuilder api)
+    {
+        api.MapGet("/me", async (
+            Ti2026DbContext db, PlayerLookup lookup, OpenDotaClient client, string? id) =>
+        {
+            var accountId = PlayerLookup.ParseAccountId(id);
+            if (accountId is null)
+                return Results.BadRequest(new
+                {
+                    error = "Cần tham số id là Dota account ID (ví dụ 86745912) hoặc Steam ID64 "
+                          + "(ví dụ 76561198047011640).",
+                });
+
+            if (!lookup.TryGetCached(accountId.Value, out var snapshot))
+            {
+                if (!lookup.TryTakeBudget())
+                    return Results.Json(new
+                    {
+                        error = "Đang tạm hết suất tra cứu. Trang này gọi trực tiếp sang OpenDota "
+                              + "nên phải giữ trần — bị chặn IP thì cả ứng dụng mất nguồn dữ liệu, "
+                              + "không chỉ một lần tra. Thử lại sau vài phút.",
+                        retryAfterSeconds = (int)PlayerLookup.Window.TotalSeconds,
+                    }, statusCode: StatusCodes.Status429TooManyRequests);
+
+                snapshot = await lookup.FetchAsync(client, accountId.Value, CancellationToken.None);
+            }
+
+            if (snapshot is null)
+                return Results.NotFound(new
+                {
+                    error = "Không tra được hồ sơ này. Thường là do hồ sơ để riêng tư — trong "
+                          + "Dota 2 cần bật Cài đặt → Tuỳ chọn → Hiển thị dữ liệu trận công khai, "
+                          + "rồi đợi OpenDota cập nhật.",
+                });
+
+            var currentPatch = await CurrentPatchAsync(db);
+
+            var draftMatchIds = await db.Matches
+                .Where(m => currentPatch == null || m.PatchVersion == currentPatch)
+                .Where(m => db.DraftEvents.Any(d => d.MatchId == m.Id))
+                .Select(m => m.Id)
+                .ToListAsync();
+
+            var proEvents = await db.DraftEvents
+                .Where(d => draftMatchIds.Contains(d.MatchId))
+                .Select(d => new { d.HeroId, d.IsPick })
+                .ToListAsync();
+
+            var proByHero = proEvents
+                .GroupBy(e => e.HeroId)
+                .ToDictionary(g => g.Key, g => new
+                {
+                    Appearances = g.Count(),
+                    Picks = g.Count(x => x.IsPick),
+                    Bans = g.Count(x => !x.IsPick),
+                });
+
+            var heroNames = await db.Heroes
+                .ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name, h.ImageUrl });
+
+            var proTotal = draftMatchIds.Count;
+
+            var mine = snapshot.Heroes
+                .OrderByDescending(h => h.Games)
+                .Take(20)
+                .Select(h =>
+                {
+                    heroNames.TryGetValue(h.HeroId, out var meta);
+                    proByHero.TryGetValue(h.HeroId, out var pro);
+
+                    var proContest = pro is null || proTotal == 0
+                        ? (double?)null
+                        : Math.Round(pro.Appearances * 100.0 / proTotal, 1);
+
+                    return new
+                    {
+                        heroId = h.HeroId,
+                        name = meta?.LocalizedName ?? meta?.Name ?? $"hero {h.HeroId}",
+                        image = meta?.ImageUrl,
+
+                        myGames = h.Games,
+                        myWinrate = Math.Round(h.Wins * 100.0 / h.Games, 1),
+
+                        proContestRate = proContest,
+                        proPicks = pro?.Picks,
+                        proBans = pro?.Bans,
+
+                        // Câu chuyện của từng dòng: hero bạn hay chơi mà pro cũng coi trọng thì
+                        // đáng đầu tư thêm; hero bạn hay chơi mà pro đã bỏ hẳn thì công bạn bỏ
+                        // ra đang chảy vào một lối chơi bản này không còn thưởng cho nữa.
+                        verdict = proContest switch
+                        {
+                            null => "pro không dùng ở bản này",
+                            >= 30 => "pro cũng coi trọng",
+                            >= 10 => "pro dùng vừa phải",
+                            _ => "pro gần như đã bỏ",
+                        },
+                    };
+                })
+                .ToList();
+
+            return Results.Ok(new
+            {
+                accountId = snapshot.AccountId,
+                name = snapshot.Name,
+                avatar = snapshot.Avatar,
+                patch = PatchIndex.Name(currentPatch),
+                proMatches = proTotal,
+                heroes = mine,
+
+                privacy = "Chỉ đọc hồ sơ công khai theo id bạn tự nhập, và KHÔNG lưu xuống cơ sở "
+                        + $"dữ liệu. Kết quả chỉ nằm trong bộ nhớ đệm {PlayerLookup.CacheTtl.TotalMinutes:0} phút.",
+                caveat = "So sánh này chỉ nói về ĐỘ HỢP THỜI của hero, không nói bạn chơi hay hay "
+                       + "dở. Winrate pub và winrate chuyên nghiệp không cùng thang: pro đánh "
+                       + "Captains Mode với 5 người phối hợp, còn hero mạnh ở pub thường là hero "
+                       + "tự chơi được một mình.",
+            });
+        });
+    }
+
+    private static string RoleName(int role) => role switch
+    {
+        1 => "Lane an toàn",
+        2 => "Mid",
+        3 => "Lane khó",
+        4 => "Rừng",
+        _ => $"vị trí {role}",
+    };
 
     /// <summary>Bản game mới nhất có trong dữ liệu, dạng chuỗi như đang lưu ở Match.PatchVersion.</summary>
     private static async Task<string?> CurrentPatchAsync(Ti2026DbContext db)

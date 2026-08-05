@@ -229,4 +229,38 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
             "chưa ingest trận nào nên chưa biết bản game — trả mảng rỗng chứ không phải lỗi");
         doc.RootElement.GetProperty("currentPatch").ValueKind.Should().Be(JsonValueKind.Null);
     }
+
+    [Fact]
+    public async Task api_draft_va_api_lanes_chua_co_du_lieu_thi_noi_thang()
+    {
+        var client = factory.CreateClient();
+
+        using var draft = JsonDocument.Parse(await client.GetStringAsync("/api/draft"));
+        draft.RootElement.GetProperty("matchesWithDraft").GetInt32().Should().Be(0);
+        draft.RootElement.GetProperty("note").GetString().Should().NotBeNullOrWhiteSpace();
+
+        using var lanes = JsonDocument.Parse(await client.GetStringAsync("/api/lanes"));
+        lanes.RootElement.GetProperty("lanes").GetArrayLength().Should().Be(0);
+        lanes.RootElement.GetProperty("note").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    /// <summary>
+    /// Endpoint duy nhất gọi ra nguồn ngoài theo yêu cầu người dùng. Id không hợp lệ phải bị
+    /// chặn TRƯỚC khi phát sinh request thật — nếu không thì ai cũng ép VPS gọi OpenDota bằng
+    /// rác, và bị chặn IP là mất nguồn dữ liệu cho cả ứng dụng.
+    /// </summary>
+    [Fact]
+    public async Task api_me_tu_choi_id_khong_hop_le_truoc_khi_goi_ra_ngoai()
+    {
+        var client = factory.CreateClient();
+
+        foreach (var bad in new[] { "", "abc", "0", "-1", "9999999999" })
+        {
+            var res = await client.GetAsync($"/api/me?id={bad}");
+            res.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"id '{bad}' không hợp lệ");
+        }
+
+        (await client.GetAsync("/api/me")).StatusCode
+            .Should().Be(HttpStatusCode.BadRequest, "thiếu id cũng phải bị từ chối");
+    }
 }

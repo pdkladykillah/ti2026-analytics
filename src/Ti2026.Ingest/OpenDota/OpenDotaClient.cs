@@ -48,6 +48,21 @@ public class OpenDotaClient(HttpClient http)
     /// constants/items trả về đối tượng khoá theo tên item, không phải mảng — nên không dùng
     /// được <see cref="GetListAsync{T}"/>.
     /// </summary>
+    /// <summary>
+    /// Hồ sơ công khai của một người chơi. Ném <see cref="HttpRequestException"/> khi hồ sơ để
+    /// riêng tư hoặc id không tồn tại — tầng trên phải phân biệt được hai chuyện đó với "gọi
+    /// được nhưng người này chưa chơi hero nào".
+    /// </summary>
+    public Task<List<OpenDotaPlayerHero>> GetPlayerHeroesAsync(long accountId, CancellationToken ct) =>
+        GetListAsync<OpenDotaPlayerHero>($"players/{accountId}/heroes", ct);
+
+    public async Task<OpenDotaPlayerProfile?> GetPlayerAsync(long accountId, CancellationToken ct)
+    {
+        using var res = await http.GetAsync($"players/{accountId}", ct);
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<OpenDotaPlayerProfile>(Json, ct);
+    }
+
     public async Task<Dictionary<string, OpenDotaItem>> GetItemsAsync(CancellationToken ct)
     {
         using var res = await http.GetAsync("constants/items", ct);

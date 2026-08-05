@@ -44,7 +44,24 @@ const state = {
 
 async function getJson(path) {
   const res = await fetch(path);
-  if (!res.ok) throw new Error(`${path} trả về HTTP ${res.status}`);
+
+  if (!res.ok) {
+    // Giữ lại thân phản hồi. Nhiều endpoint trả về câu giải thích cụ thể — "hồ sơ để riêng
+    // tư" khác hẳn "tạm hết suất tra cứu" — và vứt nó đi để hiện "HTTP 404" trần trụi thì
+    // người dùng không biết phải làm gì tiếp.
+    const body = await res.text().catch(() => '');
+    const err = new Error(`${path} trả về HTTP ${res.status}`);
+    err.status = res.status;
+    err.body = body;
+
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed && parsed.error) err.serverMessage = parsed.error;
+    } catch { /* không phải JSON thì thôi */ }
+
+    throw err;
+  }
+
   return res.json();
 }
 
@@ -1229,6 +1246,148 @@ function mmss(seconds) {
 async function loadLearn() {
   loadDraft();
   loadItemHeroes();
+  loadLanes();
+  setupMe();
+}
+
+async function loadLanes(role) {
+  const body = $('#lane-body');
+  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+
+  try {
+    const d = await getJson('api/lanes' + (role ? `?role=${role}` : ''));
+
+    if (!d.lanes || !d.lanes.length) {
+      body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa có dữ liệu lane.')}</div>`;
+      return;
+    }
+
+    // Nút lọc vị trí dựng từ chính các mốc mà API trả về, không hardcode
+    const roles = $('#lane-roles');
+    if (roles && !roles.dataset.ready && d.baselines) {
+      roles.dataset.ready = '1';
+      roles.innerHTML = `<button class="pill" type="button" data-role="" aria-pressed="true">Tất cả</button>` +
+        d.baselines.map((b) =>
+          `<button class="pill" type="button" data-role="${b.role}" aria-pressed="false">${esc(b.roleName)}</button>`
+        ).join('');
+
+      $$('#lane-roles button').forEach((btn) => {
+        btn.onclick = () => {
+          $$('#lane-roles button').forEach((b) =>
+            b.setAttribute('aria-pressed', String(b === btn)));
+          loadLanes(btn.dataset.role);
+        };
+      });
+    }
+
+    const baseline = (d.baselines || [])
+      .map((b) => `${esc(b.roleName)} ${b.medianEfficiency}%`)
+      .join(' · ');
+
+    const rows = d.lanes.slice(0, 30).map((l) => {
+      const tone = l.vsBaseline >= 5 ? 'cal-good' : l.vsBaseline <= -5 ? 'cal-bad' : '';
+      return `<tr>
+        <td class="hero-cell">
+          ${l.image ? `<img src="${esc(l.image)}" alt="" loading="lazy" width="48" height="27">` : ''}
+          <span>${esc(l.name)}</span>
+        </td>
+        <td>${esc(l.roleName)}</td>
+        <td class="num">${l.medianEfficiency}%</td>
+        <td class="num">${l.p25}% – ${l.p75}%</td>
+        <td class="num ${tone}">${l.vsBaseline > 0 ? '+' : ''}${l.vsBaseline}</td>
+        <td class="num">${l.winrate}%</td>
+        <td class="num">${l.games}</td>
+      </tr>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Hiệu suất lane theo hero và vị trí</caption>
+        <thead><tr>
+          <th scope="col">Hero</th><th scope="col">Vị trí</th>
+          <th scope="col">Hiệu suất</th><th scope="col">Khoảng thường gặp</th>
+          <th scope="col">So mốc vị trí</th><th scope="col">Thắng ván</th><th scope="col">Ván</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>Mốc trung vị từng vị trí: ${baseline}.<br><br>${esc(d.caveat || '')}</div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/lanes</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+function setupMe() {
+  const input = $('#me-id');
+  const btn = $('#me-go');
+  if (!input || !btn || btn.dataset.ready) return;
+  btn.dataset.ready = '1';
+
+  const go = () => loadMe(input.value);
+  btn.onclick = go;
+  input.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+
+  // Nhớ id trong trình duyệt của chính người dùng, KHÔNG gửi đi đâu để lưu
+  const saved = localStorage.getItem('ti2026-dota-id');
+  if (saved) input.value = saved;
+}
+
+async function loadMe(rawId) {
+  const body = $('#me-body');
+  const id = (rawId || '').trim();
+
+  if (!id) {
+    body.innerHTML = '<div class="empty">Nhập Dota account ID hoặc Steam ID64 rồi bấm So sánh.</div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+
+  try {
+    const d = await getJson(`api/me?id=${encodeURIComponent(id)}`);
+    localStorage.setItem('ti2026-dota-id', id);
+
+    const rows = (d.heroes || []).map((h) => {
+      const tone = h.verdict === 'pro cũng coi trọng' ? 'cal-good'
+        : h.verdict === 'pro gần như đã bỏ' ? 'cal-bad' : '';
+      return `<tr>
+        <td class="hero-cell">
+          ${h.image ? `<img src="${esc(h.image)}" alt="" loading="lazy" width="48" height="27">` : ''}
+          <span>${esc(h.name)}</span>
+        </td>
+        <td class="num">${h.myGames}</td>
+        <td class="num">${h.myWinrate}%</td>
+        <td class="num">${h.proContestRate === null ? '—' : h.proContestRate + '%'}</td>
+        <td class="${tone}">${esc(h.verdict)}</td>
+      </tr>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="chip" style="margin-bottom:var(--s-4)">
+        ${d.avatar ? `<img src="${esc(d.avatar)}" alt="" width="20" height="20" style="border-radius:50%">` : ''}
+        <b>${esc(d.name || ('ID ' + d.accountId))}</b> · so với ${d.proMatches} bàn draft ${esc(d.patch)}
+      </div>
+
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Hero bạn chơi nhiều nhất, đối chiếu với mức pro coi trọng</caption>
+        <thead><tr>
+          <th scope="col">Hero</th><th scope="col">Ván của bạn</th><th scope="col">Thắng</th>
+          <th scope="col">Pro coi trọng</th><th scope="col">Nhận xét</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(d.caveat || '')}<br><br><small>${esc(d.privacy || '')}</small></div>
+      </div>`;
+  } catch (err) {
+    // Hồ sơ riêng tư và hết suất tra là hai chuyện khác nhau — nói đúng chuyện nào đang xảy ra
+    body.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
+  }
 }
 
 async function loadDraft() {

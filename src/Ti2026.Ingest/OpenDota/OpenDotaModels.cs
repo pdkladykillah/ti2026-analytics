@@ -62,6 +62,32 @@ public class OpenDotaHero
 }
 
 /// <summary>
+/// players/{id}/heroes — thành tích của MỘT người chơi trên từng hero.
+/// hero_id là chuỗi trong response của OpenDota, không phải số.
+/// </summary>
+public class OpenDotaPlayerHero
+{
+    [JsonPropertyName("hero_id")] public string HeroId { get; set; } = "";
+    [JsonPropertyName("games")] public int Games { get; set; }
+    [JsonPropertyName("win")] public int Win { get; set; }
+    [JsonPropertyName("last_played")] public long? LastPlayed { get; set; }
+}
+
+/// <summary>players/{id} — chỉ lấy phần hiển thị, không lấy gì thêm.</summary>
+public class OpenDotaPlayerProfile
+{
+    [JsonPropertyName("profile")] public OpenDotaProfile? Profile { get; set; }
+    [JsonPropertyName("rank_tier")] public int? RankTier { get; set; }
+}
+
+public class OpenDotaProfile
+{
+    [JsonPropertyName("account_id")] public long? AccountId { get; set; }
+    [JsonPropertyName("personaname")] public string? PersonaName { get; set; }
+    [JsonPropertyName("avatarfull")] public string? AvatarFull { get; set; }
+}
+
+/// <summary>
 /// Một mục trong constants/items. Endpoint đó trả về ĐỐI TƯỢNG khoá theo tên item, không phải
 /// mảng — nên phải đọc thành Dictionary chứ không phải List.
 /// </summary>

@@ -794,6 +794,70 @@ async function setupPredict() {
   a.onchange = b.onchange = loadPredict;
 
   loadPredict();
+  loadCalibration();
+}
+
+async function loadCalibration() {
+  const body = $('#calibration-body');
+  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+
+  try {
+    const c = await getJson('api/calibration');
+
+    if (!c.evaluated) {
+      body.innerHTML = `<div class="empty">${esc(c.note || 'Chưa đủ dữ liệu để hiệu chuẩn.')}</div>`;
+      return;
+    }
+
+    // Brier 0.25 là mốc tung đồng xu. Vẽ khoảng cách tới mốc đó thay vì con số trần trụi,
+    // vì "0.2419" tự nó không nói lên điều gì với người đọc.
+    const edge = Math.max(0, (0.25 - c.brierScore) / 0.25 * 100);
+
+    const rows = c.buckets.map((b) => {
+      const gap = b.actual - b.predicted;
+      const tone = Math.abs(gap) <= 3 ? 'good' : Math.abs(gap) <= 8 ? 'mid' : 'bad';
+      return `<tr>
+        <td>${esc(b.range)}</td>
+        <td class="num">${b.predicted}%</td>
+        <td class="num">${b.actual}%</td>
+        <td class="num cal-${tone}">${gap > 0 ? '+' : ''}${gap.toFixed(1)}</td>
+        <td class="num">${b.samples}</td>
+      </tr>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="bento">
+        <article class="kpi p2">
+          <div class="kpi-label">Đoán đúng kèo trên</div>
+          <div class="kpi-value">${c.hitRate}%</div>
+          <div class="kpi-note">qua ${c.evaluated} trận đã đấu</div>
+        </article>
+        <article class="kpi p3">
+          <div class="kpi-label">Hơn tung đồng xu</div>
+          <div class="kpi-value">${edge.toFixed(1)}%</div>
+          <div class="kpi-note">Brier ${c.brierScore} · 0.25 = ngẫu nhiên</div>
+        </article>
+      </div>
+
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Đối chiếu xác suất mô hình đưa ra với kết quả thực tế</caption>
+        <thead><tr>
+          <th scope="col">Mức dự đoán</th><th scope="col">Mô hình nói</th>
+          <th scope="col">Thực tế</th><th scope="col">Lệch</th><th scope="col">Mẫu</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div><b>Đọc con số này thế nào:</b> mô hình đã được hiệu chuẩn nên "65%" thật sự
+        có nghĩa là khoảng 65%. Nhưng ưu thế so với đoán ngẫu nhiên chỉ khoảng
+        ${edge.toFixed(0)}% — Dota biến động cao, và chênh lệch Elo không chuyển thành
+        chắc thắng. Đừng đặt nặng hơn mức đó.</div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/calibration</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
 }
 
 function renderRatings(rows) {

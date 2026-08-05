@@ -611,3 +611,9 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
   .tier-row { grid-template-columns: 76px 1fr; }
   .hero { width: 78px; height: 46px; }
 }
+
+/* ============================ Hiệu chuẩn ============================ */
+
+.cal-good { color: var(--pos); font-weight: 600; }
+.cal-mid  { color: var(--warn); font-weight: 600; }
+.cal-bad  { color: var(--neg); font-weight: 600; }

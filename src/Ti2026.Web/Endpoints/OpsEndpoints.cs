@@ -78,7 +78,18 @@ public static class OpsEndpoints
                     Encoding.UTF8.GetBytes(provided), Encoding.UTF8.GetBytes(expected)))
                 return Results.Unauthorized();
 
-            await pipeline.RunAllAsync(ct);
+            // Không chờ tới lượt: SQLite chỉ có một người ghi, nên hai vòng chồng nhau khiến
+            // vòng sau nằm chờ khoá tới hết CommandTimeout 30 giây rồi chết ở "INSERT INTO
+            // IngestRuns" — thông báo lỗi lúc đó không hề nhắc gì tới nguyên nhân thật.
+            // Đã xảy ra thật khi một lời gọi bị curl bỏ ngang vẫn tiếp tục chạy phía server.
+            if (!await pipeline.TryRunAllAsync(ct))
+                return Results.Conflict(new
+                {
+                    error = "Đang có một vòng ingest chạy. Chờ vòng đó xong rồi gọi lại — chạy "
+                          + "chồng sẽ khoá SQLite và đốt hạn mức request của OpenDota để làm "
+                          + "đúng một việc hai lần.",
+                });
+
             return Results.Accepted();
         });
     }

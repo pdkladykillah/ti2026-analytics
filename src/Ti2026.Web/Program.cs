@@ -37,6 +37,7 @@ builder.Services.AddHttpClient<OpenDotaClient>(c =>
     })
     .AddHttpMessageHandler(() => new RateLimitedHandler(options.OpenDota.RequestsPerSecond));
 
+builder.Services.AddSingleton<IngestGate>();
 builder.Services.AddSingleton<PlayerLookup>();
 builder.Services.AddScoped<TeamResolver>();
 builder.Services.AddScoped<OpenDotaIngester>();

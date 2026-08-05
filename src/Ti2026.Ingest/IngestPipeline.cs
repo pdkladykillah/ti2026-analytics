@@ -10,9 +10,38 @@ public class IngestPipeline(
     MatchDetailIngester matchDetails,
     SnapshotWriter snapshots,
     IngestSchedule schedule,
+    IngestGate gate,
     ILogger<IngestPipeline> logger)
 {
+    /// <summary>
+    /// Chạy một vòng, CHỜ tới lượt nếu đang có vòng khác. Dành cho scheduler — nó không có ai
+    /// ngồi đợi phản hồi nên chờ là hành vi đúng.
+    /// </summary>
     public async Task RunAllAsync(CancellationToken ct)
+    {
+        using var _ = await gate.EnterAsync(ct);
+        await RunInsideGateAsync(ct);
+    }
+
+    /// <summary>
+    /// Chạy một vòng, hoặc trả false NGAY nếu đang có vòng khác. Dành cho lời gọi tay: giữ một
+    /// HTTP request mở hàng phút để chờ tới lượt là cách chắc chắn làm người gọi tưởng hệ thống
+    /// đã treo.
+    /// </summary>
+    public async Task<bool> TryRunAllAsync(CancellationToken ct)
+    {
+        using var slot = gate.TryEnter();
+        if (slot is null)
+        {
+            logger.LogInformation("Bỏ qua lời gọi ingest: đang có một vòng chạy");
+            return false;
+        }
+
+        await RunInsideGateAsync(ct);
+        return true;
+    }
+
+    private async Task RunInsideGateAsync(CancellationToken ct)
     {
         logger.LogInformation("Bắt đầu vòng ingest");
 

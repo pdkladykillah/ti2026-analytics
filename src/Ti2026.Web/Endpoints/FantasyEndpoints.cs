@@ -17,9 +17,19 @@ public static class FantasyEndpoints
     /// <summary>Dưới mức này thì trung bình mỗi trận dao động quá mạnh để xếp hạng.</summary>
     private const int MinMatchesForRanking = 5;
 
+    /// <summary>Giải TI2025 trên OpenDota. Là kỳ TI DUY NHẤT dùng được làm mốc — xem TiBaselineNote.</summary>
+    private const long Ti2025LeagueId = 18324;
+
+    /// <summary>
+    /// Ở cửa sổ TI2025 mỗi người chỉ có vài series, nên ngưỡng phải thấp hơn hẳn — nhưng vì
+    /// thấp nên số series LUÔN phải hiện kèm, không được để người đọc tưởng đây là mẫu lớn.
+    /// </summary>
+    private const int MinMatchesForTiBaseline = 2;
+
     private sealed record ScoredPlayer(
         int PlayerId, string Nick, int? Position, int Games, int Matches,
-        double? Average, List<FantasyGameScore> Games_);
+        double? Average, List<FantasyGameScore> Games_,
+        int? TeamId = null, string? TeamName = null);
 
     public static void MapFantasyEndpoints(this IEndpointRouteBuilder app)
     {
@@ -114,12 +124,8 @@ public static class FantasyEndpoints
     }
 
     /// <summary>
-    /// Chọn đội hình điểm cao nhất theo số suất mỗi nhóm vị trí.
-    ///
-    /// GIỚI HẠN PHẢI NÓI RA: chọn top N mỗi nhóm là đáp án tối ưu KHI các tuyển thủ độc lập với
-    /// nhau. Luật TI2026 có thưởng cho CẶP CÙNG ĐỘI, và thưởng đó làm các lựa chọn phụ thuộc
-    /// lẫn nhau. Chưa có bảng luật thì chưa mô hình hoá được — nên endpoint khai rõ thay vì gọi
-    /// kết quả là "tối ưu".
+    /// Chọn đội hình điểm cao nhất HỢP LỆ theo luật TI2026: một cặp core cùng đội, một cặp hỗ
+    /// trợ cùng đội, một mid tự do. Kèm mốc đối chiếu TI2025.
     /// </summary>
     private static void MapOptimize(RouteGroupBuilder api)
     {
@@ -138,38 +144,8 @@ public static class FantasyEndpoints
                 });
 
             var slots = LoadSlots(paths);
-            var scored = await ScorePlayersAsync(db, config, days);
-
-            var byGroup = scored
-                .Where(p => p.Position is int)
-                .GroupBy(p => GroupOf(p.Position!.Value))
-                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Average).ToList());
-
-            var picked = new List<object>();
-            var shortfall = new List<string>();
-            double total = 0;
-
-            foreach (var (group, count) in slots)
-            {
-                var pool = byGroup.GetValueOrDefault(group) ?? [];
-                if (pool.Count < count)
-                    shortfall.Add($"{group}: cần {count}, chỉ có {pool.Count} người đủ mẫu");
-
-                foreach (var p in pool.Take(count))
-                {
-                    picked.Add(new
-                    {
-                        group,
-                        playerId = p.PlayerId,
-                        nick = p.Nick,
-                        position = p.Position,
-                        positionName = p.Position is int pos ? PositionInference.Name(pos) : null,
-                        avgPerMatch = p.Average,
-                        matches = p.Matches,
-                    });
-                    total += p.Average ?? 0;
-                }
-            }
+            var now = BuildLineup(await ScorePlayersAsync(db, config, days));
+            var ti2025 = BuildLineup(await ScorePlayersAsync(db, config, days, Ti2025LeagueId));
 
             return Results.Ok(new
             {
@@ -177,15 +153,29 @@ public static class FantasyEndpoints
                 days,
                 slots = slots.Select(s => new { group = s.Key, count = s.Value }),
                 slotsConfirmed = SlotsConfirmed(paths),
-                roster = picked,
+                roster = now.Picked,
                 bias = BiasWarning(config),
-                projectedTotal = Math.Round(total, 2),
-                shortfall,
+                projectedTotal = now.Total,
+                shortfall = now.Shortfall,
 
-                method = "Chọn top N mỗi nhóm vị trí theo điểm trung bình mỗi trận. Khi các tuyển "
-                       + "thủ độc lập thì đây CHÍNH LÀ đáp án tối ưu, không cần thuật toán phức tạp hơn.",
-                limitation = "CHƯA tính thưởng cặp cùng đội — luật TI2026 có thưởng đó và nó làm các "
-                           + "lựa chọn phụ thuộc lẫn nhau, nên đây chưa phải đội hình tối ưu thật sự.",
+                // Mốc đối chiếu: đội hình cao nhất CỦA CHÍNH TI2025, chấm bằng hệ số TI2026.
+                // Không phải điểm fantasy TI2025 thật — hệ số năm đó khác, cộng thẳng vào là
+                // so hai thang đo khác nhau. Ở đây chỉ mượn lại số liệu thô của các trận đó.
+                baseline = new
+                {
+                    label = "The International 2025",
+                    roster = ti2025.Picked,
+                    projectedTotal = ti2025.Total,
+                    shortfall = ti2025.Shortfall,
+                    note = TiBaselineNote,
+                },
+
+                method = "Duyệt hết các đội để tìm cặp core (carry + offlane) cùng đội và cặp hỗ "
+                       + "trợ (số 4 + số 5) cùng đội cho tổng điểm cao nhất, cộng một mid tự do. "
+                       + "Chỉ khoảng 16 đội nên duyệt hết là ra đáp án tối ưu THẬT, không heuristic.",
+                limitation = "Chưa mô hình hoá tầng emblem/tier/trait và cặp prefix–suffix. Đó là "
+                           + "nơi phần lớn tối ưu hoá thật sự nằm, nên đây là đội hình tốt nhất "
+                           + "theo điểm gốc, chưa phải theo điểm cuối cùng.",
             });
         });
     }
@@ -195,12 +185,15 @@ public static class FantasyEndpoints
     /// riêng là hai nơi sẽ lệch nhau, và người dùng sẽ thấy bảng xếp hạng không khớp đội hình.
     /// </summary>
     private static async Task<List<ScoredPlayer>> ScorePlayersAsync(
-        Ti2026DbContext db, FantasyConfig config, int days)
+        Ti2026DbContext db, FantasyConfig config, int days, long? leagueId = null)
     {
         var since = DateTime.UtcNow.AddDays(-Math.Clamp(days, 7, 400));
 
-        var rows = await db.MatchPlayers
-            .Where(mp => mp.PlayerId != null && mp.Match!.StartTime >= since)
+        var query = leagueId is long lg
+            ? db.MatchPlayers.Where(mp => mp.PlayerId != null && mp.Match!.LeagueId == lg)
+            : db.MatchPlayers.Where(mp => mp.PlayerId != null && mp.Match!.StartTime >= since);
+
+        var rows = await query
             .Select(mp => new
             {
                 PlayerId = mp.PlayerId!.Value,
@@ -212,6 +205,11 @@ public static class FantasyEndpoints
                 mp.NetWorth,
                 mp.IsRadiant,
 
+                // Đội lấy từ CHÍNH VÁN ĐẤU chứ không phải roster hiện tại. Đó là khác biệt duy
+                // nhất khiến mốc TI2025 có nghĩa: ở TI2025 nhiều người còn thi đấu cho đội khác,
+                // và ràng buộc "cặp cùng đội" phải hiểu theo đội của họ LÚC ĐÓ.
+                TeamId = mp.IsRadiant ? mp.Match.RadiantTeamId : mp.Match.DireTeamId,
+
                 mp.Kills, mp.Deaths, mp.GoldPerMin, mp.LastHits, mp.Denies,
                 mp.ObserversPlaced, mp.CampsStacked, mp.RunePickups,
                 mp.StunSeconds, mp.TeamfightParticipation,
@@ -221,6 +219,8 @@ public static class FantasyEndpoints
             .ToListAsync();
 
         if (rows.Count == 0) return [];
+
+        var teamNames = await db.Teams.ToDictionaryAsync(t => t.Id, t => t.Name);
 
         var position = rows
             .GroupBy(r => new { r.MatchId, r.IsRadiant, r.LaneRole })
@@ -242,18 +242,46 @@ public static class FantasyEndpoints
                     .OrderByDescending(x => x.Count())
                     .FirstOrDefault();
 
+                // Đội hay khoác nhất trong cửa sổ này — người chuyển đội giữa chừng lấy đội chính
+                var team = g.Select(r => r.TeamId)
+                    .Where(t => t != null)
+                    .GroupBy(t => t!.Value)
+                    .OrderByDescending(x => x.Count())
+                    .FirstOrDefault();
+
                 return new ScoredPlayer(
                     g.Key.PlayerId, g.Key.Nick,
                     top?.Key,
                     games.Count,
                     FantasyScorer.MatchScores(games, config.CountBestGames).Count,
                     FantasyScorer.AverageMatchScore(games, config.CountBestGames),
-                    games);
+                    games,
+                    team?.Key,
+                    team is null ? null : teamNames.GetValueOrDefault(team.Key));
             })
-            .Where(p => p.Matches >= MinMatchesForRanking && p.Average != null)
+            .Where(p => p.Matches >= (leagueId is null ? MinMatchesForRanking : MinMatchesForTiBaseline)
+                        && p.Average != null)
             .OrderByDescending(p => p.Average)
             .ToList();
     }
+
+    /// <summary>
+    /// Vì sao chỉ lấy TI2025 làm mốc, không lấy thêm TI2024 cho nhiều mẫu hơn.
+    ///
+    /// Madstone mới có từ bản 7.38, tức là SAU TI2024. Chấm các ván TI2024 bằng hệ số TI2026
+    /// thì mọi người đều được 0 điểm Madstone — không phải vì họ không nhặt, mà vì cơ chế đó
+    /// chưa tồn tại. Đó là số 0 do cấu trúc, và trộn nó vào sẽ dìm điểm cả một kỳ TI xuống một
+    /// cách có hệ thống mà bảng vẫn trông hoàn toàn bình thường.
+    ///
+    /// TI2025 là kỳ TI duy nhất đã có đủ Madstone, watcher, lotus và Tormentor như TI2026.
+    /// </summary>
+    private const string TiBaselineNote =
+        "Đội hình cao nhất của chính TI2025, chấm bằng hệ số TI2026 để hai con số cùng thang đo. "
+        + "Đội lấy theo đội mà người đó khoác LÚC ĐÓ, không phải đội hiện tại. "
+        + "Chỉ dùng TI2025 chứ không thêm TI2024: Madstone mới có từ bản 7.38, sau TI2024, nên "
+        + "chấm TI2024 bằng hệ số năm nay sẽ ra 0 điểm Madstone cho tất cả — số 0 do cấu trúc. "
+        + "Mẫu ở đây rất nhỏ (mỗi người vài series), nên đọc như một mốc tham khảo, không phải "
+        + "một bảng xếp hạng.";
 
     private static string GroupOf(int position) => position switch
     {
@@ -262,6 +290,32 @@ public static class FantasyEndpoints
         3 => "core",
         _ => "support",
     };
+
+    /// <summary>
+    /// Gói kết quả xếp đội hình thành JSON. Luật xếp nằm ở <see cref="FantasyLineup"/> chứ
+    /// không phải ở đây — tầng HTTP chỉ định dạng, không giữ luật chơi.
+    /// </summary>
+    private static (List<object> Picked, double Total, IReadOnlyList<string> Shortfall) BuildLineup(
+        List<ScoredPlayer> scored)
+    {
+        var result = FantasyLineup.Build(scored.Select(p => new LineupCandidate(
+            p.PlayerId, p.Nick, p.Position, p.TeamId, p.TeamName, p.Average, p.Matches)));
+
+        var picked = result.Picks.Select(x => (object)new
+        {
+            slot = x.Slot,
+            playerId = x.Player.PlayerId,
+            nick = x.Player.Nick,
+            teamId = x.Player.TeamId,
+            teamName = x.Player.TeamName,
+            position = x.Player.Position,
+            positionName = x.Player.Position is int pos ? PositionInference.Name(pos) : null,
+            avgPerMatch = x.Player.Average,
+            matches = x.Player.Matches,
+        }).ToList();
+
+        return (picked, result.Total, result.Shortfall);
+    }
 
     private static double? AvgPart(List<FantasyGameScore> games, string key)
     {

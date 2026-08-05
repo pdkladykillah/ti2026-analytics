@@ -1928,14 +1928,18 @@ async function loadFantasyRoster() {
       return;
     }
 
-    const cards = d.roster.map((p) => `<article class="kpi p3">
-      <div class="kpi-label">${esc(p.positionName || p.group)}</div>
+    // Tên đội phải hiện, vì ràng buộc của luật là CẶP CÙNG ĐỘI — không thấy đội thì không
+    // có cách nào tự kiểm đội hình có hợp lệ hay không.
+    const card = (p) => `<article class="kpi p3">
+      <div class="kpi-label">${esc(p.positionName || p.slot)}</div>
       <div class="kpi-value">${esc(p.nick)}</div>
-      <div class="kpi-note">${p.avgPerMatch} điểm/trận · ${p.matches} trận</div>
-    </article>`).join('');
+      <div class="kpi-note">${esc(p.teamName || '—')}<br>${p.avgPerMatch} điểm/trận · ${p.matches} trận</div>
+    </article>`;
+
+    const b = d.baseline;
 
     body.innerHTML = `
-      <div class="bento">${cards}</div>
+      <div class="bento">${d.roster.map(card).join('')}</div>
 
       <div class="bento" style="margin-top:var(--s-4)">
         <article class="kpi p2">
@@ -1944,6 +1948,20 @@ async function loadFantasyRoster() {
           <div class="kpi-note">mỗi trận, cộng cả đội hình</div>
         </article>
       </div>
+
+      ${b ? `<h3 style="margin-top:var(--s-6)">Đối chiếu: ${esc(b.label)}</h3>
+      <div class="bento">${b.roster.map(card).join('')}</div>
+      <div class="bento" style="margin-top:var(--s-4)">
+        <article class="kpi p2">
+          <div class="kpi-label">Tổng điểm ${esc(b.label)}</div>
+          <div class="kpi-value">${b.projectedTotal}</div>
+          <div class="kpi-note">cùng thang đo với con số phía trên</div>
+        </article>
+      </div>
+      <div class="note" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(b.note || '')}</div>
+      </div>` : ''}
 
       ${(d.shortfall || []).length ? `<div class="note warn" style="margin-top:var(--s-3)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>

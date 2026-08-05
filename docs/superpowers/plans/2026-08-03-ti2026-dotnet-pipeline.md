@@ -3384,3 +3384,56 @@ chặn theo host chứ không phải mất mạng. Hệ quả:
 **`TeamResolver` không đoán.** Không khớp chắc chắn tên/tag thì để `OpenDotaTeamId = null` và ghi
 log cảnh báo. Đoán sai sẽ gán toàn bộ ván của một đội cho đội khác — sai lặng lẽ, rất khó phát
 hiện về sau, và làm hỏng cả dữ liệu lịch sử đã tích luỹ.
+
+---
+
+## Hiệu chuẩn ngoài mẫu + yếu tố bản game (cập nhật 2026-08-05)
+
+Câu hỏi đặt ra: *"7.41e là bản vá thứ 4 của 7.41. Dữ liệu bản trước vẫn nên có sức nặng nào
+đó — có nên đưa bản game vào mô hình không?"*
+
+Đã dựng cơ chế và **đo** thay vì đoán.
+
+**Cơ chế:** `EloOptions.PatchRegression`. Tại mỗi ranh giới bản chính, mọi rating bị kéo về
+1500 theo `r ← 1500 + (r − 1500) × (1 − reg)`. Chọn cách này chứ không nhân trọng số cho trận
+cũ theo khoảng cách tới bản hiện tại, vì cách sau **không có nhân quả**: nó đánh giá quá khứ
+bằng thông tin của tương lai, và mọi hiệu chuẩn hồi tố sau đó đều vô nghĩa.
+
+**Kỷ luật đo:** chia theo thời gian, 70% trận cũ nhất chọn tham số, 30% mới nhất chấm điểm.
+Đây không phải hình thức — lưới quét chọn thang **700** trên tập huấn luyện, nhưng trên tập
+kiểm định 700 lại gần như tệ nhất. Nếu chọn và báo cáo trên cùng một tập thì đã đổi sang 700.
+
+**Kết quả** (1782 trận, mốc chia 2026-02-13, 515 dự đoán kiểm định):
+
+| Thang | 400 | 500 | 600 | 700 | 800 |
+|---|---|---|---|---|---|
+| Brier kiểm định | 0.2350 | 0.2351 | **0.2358** | 0.2368 | 0.2377 |
+
+Ghép cặp 400 vs 600: chênh 0.0009, sai số chuẩn 0.0017, **t = −0.52** → không phân biệt được.
+
+| `PatchRegression` | 0 | 0.15 | 0.30 |
+|---|---|---|---|
+| Brier kiểm định | **0.2358** | 0.2360 | 0.2362 |
+
+Ghép cặp 0 vs 0.30: **t = −0.51** → không có tác dụng đo được.
+
+Thử cả biến thể mạnh nhất — vứt hẳn mọi trận trước 7.41 — so trên **cùng 310 dự đoán**:
+chỉ 7.41 cho 0.2338, cả lịch sử cho 0.2311. Dữ liệu bản cũ không những không cần giảm sức
+nặng, bỏ đi còn hơi tệ hơn.
+
+**Vì sao:** Elo vốn đã tự quên. K = 24 với hàng trăm ván mỗi đội nghĩa là một trận từ hai năm
+trước đã bị ghi đè nhiều lần. Một hệ số quên gắn thêm chỉ lặp lại việc mô hình đang làm sẵn.
+
+**Quyết định:** giữ `ProbabilityScale = 600`, `PatchRegression = 0`. Cơ chế ở lại, có test,
+lộ ra ở `api/calibration` để bật khi dữ liệu nói khác.
+
+Giữ 600 chứ không đổi sang 400 vì hai lẽ: (1) đổi *vì* tập kiểm định nói thế là đốt mất chính
+tập kiểm định đó; (2) trên nửa dữ liệu mới mô hình đang nghiêng về **dè dặt** (nói 63.5% thì
+thực tế 72.2%), mà sai theo hướng dè dặt an toàn hơn hẳn sai theo hướng tự tin.
+
+**Giới hạn phải nhớ:** chỉ số bản game của OpenDota chỉ có bản chính — 7.41a…7.41e đều là 60.
+Mô hình phân biệt được 7.40 với 7.41, **không** tách được các bản vá chữ cái.
+
+**Ngưỡng báo động lại tham số:** `MinBrierGainToRetune = 0.002`, đặt theo sai số chuẩn đo
+được (0.0017). Trên lưới 30 tổ hợp luôn có một ô nhỉnh hơn ở chữ số thứ tư; hô hoán vì 0.0002
+là báo động giả, và một cảnh báo kêu suốt thì chẳng khác gì không có cảnh báo.

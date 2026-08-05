@@ -795,6 +795,7 @@ async function setupPredict() {
 
   loadPredict();
   loadCalibration();
+  loadPatches();
 }
 
 async function loadCalibration() {
@@ -825,18 +826,31 @@ async function loadCalibration() {
       </tr>`;
     }).join('');
 
+    // Chênh lệch giữa tập huấn luyện và tập kiểm định CHÍNH LÀ mức quá khớp. Hiện nó ra
+    // thay vì giấu đi: nếu một ngày nào đó nó doãng ra thì phải nhìn thấy ngay.
+    const inSample = c.inSample || {};
+    const overfit = Number.isFinite(inSample.brierScore)
+      ? c.brierScore - inSample.brierScore
+      : null;
+
     body.innerHTML = `
       <div class="bento">
         <article class="kpi p2">
           <div class="kpi-label">Đoán đúng kèo trên</div>
           <div class="kpi-value">${c.hitRate}%</div>
-          <div class="kpi-note">qua ${c.evaluated} trận đã đấu</div>
+          <div class="kpi-note">trên ${c.evaluated} trận chưa từng dùng để chỉnh tham số</div>
         </article>
         <article class="kpi p3">
           <div class="kpi-label">Hơn tung đồng xu</div>
           <div class="kpi-value">${edge.toFixed(1)}%</div>
           <div class="kpi-note">Brier ${c.brierScore} · 0.25 = ngẫu nhiên</div>
         </article>
+        ${overfit === null ? '' : `
+        <article class="kpi p1">
+          <div class="kpi-label">Mức quá khớp</div>
+          <div class="kpi-value">${overfit > 0 ? '+' : ''}${overfit.toFixed(4)}</div>
+          <div class="kpi-note">kiểm định ${c.brierScore} so với huấn luyện ${inSample.brierScore}</div>
+        </article>`}
       </div>
 
       <div class="table-scroll"><table>
@@ -854,9 +868,75 @@ async function loadCalibration() {
         có nghĩa là khoảng 65%. Nhưng ưu thế so với đoán ngẫu nhiên chỉ khoảng
         ${edge.toFixed(0)}% — Dota biến động cao, và chênh lệch Elo không chuyển thành
         chắc thắng. Đừng đặt nặng hơn mức đó.</div>
-      </div>`;
+      </div>
+
+      ${c.parameterDrift && c.parameterDrift.drifted && c.bestOnTrain ? `
+      <div class="note warn" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+        <div><b>Tham số đã lệch khỏi dữ liệu.</b> Dữ liệu mới nhất chọn thang
+        ${c.bestOnTrain.probabilityScale} và hệ số quên ${c.bestOnTrain.patchRegression},
+        tốt hơn ${c.parameterDrift.gain} Brier so với mức đang chạy
+        (${c.inUse.probabilityScale} / ${c.inUse.patchRegression}). Đến lúc đo lại và cập nhật hằng số.</div>
+      </div>` : ''}`;
   } catch (err) {
     body.innerHTML = `<div class="error">Không tải được <code>api/calibration</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+async function loadPatches() {
+  const body = $('#patches-body');
+  if (!body) return;
+  body.innerHTML = '<div class="skeleton" style="height:140px"></div>';
+
+  try {
+    const p = await getJson('api/patches');
+    const list = p.patches || [];
+
+    if (!list.length) {
+      body.innerHTML = '<div class="empty">Chưa có trận nào biết bản game.</div>';
+      return;
+    }
+
+    const max = Math.max(...list.map((x) => x.matches));
+    const total = list.reduce((s, x) => s + x.matches, 0);
+
+    const rows = list.map((x) => {
+      const pct = Math.round((x.matches / max) * 100);
+      const current = x.stepsBehind === 0;
+      return `<tr${current ? ' class="row-current"' : ''}>
+        <td><b>${esc(x.name)}</b>${current ? ' <span class="chip">đang chạy</span>' : ''}</td>
+        <td class="num">${x.matches}</td>
+        <td><div class="minibar"><span style="width:${pct}%"></span></div></td>
+        <td class="num">${x.weight === 1 ? '100%' : Math.round(x.weight * 100) + '%'}</td>
+      </tr>`;
+    }).join('');
+
+    const off = !p.patchRegression;
+
+    body.innerHTML = `
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Số trận theo từng bản game và sức nặng tương ứng</caption>
+        <thead><tr>
+          <th scope="col">Bản</th><th scope="col">Số ván</th>
+          <th scope="col">Tỷ trọng</th><th scope="col">Sức nặng</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${off
+          ? `<b>Mọi bản đang tính đủ sức nặng — và đó là kết luận từ phép đo, không phải mặc định bỏ quên.</b>
+             Đã thử giảm sức nặng dữ liệu bản cũ ở nhiều mức, kể cả vứt hẳn mọi trận trước
+             ${esc(p.currentPatch || 'bản hiện tại')}: không mức nào cải thiện được độ chính xác
+             ngoài mẫu, và vứt hẳn lịch sử còn hơi tệ hơn. Lý do là Elo vốn đã tự quên — một
+             trận từ hai năm trước đã bị hàng trăm trận sau đó ghi đè.`
+          : `Mỗi khi game lên bản chính mới, khoảng cách rating giữa các đội bị kéo lại
+             ${Math.round(p.patchRegression * 100)}%, nên dữ liệu càng cũ càng nhẹ.`}
+        <br><br><b>Lưu ý về dữ liệu:</b> ${esc(p.note || '')} Tổng ${total} ván.</div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/patches</code>.<br><small>${esc(err.message)}</small></div>`;
   }
 }
 

@@ -331,47 +331,88 @@ public static class AnalyticsEndpoints
             });
         });
 
-        // ---------- Hiệu chuẩn dự đoán (hồi tố) ----------
-        api.MapGet("/calibration", async (Ti2026DbContext db) =>
+        // ---------- Bản game trong dữ liệu ----------
+        api.MapGet("/patches", async (Ti2026DbContext db) =>
         {
-            var ratedLeagues = await db.Leagues
-                .Where(l => l.Tier != null && League.RatedTiers.Contains(l.Tier))
-                .Select(l => l.Id).ToListAsync();
-            var known = ratedLeagues.Count > 0;
-
             var rows = await db.Matches
-                .Where(m => m.RadiantTeamId != null && m.DireTeamId != null)
-                .Where(m => !known || (m.LeagueId != null && ratedLeagues.Contains(m.LeagueId.Value)))
-                .Select(m => new { m.StartTime, m.RadiantTeamId, m.DireTeamId, m.RadiantWin })
+                .Where(m => m.PatchVersion != null)
+                .GroupBy(m => m.PatchVersion!)
+                .Select(g => new
+                {
+                    patch = g.Key,
+                    matches = g.Count(),
+                    first = g.Min(m => m.StartTime),
+                    last = g.Max(m => m.StartTime),
+                })
                 .ToListAsync();
 
-            var teamIds = await db.Teams.Select(t => t.Id).ToListAsync();
-
-            var rated = rows.Select(r => new RatedMatch(
-                r.StartTime,
-                r.RadiantWin ? r.RadiantTeamId!.Value : r.DireTeamId!.Value,
-                r.RadiantWin ? r.DireTeamId!.Value : r.RadiantTeamId!.Value));
-
-            var ratedList = rated.ToList();
-
-            // So nhiều thang quy đổi trên CÙNG bộ trận, để việc chọn thang là kết luận từ dữ
-            // liệu chứ không phải con số đặt theo cảm tính. Brier thấp hơn = dự đoán tốt hơn.
-            var scaleComparison = new[] { 400.0, 500, 600, 700, 800 }
-                .Select(s =>
-                {
-                    var res = EloEngine.Backtest(ratedList, teamIds, probabilityScale: s);
-                    return new
-                    {
-                        scale = s,
-                        brier = res.Count == 0 ? (double?)null : Math.Round(
-                            res.Average(r => Math.Pow(r.PredictedProbability / 100 - (r.Correct ? 1 : 0), 2)), 4),
-                    };
-                })
+            var parsed = rows
+                .Select(r => new { Id = PatchIndex.Parse(r.patch), Row = r })
+                .Where(x => x.Id is not null)
+                .OrderByDescending(x => x.Id)
                 .ToList();
 
-            var results = EloEngine.Backtest(ratedList, teamIds);
+            var current = parsed.Count == 0 ? (int?)null : parsed[0].Id;
 
-            if (results.Count == 0)
+            return Results.Ok(new
+            {
+                currentPatch = current is int c ? PatchIndex.Name(c) : null,
+                patchRegression = EloOptions.Default.PatchRegression,
+                note = "Chỉ số bản game của OpenDota chỉ có bản CHÍNH: 7.41a…7.41e đều là 7.41. "
+                     + "Mô hình phân biệt được 7.40 với 7.41, không tách được các bản vá chữ cái.",
+                patches = parsed.Select(x => new
+                {
+                    name = PatchIndex.Name(x.Id!.Value),
+                    stepsBehind = current - x.Id,
+                    // Một trận ở bản cũ còn giữ bao nhiêu phần sức nặng so với bản hiện tại
+                    weight = Math.Round(
+                        Math.Pow(1 - EloOptions.Default.PatchRegression, (current - x.Id)!.Value), 3),
+                    matches = x.Row.matches,
+                    from = x.Row.first,
+                    to = x.Row.last,
+                }),
+            });
+        });
+
+        // ---------- Hiệu chuẩn dự đoán (hồi tố, ngoài mẫu) ----------
+        api.MapGet("/calibration", async (Ti2026DbContext db) =>
+        {
+            var ratedList = await RatedMatchesAsync(db);
+            var teamIds = await db.Teams.Select(t => t.Id).ToListAsync();
+
+            // Chia theo thời gian: 70% trận cũ nhất để CHỌN tham số, 30% mới nhất để BÁO CÁO.
+            // Tập kiểm định không tham gia việc chọn, nên con số của nó mới là con số thật.
+            var cutoff = Calibration.SplitCutoff(ratedList, TrainFraction);
+
+            var grid = Calibration.Grid(
+                ratedList, teamIds, ProbabilityScales, PatchRegressions, cutoff);
+
+            var best = Calibration.Best(grid);
+
+            // Tham số đang dùng cũng nằm trên lưới, nên so được trực tiếp với điểm tốt nhất.
+            var inUseOnTrain = grid.FirstOrDefault(
+                p => Math.Abs(p.ProbabilityScale - EloOptions.Default.ProbabilityScale) < 1e-9
+                  && Math.Abs(p.PatchRegression - EloOptions.Default.PatchRegression) < 1e-9);
+
+            var gain = best is GridPoint bp && inUseOnTrain.Samples > 0
+                ? inUseOnTrain.Brier - bp.Brier
+                : 0;
+
+            // Chỉ báo động khi mức cải thiện VƯỢT NGƯỠNG. Trên lưới vài chục tổ hợp thì luôn
+            // có một ô nhỉnh hơn ở chữ số thứ tư — hô hoán vì 0.0002 là báo động giả, và một
+            // cảnh báo kêu suốt thì chẳng khác gì không có cảnh báo.
+            var drifted = gain > MinBrierGainToRetune;
+
+            // Đo tham số ĐANG DÙNG trong sản phẩm, chứ không phải tham số vừa chọn được —
+            // nếu hai cái lệch nhau thì đó là tín hiệu cần cập nhật hằng số, và phải nhìn thấy.
+            var live = EloEngine.Backtest(ratedList, teamIds, options: EloOptions.Default);
+
+            var trainReport = Calibration.Summarize(
+                live.Where(r => cutoff is null || r.StartTime < cutoff.Value).ToList());
+            var holdoutReport = Calibration.Summarize(
+                live.Where(r => cutoff is not null && r.StartTime >= cutoff.Value).ToList());
+
+            if (holdoutReport.Evaluated == 0)
                 return Results.Ok(new
                 {
                     evaluated = 0,
@@ -380,42 +421,104 @@ public static class AnalyticsEndpoints
                          + "mang thông tin — trước đó mọi dự đoán đều là 50% vô nghĩa.",
                 });
 
-            var buckets = results
-                .GroupBy(r => Math.Clamp((int)(r.PredictedProbability / 10) * 10, 50, 90))
-                .OrderBy(g => g.Key)
-                .Select(g => new
-                {
-                    range = $"{g.Key}–{g.Key + 10}%",
-                    predicted = Math.Round(g.Average(x => x.PredictedProbability), 1),
-                    actual = Math.Round(g.Count(x => x.Correct) * 100.0 / g.Count(), 1),
-                    samples = g.Count(),
-                })
-                .ToList();
-
-            // Brier score: sai số bình phương trung bình. 0 là hoàn hảo, 0.25 là đoán bừa 50/50.
-            var brier = results.Average(r =>
-                Math.Pow(r.PredictedProbability / 100 - (r.Correct ? 1 : 0), 2));
-
-            var hitRate = results.Count(r => r.Correct) * 100.0 / results.Count;
-
             return Results.Ok(new
             {
-                evaluated = results.Count,
-                method = "Hồi tố: mỗi trận được dự đoán bằng Elo TẠI THỜI ĐIỂM TRƯỚC trận đó, "
-                       + "rồi mới dùng kết quả để cập nhật rating. Không nhìn trộm đáp án.",
-                probabilityScale = EloEngine.DefaultProbabilityScale,
-                hitRate = Math.Round(hitRate, 1),
-                brierScore = Math.Round(brier, 4),
+                method = "Hồi tố NGOÀI MẪU: tham số được chọn trên 70% trận cũ nhất, rồi đo "
+                       + "trên 30% trận mới nhất mà phần đó không tham gia việc chọn. Mỗi trận "
+                       + "dự đoán bằng Elo TẠI THỜI ĐIỂM TRƯỚC trận đó — không nhìn trộm đáp án.",
+                trainCutoff = cutoff,
+
+                // Số liệu để đọc là số liệu kiểm định
+                evaluated = holdoutReport.Evaluated,
+                hitRate = holdoutReport.HitRate,
+                brierScore = holdoutReport.Brier,
+                buckets = holdoutReport.Buckets,
                 brierNote = "0 là hoàn hảo; 0.25 tương đương tung đồng xu. Thấp hơn 0.25 nghĩa "
                           + "là mô hình có thông tin thật.",
-                scaleComparison,
-                scaleNote = "Thang quy đổi được chọn bằng cách so Brier trên chính bộ trận này. "
-                          + "Một tham số khớp trên 1700 trận thì rủi ro quá khớp thấp, nhưng "
-                          + "đây vẫn là đo trên dữ liệu đã dùng để chọn — hãy đọc nó như "
-                          + "'thang nào ít tệ nhất', không phải 'độ chính xác ngoài mẫu'.",
-                buckets,
+
+                inSample = new
+                {
+                    evaluated = trainReport.Evaluated,
+                    hitRate = trainReport.HitRate,
+                    brierScore = trainReport.Brier,
+                },
+                inSampleNote = "Số của tập huấn luyện luôn đẹp hơn vì tham số được chọn để làm "
+                             + "nó đẹp. Chênh lệch giữa hai cột chính là mức quá khớp.",
+
+                inUse = new
+                {
+                    probabilityScale = EloOptions.Default.ProbabilityScale,
+                    patchRegression = EloOptions.Default.PatchRegression,
+                },
+                bestOnTrain = best is GridPoint b
+                    ? new { probabilityScale = b.ProbabilityScale, patchRegression = b.PatchRegression, brier = b.Brier }
+                    : null,
+                parameterDrift = new
+                {
+                    drifted,
+                    gain = Math.Round(gain, 4),
+                    threshold = MinBrierGainToRetune,
+                    note = drifted
+                        ? "Có bộ tham số khác tốt hơn rõ rệt — nên đo lại và cập nhật hằng số."
+                        : "Không có bộ tham số nào tốt hơn đủ để đáng đổi. Chênh lệch trên "
+                        + "lưới nằm trong khoảng nhiễu.",
+                },
+
+                grid = grid.Select(p => new
+                {
+                    probabilityScale = p.ProbabilityScale,
+                    patchRegression = p.PatchRegression,
+                    brier = double.IsNaN(p.Brier) ? (double?)null : p.Brier,
+                    samples = p.Samples,
+                }),
+                gridNote = "patchRegression = mức kéo rating về mốc trung bình mỗi khi game lên "
+                         + "bản chính mới. 0 nghĩa là dữ liệu bản cũ vẫn tính đủ sức nặng.",
             });
         });
+    }
+
+    /// <summary>70% trận cũ nhất dùng để chọn tham số, phần còn lại chỉ để chấm điểm.</summary>
+    private const double TrainFraction = 0.7;
+
+    /// <summary>
+    /// Mức cải thiện Brier tối thiểu để đáng đổi tham số đang chạy.
+    ///
+    /// Đặt theo sai số chuẩn đo được: kiểm định ghép cặp giữa hai thang quy đổi trên 515 dự
+    /// đoán cho sai số chuẩn khoảng 0.0017. Dưới ngưỡng này thì "tốt hơn" chỉ là nhiễu.
+    /// </summary>
+    private const double MinBrierGainToRetune = 0.002;
+
+    private static readonly double[] ProbabilityScales = [400, 500, 600, 700, 800];
+
+    /// <summary>0 = bỏ qua yếu tố bản game. Có mặt trong lưới để nó phải TỰ chứng minh là cần.</summary>
+    private static readonly double[] PatchRegressions = [0, 0.05, 0.10, 0.15, 0.20, 0.30];
+
+    /// <summary>
+    /// Các trận dùng để chấm rating: đủ hai đội, và chỉ ở giải chuyên nghiệp trở lên.
+    /// Cùng bộ lọc với SnapshotWriter — hai nơi lệch nhau thì hiệu chuẩn sẽ đo một mô hình
+    /// khác với mô hình đang phục vụ người dùng.
+    /// </summary>
+    private static async Task<List<RatedMatch>> RatedMatchesAsync(Ti2026DbContext db)
+    {
+        var ratedLeagues = await db.Leagues
+            .Where(l => l.Tier != null && League.RatedTiers.Contains(l.Tier))
+            .Select(l => l.Id).ToListAsync();
+        var known = ratedLeagues.Count > 0;
+
+        var rows = await db.Matches
+            .Where(m => m.RadiantTeamId != null && m.DireTeamId != null)
+            .Where(m => !known || (m.LeagueId != null && ratedLeagues.Contains(m.LeagueId.Value)))
+            .Select(m => new
+            {
+                m.StartTime, m.RadiantTeamId, m.DireTeamId, m.RadiantWin, m.PatchVersion,
+            })
+            .ToListAsync();
+
+        return rows.Select(r => new RatedMatch(
+            r.StartTime,
+            r.RadiantWin ? r.RadiantTeamId!.Value : r.DireTeamId!.Value,
+            r.RadiantWin ? r.DireTeamId!.Value : r.RadiantTeamId!.Value,
+            PatchIndex.Parse(r.PatchVersion))).ToList();
     }
 
     // ---------- tiện ích ----------

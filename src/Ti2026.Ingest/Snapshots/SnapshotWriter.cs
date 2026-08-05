@@ -107,13 +107,17 @@ public class SnapshotWriter(Ti2026DbContext db)
             // Chưa nạp được bảng League thì KHÔNG lọc, vì lọc theo danh sách rỗng sẽ vứt
             // sạch mọi trận và Elo về 1500 hết — im lặng và sai.
             .Where(m => !known || (m.LeagueId != null && ratedLeagues.Contains(m.LeagueId.Value)))
-            .Select(m => new { m.StartTime, m.RadiantTeamId, m.DireTeamId, m.RadiantWin })
+            .Select(m => new
+            {
+                m.StartTime, m.RadiantTeamId, m.DireTeamId, m.RadiantWin, m.PatchVersion,
+            })
             .ToListAsync(ct);
 
         var rated = rows.Select(r => new RatedMatch(
             r.StartTime,
             WinnerTeamId: r.RadiantWin ? r.RadiantTeamId!.Value : r.DireTeamId!.Value,
-            LoserTeamId: r.RadiantWin ? r.DireTeamId!.Value : r.RadiantTeamId!.Value));
+            LoserTeamId: r.RadiantWin ? r.DireTeamId!.Value : r.RadiantTeamId!.Value,
+            Patch: PatchIndex.Parse(r.PatchVersion)));
 
         return EloEngine.Compute(rated, teams.Select(t => t.Id));
     }

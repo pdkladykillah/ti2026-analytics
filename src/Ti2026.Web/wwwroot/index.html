@@ -161,9 +161,17 @@
       <div class="card">
         <header>
           <h2>Mô hình này đáng tin đến đâu</h2>
-          <p class="desc">Kiểm hồi tố: mỗi trận trong quá khứ được dự đoán bằng Elo <b>tại thời điểm trước trận đó</b>, rồi mới so với kết quả thật. Một dự đoán không đo được là một dự đoán không bác bỏ được.</p>
+          <p class="desc">Kiểm hồi tố <b>ngoài mẫu</b>: tham số được chọn trên 70% trận cũ nhất, rồi chấm điểm trên 30% trận mới nhất mà phần đó không tham gia việc chọn. Mỗi trận được dự đoán bằng Elo <b>tại thời điểm trước trận đó</b>. Một dự đoán không đo được là một dự đoán không bác bỏ được.</p>
         </header>
         <div id="calibration-body"></div>
+      </div>
+
+      <div class="card">
+        <header>
+          <h2>Bản game và sức nặng của dữ liệu</h2>
+          <p class="desc">Meta đổi theo từng bản, nên dữ liệu bản cũ đáng ra phải nhẹ hơn. Đây là kết quả đo xem điều đó có đúng trong thực tế không.</p>
+        </header>
+        <div id="patches-body"></div>
       </div>
     </section>
 

@@ -196,4 +196,37 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
             "seed phải nạp snapshot cho cả 16 đội, nếu không trang render trắng");
         doc.RootElement.GetProperty("recentRuns").GetArrayLength().Should().Be(0);
     }
+
+    /// <summary>
+    /// Chưa có trận nào thì phải nói "chưa đủ dữ liệu", KHÔNG được trả 0% hay 50% như thể đã
+    /// đo được. Một con số bịa nhìn y hệt một con số thật.
+    /// </summary>
+    [Fact]
+    public async Task api_calibration_chua_co_tran_thi_noi_thang_la_chua_do_duoc()
+    {
+        using var doc = JsonDocument.Parse(
+            await factory.CreateClient().GetStringAsync("/api/calibration"));
+
+        doc.RootElement.GetProperty("evaluated").GetInt32().Should().Be(0);
+        doc.RootElement.GetProperty("buckets").GetArrayLength().Should().Be(0);
+        doc.RootElement.GetProperty("note").GetString().Should().NotBeNullOrWhiteSpace();
+    }
+
+    /// <summary>
+    /// app.js đọc đúng những khoá này để dựng thẻ "Bản game và sức nặng của dữ liệu".
+    /// Đổi tên khoá ở API mà quên sửa JS thì thẻ trắng, và không có gì báo.
+    /// </summary>
+    [Fact]
+    public async Task api_patches_tra_dung_shape_ma_app_js_dang_doc()
+    {
+        using var doc = JsonDocument.Parse(
+            await factory.CreateClient().GetStringAsync("/api/patches"));
+
+        foreach (var field in new[] { "currentPatch", "patchRegression", "note", "patches" })
+            doc.RootElement.TryGetProperty(field, out _).Should().BeTrue($"app.js cần '{field}'");
+
+        doc.RootElement.GetProperty("patches").GetArrayLength().Should().Be(0,
+            "chưa ingest trận nào nên chưa biết bản game — trả mảng rỗng chứ không phải lỗi");
+        doc.RootElement.GetProperty("currentPatch").ValueKind.Should().Be(JsonValueKind.Null);
+    }
 }

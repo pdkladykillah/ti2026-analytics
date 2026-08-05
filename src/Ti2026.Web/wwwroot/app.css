@@ -617,3 +617,22 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .cal-good { color: var(--pos); font-weight: 600; }
 .cal-mid  { color: var(--warn); font-weight: 600; }
 .cal-bad  { color: var(--neg); font-weight: 600; }
+
+/* Cảnh báo mạnh hơn ghi chú thường: dùng khi tham số mô hình đã lệch khỏi dữ liệu */
+.note.warn { background: var(--neg-soft); color: var(--neg); }
+
+/* ============================ Bản game ============================ */
+
+.minibar {
+  height: 8px; border-radius: var(--r-pill); background: var(--surface-2);
+  overflow: hidden; min-width: 70px;
+}
+.minibar span {
+  display: block; height: 100%; border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+}
+tr.row-current td { background: var(--accent-soft); }
+tr.row-current .chip {
+  background: var(--accent); color: var(--on-accent); padding: 1px 8px;
+  font-size: 11px; font-weight: 600; border: 0;
+}

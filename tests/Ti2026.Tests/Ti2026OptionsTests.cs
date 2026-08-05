@@ -27,6 +27,10 @@ public class Ti2026OptionsTests
         options.IngestIntervalHours.Should().Be(6);
         options.SanityGate.MinTeams.Should().Be(16);
         options.SanityGate.MinPlayers.Should().Be(60);
-        options.OpenDota.RequestsPerSecond.Should().Be(1);
+        // 0.8 chứ không phải 1: hạn mức miễn phí của OpenDota là 60/phút, và 1 req/s bằng
+        // đúng 60/phút nên thỉnh thoảng vẫn ăn 429. Đã gặp thật khi nạp bù.
+        options.OpenDota.RequestsPerSecond.Should().Be(0.8);
+        options.OpenDota.RequestsPerSecond.Should().BeLessThan(1,
+            "ngồi ngay trên vạch giới hạn thì sớm muộn cũng vượt");
     }
 }

@@ -426,15 +426,26 @@ public static class LearnEndpoints
                         retryAfterSeconds = (int)PlayerLookup.Window.TotalSeconds,
                     }, statusCode: StatusCodes.Status429TooManyRequests);
 
-                snapshot = await lookup.FetchAsync(client, accountId.Value, CancellationToken.None);
+                var result = await lookup.FetchAsync(client, accountId.Value, CancellationToken.None);
+                snapshot = result.Snapshot;
+
+                // Nói ĐÚNG nguyên nhân. Gộp hai trường hợp lại thành một câu "thường là do hồ
+                // sơ riêng tư" khiến người dùng đi sửa nhầm chỗ — đã gặp thật: lỗi xảy ra
+                // trong lúc vòng ingest chiếm bộ giới hạn nhịp, hồ sơ hoàn toàn công khai.
+                if (result.Failure == LookupFailure.SourceUnavailable)
+                    return Results.Json(new
+                    {
+                        error = "Nguồn dữ liệu đang bận hoặc không phản hồi. Thường là vì vòng "
+                              + "nạp dữ liệu đang chạy và dùng chung hạn mức. Thử lại sau vài phút.",
+                    }, statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
             if (snapshot is null)
                 return Results.NotFound(new
                 {
-                    error = "Không tra được hồ sơ này. Thường là do hồ sơ để riêng tư — trong "
-                          + "Dota 2 cần bật Cài đặt → Tuỳ chọn → Hiển thị dữ liệu trận công khai, "
-                          + "rồi đợi OpenDota cập nhật.",
+                    error = "Không tìm thấy hồ sơ công khai cho id này. Nếu id đúng thì hồ sơ đang "
+                          + "để riêng tư — trong Dota 2 bật Cài đặt → Tuỳ chọn → Hiển thị dữ liệu "
+                          + "trận công khai, rồi đợi OpenDota cập nhật.",
                 });
 
             var currentPatch = await CurrentPatchAsync(db);

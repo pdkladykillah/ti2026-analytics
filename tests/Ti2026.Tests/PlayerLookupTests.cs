@@ -76,7 +76,10 @@ public class PlayerLookupTests
 
         var result = await lookup.FetchAsync(client, 86745912, CancellationToken.None);
 
-        result.Should().BeNull();
+        result.Snapshot.Should().BeNull();
+        result.Failure.Should().Be(LookupFailure.SourceUnavailable,
+            "shape đổi là nguồn không dùng được, KHÔNG phải hồ sơ riêng tư — nói sai thì người "
+            + "dùng đi bật quyền công khai một hồ sơ vốn đã công khai");
     }
 
     [Fact]
@@ -91,12 +94,14 @@ public class PlayerLookupTests
 
         var result = await lookup.FetchAsync(client, 86745912, CancellationToken.None);
 
-        result.Should().NotBeNull();
-        result!.Name.Should().Be("Ye Xiu");
-        result.Heroes.Should().ContainSingle();
-        result.Heroes[0].HeroId.Should().Be(11);
-        result.Heroes[0].Games.Should().Be(167);
-        result.Heroes[0].Wins.Should().Be(115);
+        result.Failure.Should().Be(LookupFailure.None);
+        var snap = result.Snapshot;
+        snap.Should().NotBeNull();
+        snap!.Name.Should().Be("Ye Xiu");
+        snap.Heroes.Should().ContainSingle();
+        snap.Heroes[0].HeroId.Should().Be(11);
+        snap.Heroes[0].Games.Should().Be(167);
+        snap.Heroes[0].Wins.Should().Be(115);
     }
 
     private static Ti2026.Ingest.OpenDota.OpenDotaClient ClientReturning(

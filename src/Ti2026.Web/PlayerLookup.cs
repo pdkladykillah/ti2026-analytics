@@ -5,6 +5,18 @@ namespace Ti2026.Web;
 
 public record PlayerHeroStat(int HeroId, int Games, int Wins);
 
+/// <summary>
+/// Vì sao tra cứu thất bại. Phân biệt hai chuyện KHÁC HẲN nhau: hồ sơ để riêng tư là việc người
+/// dùng tự sửa được, còn nguồn đang bận thì chỉ cần thử lại.
+///
+/// Bản trước gộp cả hai thành một câu "thường là do hồ sơ để riêng tư" — và nó sai ngay lần
+/// đầu gặp thật: lỗi xảy ra trong lúc vòng ingest đang chiếm bộ giới hạn nhịp, hồ sơ hoàn toàn
+/// công khai. Khẳng định một nguyên nhân chưa kiểm chứng thì người dùng đi sửa nhầm chỗ.
+/// </summary>
+public enum LookupFailure { None, NotFoundOrPrivate, SourceUnavailable }
+
+public record LookupResult(PlayerSnapshot? Snapshot, LookupFailure Failure);
+
 public record PlayerSnapshot(
     long AccountId, string? Name, string? Avatar, int? RankTier, List<PlayerHeroStat> Heroes);
 
@@ -90,10 +102,10 @@ public class PlayerLookup(ILogger<PlayerLookup> logger)
     }
 
     /// <summary>
-    /// Trả null khi hồ sơ để riêng tư, id không tồn tại, hoặc nguồn đang lỗi — ba trường hợp
-    /// đó với người dùng là cùng một câu trả lời, nên không cần phân biệt ra ngoài.
+    /// Trả kèm LÝ DO thất bại: "hồ sơ riêng tư" và "nguồn đang bận" dẫn tới hai hành động
+    /// hoàn toàn khác nhau ở phía người dùng.
     /// </summary>
-    public async Task<PlayerSnapshot?> FetchAsync(
+    public async Task<LookupResult> FetchAsync(
         OpenDotaClient client, long accountId, CancellationToken ct)
     {
         try
@@ -108,7 +120,8 @@ public class PlayerLookup(ILogger<PlayerLookup> logger)
 
             // OpenDota vẫn trả 200 với hồ sơ để riêng tư, chỉ là profile rỗng và không có hero
             // nào. Coi đó là "không tra được" chứ không phải "người này chơi 0 ván".
-            if (stats.Count == 0 && profile?.Profile?.AccountId is null) return null;
+            if (stats.Count == 0 && profile?.Profile?.AccountId is null)
+                return new LookupResult(null, LookupFailure.NotFoundOrPrivate);
 
             var snapshot = new PlayerSnapshot(
                 accountId,
@@ -118,7 +131,7 @@ public class PlayerLookup(ILogger<PlayerLookup> logger)
                 stats);
 
             _cache[accountId] = (DateTimeOffset.UtcNow, snapshot);
-            return snapshot;
+            return new LookupResult(snapshot, LookupFailure.None);
         }
         // JsonException nằm trong danh sách này có lý do cụ thể: tôi đã khai hero_id là chuỗi
         // trong khi nguồn trả về số, và endpoint trả 500 ngay lần gọi thật đầu tiên. Kiểu dữ
@@ -128,7 +141,12 @@ public class PlayerLookup(ILogger<PlayerLookup> logger)
                                         or TimeoutException or System.Text.Json.JsonException)
         {
             logger.LogWarning(ex, "Không tra được hồ sơ {AccountId}", accountId);
-            return null;
+
+            // HttpRequestException với mã 404 là "không có người này"; mọi thứ còn lại —
+            // timeout, mất mạng, shape đổi — là nguồn đang không dùng được.
+            var notFound = ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.NotFound };
+            return new LookupResult(null,
+                notFound ? LookupFailure.NotFoundOrPrivate : LookupFailure.SourceUnavailable);
         }
     }
 }

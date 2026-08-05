@@ -311,6 +311,64 @@ public class MatchDetailIngesterTests : IDisposable
             "phải dừng đúng sau ngưỡng lỗi liên tiếp, không gọi tiếp 17 lần nữa");
     }
 
+    /// <summary>
+    /// Bảng Heroes phải được nạp. Nó tồn tại từ đầu nhưng chưa bao giờ có ai ghi vào, và một
+    /// bảng rỗng không làm gì đổ vỡ — nên nó nằm im cho tới lúc bảng ưu tiên cấm/chọn hiện ra
+    /// 30 dòng "hero 80". Test này khoá lại điều đó.
+    /// </summary>
+    [Fact]
+    public async Task Nap_bang_hero_kem_ten_va_anh()
+    {
+        using var db = NewDb();
+        db.Teams.Add(new Team { Slug = "t", Name = "T", OpenDotaTeamId = 1, LogoUrl = "https://steamcdn/x.png" });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var heroesJson = """
+        [
+          { "id": 1, "name": "npc_dota_hero_antimage", "localized_name": "Anti-Mage" },
+          { "id": 80, "name": "npc_dota_hero_lone_druid", "localized_name": "Lone Druid" }
+        ]
+        """;
+
+        var ingester = new OpenDotaIngester(
+            db,
+            new OpenDotaClient(new HttpClient(new RouteHandler(heroesJson))
+            {
+                BaseAddress = new Uri("https://x/api/"),
+            }),
+            new TeamResolver(db, NullLogger<TeamResolver>.Instance),
+            NullLogger<OpenDotaIngester>.Instance);
+
+        await ingester.IngestAsync(CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var lone = await db.Heroes.FirstOrDefaultAsync(h => h.Id == 80);
+
+        lone.Should().NotBeNull();
+        lone!.LocalizedName.Should().Be("Lone Druid");
+        lone.ImageUrl.Should().Contain("lone_druid",
+            "ảnh Steam CDN dùng phần đuôi sau tiền tố npc_dota_hero_");
+        lone.ImageUrl.Should().NotContain("npc_dota_hero_");
+    }
+
+    /// <summary>Trả heroes cho đường /heroes, mảng rỗng cho mọi đường khác.</summary>
+    private sealed class RouteHandler(string heroesJson) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage r, CancellationToken ct)
+        {
+            var body = r.RequestUri!.AbsolutePath.EndsWith("/heroes", StringComparison.Ordinal)
+                ? heroesJson
+                : "[]";
+
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json"),
+            });
+        }
+    }
+
     /// <summary>Trả OK cho <c>okCalls</c> lần đầu, sau đó luôn 429.</summary>
     private sealed class ThrottleAfterHandler(int okCalls) : HttpMessageHandler
     {

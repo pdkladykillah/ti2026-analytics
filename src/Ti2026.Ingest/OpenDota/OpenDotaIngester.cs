@@ -35,6 +35,7 @@ public class OpenDotaIngester(
             await UpdateLogosAsync(odTeams, ct);
         }
 
+        await UpdateHeroesAsync(ct);
         await UpdateLeaguesAsync(ct);
 
         var teams = await db.Teams
@@ -61,6 +62,58 @@ public class OpenDotaIngester(
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Nạp xong {Written} ván từ {Teams} đội", written, teams.Count);
         return written;
+    }
+
+    /// <summary>
+    /// Nạp bảng hero: id, tên, và ảnh chân dung.
+    ///
+    /// Bảng Heroes tồn tại từ đầu nhưng CHƯA BAO GIỜ được nạp — phát hiện khi bảng ưu tiên
+    /// cấm/chọn hiện ra 30 dòng "hero 80" thay vì tên hero. Client đã có GetHeroesAsync từ
+    /// trước, chỉ là không ai gọi. Một bảng rỗng không làm gì đổ vỡ, nên nó nằm im được lâu.
+    ///
+    /// Chỉ gọi khi bảng còn thiếu hero: response nhỏ nhưng vẫn là một request, và danh sách
+    /// hero gần như không đổi giữa các bản.
+    /// </summary>
+    private async Task UpdateHeroesAsync(CancellationToken ct)
+    {
+        // Ngưỡng theo số hero thực tế của Dota 2 (trên 120 và còn tăng). Dùng "có ít hơn
+        // ngưỡng" thay vì "rỗng" để tự nạp bù khi Valve thêm hero mới.
+        const int expectedAtLeast = 120;
+
+        if (await db.Heroes.CountAsync(ct) >= expectedAtLeast) return;
+
+        var heroes = await client.GetHeroesAsync(ct);
+        if (heroes.Count == 0)
+        {
+            logger.LogWarning("OpenDota trả về 0 hero — giữ nguyên bảng cũ");
+            return;
+        }
+
+        var existing = await db.Heroes.ToDictionaryAsync(h => h.Id, ct);
+
+        foreach (var h in heroes)
+        {
+            if (!existing.TryGetValue(h.Id, out var row))
+            {
+                row = new Hero { Id = h.Id, Name = h.Name };
+                db.Heroes.Add(row);
+            }
+
+            row.Name = h.Name;
+            row.LocalizedName = h.LocalizedName;
+
+            // name của OpenDota có dạng "npc_dota_hero_antimage"; ảnh trên Steam CDN dùng
+            // đúng phần đuôi sau tiền tố đó.
+            var slug = h.Name.StartsWith("npc_dota_hero_", StringComparison.Ordinal)
+                ? h.Name["npc_dota_hero_".Length..]
+                : h.Name;
+
+            row.ImageUrl =
+                $"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/{slug}.png";
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Nạp {Count} hero vào bảng Heroes", heroes.Count);
     }
 
     /// <summary>

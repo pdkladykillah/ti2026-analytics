@@ -631,6 +631,14 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
   display: block; height: 100%; border-radius: var(--r-pill);
   background: linear-gradient(90deg, var(--accent), var(--accent-hover));
 }
+/* Ô có ảnh hero/item kèm tên — ảnh không được đẩy chữ xuống dòng */
+.hero-cell { display: flex; align-items: center; gap: var(--s-3); min-width: 148px; }
+.hero-cell img {
+  border-radius: var(--r-sm); flex: none; object-fit: cover;
+  background: var(--surface-2);
+}
+.hero-cell span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 tr.row-current td { background: var(--accent-soft); }
 tr.row-current .chip {
   background: var(--accent); color: var(--on-accent); padding: 1px 8px;

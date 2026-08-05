@@ -106,6 +106,7 @@ app.MapDataEndpoints();
 app.MapH2hEndpoints();
 app.MapTrendEndpoints();
 app.MapAnalyticsEndpoints();
+app.MapLearnEndpoints();
 app.MapOpsEndpoints();
 
 app.Run();

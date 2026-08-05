@@ -23,6 +23,30 @@ public class OpenDotaMatchDetail
 
     [JsonPropertyName("players")] public List<OpenDotaMatchPlayer> Players { get; set; } = [];
     [JsonPropertyName("objectives")] public List<OpenDotaObjective>? Objectives { get; set; }
+
+    /// <summary>
+    /// Toàn bộ bàn draft, 24 lượt ở thể thức Captains Mode. null ở các thể thức không có draft.
+    /// </summary>
+    [JsonPropertyName("picks_bans")] public List<OpenDotaPickBan>? PicksBans { get; set; }
+}
+
+public class OpenDotaPickBan
+{
+    [JsonPropertyName("is_pick")] public bool IsPick { get; set; }
+    [JsonPropertyName("hero_id")] public int HeroId { get; set; }
+
+    /// <summary>0 = Radiant, 1 = Dire.</summary>
+    [JsonPropertyName("team")] public int Team { get; set; }
+
+    [JsonPropertyName("order")] public int Order { get; set; }
+}
+
+public class OpenDotaPurchase
+{
+    /// <summary>Giây kể từ tiếng còi. Âm = mua trước khai cuộc, vẫn là dữ liệu thật.</summary>
+    [JsonPropertyName("time")] public int Time { get; set; }
+
+    [JsonPropertyName("key")] public string? Key { get; set; }
 }
 
 public class OpenDotaMatchPlayer
@@ -47,6 +71,23 @@ public class OpenDotaMatchPlayer
     /// ván chưa parse thì rỗng hoặc null, và mọi chỉ số tính từ timeline phải là null.
     /// </summary>
     [JsonPropertyName("kills_log")] public List<OpenDotaKillLog>? KillsLog { get; set; }
+
+    /// <summary>
+    /// Mốc mua từng món. Chỉ có ở ván đã parse. Chứa cả món thành phẩm lẫn linh kiện, nên
+    /// hỏi "khi nào lên Manta" là hỏi thẳng khoá "manta" chứ không phải cộng dồn linh kiện.
+    /// </summary>
+    [JsonPropertyName("purchase_log")] public List<OpenDotaPurchase>? PurchaseLog { get; set; }
+
+    // Chỉ có ở ván đã parse — để null khi thiếu, KHÔNG quy về 0.
+    [JsonPropertyName("lane_role")] public int? LaneRole { get; set; }
+    [JsonPropertyName("lane")] public int? Lane { get; set; }
+    [JsonPropertyName("lane_efficiency_pct")] public double? LaneEfficiencyPct { get; set; }
+    [JsonPropertyName("last_hits")] public int? LastHits { get; set; }
+    [JsonPropertyName("denies")] public int? Denies { get; set; }
+    [JsonPropertyName("net_worth")] public int? NetWorth { get; set; }
+    [JsonPropertyName("hero_damage")] public int? HeroDamage { get; set; }
+    [JsonPropertyName("tower_damage")] public int? TowerDamage { get; set; }
+    [JsonPropertyName("obs_placed")] public int? ObserversPlaced { get; set; }
 
     public bool OnRadiant => IsRadiant ?? PlayerSlot < 128;
 }

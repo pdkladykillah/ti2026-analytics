@@ -1215,7 +1215,162 @@ async function loadHeroPool(team) {
   }
 }
 
+/* ============================ Học từ pro ============================ */
+
+/** Giây -> "12:20". Đồ mua trước tiếng còi có thời gian âm, và đó là dữ liệu thật. */
+function mmss(seconds) {
+  if (seconds === null || seconds === undefined) return '—';
+  if (seconds < 0) return 'trước còi';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+async function loadLearn() {
+  loadDraft();
+  loadItemHeroes();
+}
+
+async function loadDraft() {
+  const body = $('#draft-body');
+  body.innerHTML = '<div class="skeleton" style="height:220px"></div>';
+
+  try {
+    const d = await getJson('api/draft');
+
+    if (!d.heroes || !d.heroes.length) {
+      body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa có dữ liệu draft.')}</div>`;
+      return;
+    }
+
+    $('#draft-desc').insertAdjacentHTML('beforeend',
+      ` <b>${esc(d.patch)}</b> · ${d.matchesWithDraft} bàn draft.`);
+
+    const max = Math.max(...d.heroes.map((h) => h.contestRate));
+
+    const rows = d.heroes.slice(0, 30).map((h) => {
+      const pct = Math.round((h.contestRate / max) * 100);
+      // Cấm sớm là tín hiệu mạnh nhất trong bảng này, nên nó được tô màu riêng
+      const feared = h.avgBanOrder !== null && h.avgBanOrder < 8 && h.bans >= 3;
+      return `<tr>
+        <td class="hero-cell">
+          ${h.image ? `<img src="${esc(h.image)}" alt="" loading="lazy" width="48" height="27">` : ''}
+          <span>${esc(h.name)}</span>
+        </td>
+        <td><div class="minibar"><span style="width:${pct}%"></span></div></td>
+        <td class="num">${h.contestRate}%</td>
+        <td class="num">${h.picks}</td>
+        <td class="num">${h.bans}</td>
+        <td class="num${feared ? ' cal-bad' : ''}">${h.avgBanOrder === null ? '—' : h.avgBanOrder}</td>
+        <td class="num">${h.winrate === null ? '—' : h.winrate + '%'}</td>
+      </tr>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Tỷ lệ hero được cấm hoặc chọn ở bản hiện tại</caption>
+        <thead><tr>
+          <th scope="col">Hero</th><th scope="col">Được coi trọng</th><th scope="col">Tỷ lệ</th>
+          <th scope="col">Chọn</th><th scope="col">Cấm</th>
+          <th scope="col">Lượt cấm TB</th><th scope="col">Thắng khi chọn</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <p class="desc" style="margin-top:var(--s-3)">Chỉ hiện hero xuất hiện từ ${d.minAppearances} bàn draft trở lên —
+      dưới mức đó tỷ lệ nhảy quá mạnh theo từng ván. <b>Lượt cấm TB</b> càng nhỏ càng bị e dè;
+      số đỏ là hero thường bị gạt ngay đầu bàn.</p>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/draft</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+async function loadItemHeroes() {
+  const select = $('#item-hero');
+  const body = $('#item-body');
+
+  try {
+    const d = await getJson('api/items');
+
+    if (!d.heroes || !d.heroes.length) {
+      body.innerHTML = '<div class="empty">Chưa có dữ liệu mua đồ. Cần nạp lại match detail.</div>';
+      return;
+    }
+
+    select.innerHTML = d.heroes
+      .map((h) => `<option value="${h.heroId}">${esc(h.name)}</option>`)
+      .join('');
+
+    select.onchange = () => loadItems(select.value);
+    loadItems(select.value);
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/items</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+async function loadItems(heroId) {
+  const body = $('#item-body');
+  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+
+  try {
+    const d = await getJson(`api/items?hero=${encodeURIComponent(heroId)}`);
+
+    if (!d.items || !d.items.length) {
+      body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa đủ mẫu cho hero này.')}</div>`;
+      return;
+    }
+
+    const rows = d.items.map((it) => {
+      const w = it.medianWinSeconds;
+      const l = it.medianLossSeconds;
+
+      // Lên sớm hơn trong ván thắng = mốc đó quan trọng. Chỉ tô khi lệch từ 45 giây trở lên;
+      // dưới mức đó là dao động bình thường của trung vị trên mẫu nhỏ.
+      let gap = '—';
+      if (w !== null && l !== null) {
+        const diff = l - w;
+        const tone = diff >= 45 ? 'cal-good' : diff <= -45 ? 'cal-bad' : '';
+        gap = `<span class="${tone}">${diff > 0 ? 'sớm hơn ' : diff < 0 ? 'muộn hơn ' : ''}${mmss(Math.abs(diff))}</span>`;
+      }
+
+      return `<tr>
+        <td class="hero-cell">
+          <img src="${esc(it.image)}" alt="" loading="lazy" width="36" height="27"
+               onerror="this.style.visibility='hidden'">
+          <span>${esc(it.name)}</span>
+        </td>
+        <td class="num"><b>${mmss(it.medianSeconds)}</b></td>
+        <td class="num">${mmss(it.p25Seconds)} – ${mmss(it.p75Seconds)}</td>
+        <td class="num">${mmss(w)}</td>
+        <td class="num">${mmss(l)}</td>
+        <td class="num">${gap}</td>
+        <td class="num">${it.samples}</td>
+      </tr>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Mốc mua đồ của ${esc(d.heroName || '')} ở bản hiện tại</caption>
+        <thead><tr>
+          <th scope="col">Món</th><th scope="col">Trung vị</th><th scope="col">Khoảng thường gặp</th>
+          <th scope="col">Ván thắng</th><th scope="col">Ván thua</th>
+          <th scope="col">Thắng lên sớm hơn</th><th scope="col">Mẫu</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(d.caveat || '')}<br><br><small>${esc(d.consumablesNote || '')}</small></div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được mốc lên đồ.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
 /* ============================ Tab & theme ============================ */
+
+/** Tab nào đã nạp dữ liệu rồi, để không gọi lại mỗi lần người dùng bấm qua bấm lại. */
+const loadedViews = new Set();
 
 function setupTabs() {
   $$('nav button[role="tab"]').forEach((btn) => {
@@ -1227,6 +1382,14 @@ function setupTabs() {
         v.classList.toggle('active', active);
         v.hidden = !active;
       });
+
+      // Nạp muộn: hai truy vấn của tab này quét bảng mua đồ cả triệu hàng, không có lý gì
+      // bắt mọi người mở trang phải chờ nó khi họ chỉ muốn xem bảng xếp hạng.
+      const view = btn.dataset.view;
+      if (view === 'learn' && !loadedViews.has('learn')) {
+        loadedViews.add('learn');
+        loadLearn();
+      }
     };
   });
 }

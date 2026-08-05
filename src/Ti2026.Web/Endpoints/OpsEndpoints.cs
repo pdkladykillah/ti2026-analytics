@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Ti2026.Data;
 using Ti2026.Ingest;
+using Ti2026.Ingest.OpenDota;
 
 namespace Ti2026.Web.Endpoints;
 
@@ -30,6 +31,17 @@ public static class OpsEndpoints
                 players = await db.Players.CountAsync(),
                 matches = await db.Matches.CountAsync(),
                 snapshots = await db.TeamStatSnapshots.CountAsync(),
+
+                // Còn bao nhiêu ván cần gọi matches/{id}. Khác 0 là chuyện bình thường sau khi
+                // nâng MatchDetailIngester.SchemaVersion — nhưng nếu con số này đứng yên qua
+                // nhiều vòng thì việc nạp bù đã tắc, và không có chỗ nào khác nhìn ra điều đó.
+                pendingDetails = await db.Matches.CountAsync(
+                    m => m.DetailsIngestedAt == null
+                         || m.DetailSchemaVersion < MatchDetailIngester.SchemaVersion),
+                detailSchemaVersion = MatchDetailIngester.SchemaVersion,
+
+                draftEvents = await db.DraftEvents.CountAsync(),
+                itemPurchases = await db.ItemPurchases.CountAsync(),
                 recentRuns = runs.Select(r => new
                 {
                     source = r.Source,

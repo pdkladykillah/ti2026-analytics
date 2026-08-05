@@ -42,5 +42,18 @@ public class Match
     /// </summary>
     public DateTime? DetailsIngestedAt { get; set; }
 
+    /// <summary>
+    /// Phiên bản của BỘ TRƯỜNG đã trích từ match detail, không phải phiên bản của dữ liệu.
+    ///
+    /// Vì sao cần: mỗi lần ta trích thêm trường mới từ cùng một payload (draft, mốc mua đồ,
+    /// chỉ số lane…), những ván nạp trước đó vẫn còn thiếu. Không có cột này thì cách duy nhất
+    /// để nạp bù là sửa SQL tay trên production — thao tác không có test, không có vết, và một
+    /// lần gõ nhầm là mất dữ liệu thật.
+    ///
+    /// Cách dùng: tăng <see cref="Ti2026.Ingest"/> MatchDetailIngester.SchemaVersion, deploy,
+    /// rồi scheduler tự nạp bù dần. Không cần ai chạm vào DB.
+    /// </summary>
+    public int DetailSchemaVersion { get; set; }
+
     public List<MatchPlayer> Players { get; set; } = [];
 }

@@ -37,4 +37,24 @@ public class MatchPlayer
     /// null = ván chưa được OpenDota parse nên không có timeline.
     /// </summary>
     public int? KillsFirst10Min { get; set; }
+
+    // ---------- Chỉ từ ván ĐÃ được OpenDota parse; chưa parse thì để null ----------
+    // Cả khối dưới đây là null-able có chủ đích. Quy về 0 sẽ tạo ra những tuyển thủ "farm 0
+    // lính, gây 0 sát thương" trộn lẫn với số đo thật, và trung bình sẽ sai mà nhìn vẫn hợp lý.
+
+    /// <summary>OpenDota lane_role: 1 safe, 2 mid, 3 off, 4 jungle. 0/null = không xác định.</summary>
+    public int? LaneRole { get; set; }
+
+    /// <summary>Lane thực tế suy từ vị trí đầu trận, có thể khác LaneRole khi đội đổi lane.</summary>
+    public int? Lane { get; set; }
+
+    /// <summary>Hiệu suất lane theo phần trăm, thước đo thắng/thua lane của OpenDota.</summary>
+    public double? LaneEfficiencyPct { get; set; }
+
+    public int? LastHits { get; set; }
+    public int? Denies { get; set; }
+    public int? NetWorth { get; set; }
+    public int? HeroDamage { get; set; }
+    public int? TowerDamage { get; set; }
+    public int? ObserversPlaced { get; set; }
 }

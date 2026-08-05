@@ -21,6 +21,15 @@ public class MatchDetailIngester(
     OpenDotaClient client,
     ILogger<MatchDetailIngester> logger)
 {
+    /// <summary>
+    /// Bộ trường đang trích từ match detail. TĂNG con số này khi thêm trường mới, và mọi ván
+    /// cũ sẽ tự được nạp lại qua scheduler — không cần sửa SQL trên production.
+    ///
+    /// 1 = chỉ số cơ bản + first blood + mốc 10 mạng
+    /// 2 = thêm bàn draft, mốc mua đồ, chỉ số lane
+    /// </summary>
+    public const int SchemaVersion = 2;
+
     public async Task<int> IngestAsync(int maxMatchesPerRun, CancellationToken ct)
     {
         await RelinkOrphanPlayersAsync(ct);
@@ -28,7 +37,7 @@ public class MatchDetailIngester(
         // Ván mới nhất trước: phong độ gần đây là thứ đáng có sớm nhất, và nếu vì lý do gì
         // đó việc nạp bù không bao giờ hoàn tất thì phần thiếu là quá khứ xa, ít giá trị hơn.
         var pending = await db.Matches
-            .Where(m => m.DetailsIngestedAt == null)
+            .Where(m => m.DetailsIngestedAt == null || m.DetailSchemaVersion < SchemaVersion)
             .OrderByDescending(m => m.StartTime)
             .Take(maxMatchesPerRun)
             .Select(m => m.Id)
@@ -40,7 +49,8 @@ public class MatchDetailIngester(
             return 0;
         }
 
-        var remaining = await db.Matches.CountAsync(m => m.DetailsIngestedAt == null, ct);
+        var remaining = await db.Matches.CountAsync(
+            m => m.DetailsIngestedAt == null || m.DetailSchemaVersion < SchemaVersion, ct);
         logger.LogInformation(
             "Nạp match detail cho {Batch} ván (còn tổng cộng {Remaining} ván chưa có detail)",
             pending.Count, remaining);
@@ -70,10 +80,18 @@ public class MatchDetailIngester(
             }
 
             await ApplyAsync(matchId, detail, playersByAccount, ct);
+
+            // Lưu theo TỪNG ván, không dồn tới cuối mẻ. Hai lý do, cả hai đều do mốc mua đồ:
+            // một ván sinh ~570 hàng, dồn 200 ván là hơn 100 nghìn thực thể trong change
+            // tracker — chậm dần và ăn hết bộ nhớ của container 512 MB. Và với một lượt nạp bù
+            // kéo dài nửa tiếng, mất mạng ở ván thứ 150 không được phép xoá công của 149 ván
+            // trước đó.
+            await db.SaveChangesAsync(ct);
+            db.ChangeTracker.Clear();
+
             done++;
         }
 
-        await db.SaveChangesAsync(ct);
         logger.LogInformation("Đã nạp detail cho {Done}/{Batch} ván", done, pending.Count);
         return done;
     }
@@ -120,6 +138,9 @@ public class MatchDetailIngester(
             .FirstOrDefaultAsync(m => m.Id == matchId, ct);
         if (match is null) return;
 
+        await ApplyDraftAsync(matchId, detail, ct);
+        await ApplyPurchasesAsync(matchId, detail, ct);
+
         var facts = MatchDetailAnalyzer.Analyze(detail);
 
         match.RadiantHadFirstBlood = facts.RadiantHadFirstBlood;
@@ -128,6 +149,7 @@ public class MatchDetailIngester(
         match.SeriesId = detail.SeriesId;
         match.PatchVersion = detail.Patch?.ToString();
         match.DetailsIngestedAt = DateTime.UtcNow;
+        match.DetailSchemaVersion = SchemaVersion;
 
         foreach (var p in detail.Players)
         {
@@ -149,6 +171,73 @@ public class MatchDetailIngester(
             existing.PlayerId = p.AccountId is long acc && playersByAccount.TryGetValue(acc, out var pid)
                 ? pid
                 : null;
+
+            // lane_role = 0 nghĩa là OpenDota không xác định được, không phải "vai trò số 0".
+            existing.LaneRole = p.LaneRole is > 0 ? p.LaneRole : null;
+            existing.Lane = p.Lane is > 0 ? p.Lane : null;
+            existing.LaneEfficiencyPct = p.LaneEfficiencyPct;
+            existing.LastHits = p.LastHits;
+            existing.Denies = p.Denies;
+            existing.NetWorth = p.NetWorth;
+            existing.HeroDamage = p.HeroDamage;
+            existing.TowerDamage = p.TowerDamage;
+            existing.ObserversPlaced = p.ObserversPlaced;
+        }
+    }
+
+    /// <summary>
+    /// Ghi lại bàn draft. Xoá sạch theo trận rồi ghi lại thay vì cập nhật từng lượt: bàn draft
+    /// là một khối bất biến, và "xoá rồi ghi" luôn cho kết quả giống hệt dù chạy lại bao nhiêu
+    /// lần — trong khi cập nhật từng phần sẽ để lại rác nếu lần trước nạp thiếu.
+    /// </summary>
+    private async Task ApplyDraftAsync(long matchId, OpenDotaMatchDetail detail, CancellationToken ct)
+    {
+        if (detail.PicksBans is not { Count: > 0 }) return;
+
+        var old = await db.DraftEvents.Where(d => d.MatchId == matchId).ToListAsync(ct);
+        if (old.Count > 0) db.DraftEvents.RemoveRange(old);
+
+        // Trong một trận, order phải là duy nhất. OpenDota đôi khi trả lượt lặp ở dữ liệu cũ;
+        // giữ lượt đầu tiên thay vì để SaveChanges vỡ vì trùng khoá.
+        foreach (var pb in detail.PicksBans.GroupBy(x => x.Order).Select(g => g.First()))
+        {
+            db.DraftEvents.Add(new DraftEvent
+            {
+                MatchId = matchId,
+                Order = pb.Order,
+                IsPick = pb.IsPick,
+                HeroId = pb.HeroId,
+                IsRadiant = pb.Team == 0,
+            });
+        }
+    }
+
+    private async Task ApplyPurchasesAsync(long matchId, OpenDotaMatchDetail detail, CancellationToken ct)
+    {
+        var any = detail.Players.Any(p => p.PurchaseLog is { Count: > 0 });
+        if (!any) return;
+
+        var old = await db.ItemPurchases.Where(x => x.MatchId == matchId).ToListAsync(ct);
+        if (old.Count > 0) db.ItemPurchases.RemoveRange(old);
+
+        foreach (var p in detail.Players)
+        {
+            if (p.PurchaseLog is not { Count: > 0 }) continue;
+
+            foreach (var buy in p.PurchaseLog)
+            {
+                if (string.IsNullOrWhiteSpace(buy.Key)) continue;
+
+                db.ItemPurchases.Add(new ItemPurchase
+                {
+                    MatchId = matchId,
+                    PlayerSlot = p.PlayerSlot,
+                    HeroId = p.HeroId,
+                    IsRadiant = p.OnRadiant,
+                    ItemKey = buy.Key,
+                    TimeSeconds = buy.Time,
+                });
+            }
         }
     }
 }

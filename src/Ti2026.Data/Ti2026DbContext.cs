@@ -20,6 +20,8 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<SeedState> SeedStates => Set<SeedState>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
     public DbSet<League> Leagues => Set<League>();
+    public DbSet<DraftEvent> DraftEvents => Set<DraftEvent>();
+    public DbSet<ItemPurchase> ItemPurchases => Set<ItemPurchase>();
 
     /// <summary>
     /// Mọi DateTime ghi xuống đều chuyển sang UTC, mọi DateTime đọc lên đều được gắn
@@ -84,6 +86,22 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
             .HasOne(x => x.Player).WithMany()
             .HasForeignKey(x => x.PlayerId).OnDelete(DeleteBehavior.SetNull);
         b.Entity<MatchPlayer>().HasIndex(x => x.PlayerId);
+
+        // Thứ tự là duy nhất trong một trận — chốt này biến việc nạp lại thành vô hại thay vì
+        // nhân đôi bàn draft mỗi lần chạy.
+        b.Entity<DraftEvent>().HasIndex(x => new { x.MatchId, x.Order }).IsUnique();
+        b.Entity<DraftEvent>().HasIndex(x => x.HeroId);
+        b.Entity<DraftEvent>()
+            .HasOne(x => x.Match).WithMany()
+            .HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
+
+        // Không đặt khoá duy nhất: một người mua tango ba lần ở cùng một giây là chuyện thật.
+        // Chống trùng bằng cách xoá sạch theo trận rồi ghi lại, không bằng ràng buộc.
+        b.Entity<ItemPurchase>().HasIndex(x => new { x.HeroId, x.ItemKey });
+        b.Entity<ItemPurchase>().HasIndex(x => x.MatchId);
+        b.Entity<ItemPurchase>()
+            .HasOne(x => x.Match).WithMany()
+            .HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
 
         // Khoá chống nhân đôi khi ingest chạy lại trong cùng ngày
         b.Entity<TeamStatSnapshot>()

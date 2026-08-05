@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Ti2026.Data;
 using Ti2026.Data.Entities;
+using Ti2026.Ingest.Media;
 using Ti2026.Ingest.OpenDota;
 
 namespace Ti2026.Tests;
@@ -341,6 +342,8 @@ public class MatchDetailIngesterTests : IDisposable
                 BaseAddress = new Uri("https://x/api/"),
             }),
             new TeamResolver(db, NullLogger<TeamResolver>.Instance),
+            new MediaCache(db, new HttpClient(new RouteHandler()), NullLogger<MediaCache>.Instance),
+            new MediaPaths(Path.Combine(Path.GetTempPath(), "ti2026-media-test")),
             NullLogger<OpenDotaIngester>.Instance);
 
         await ingester.IngestAsync(CancellationToken.None);
@@ -390,6 +393,8 @@ public class MatchDetailIngesterTests : IDisposable
                 BaseAddress = new Uri("https://x/api/"),
             }),
             new TeamResolver(db, NullLogger<TeamResolver>.Instance),
+            new MediaCache(db, new HttpClient(new RouteHandler()), NullLogger<MediaCache>.Instance),
+            new MediaPaths(Path.Combine(Path.GetTempPath(), "ti2026-media-test")),
             NullLogger<OpenDotaIngester>.Instance);
 
         await ingester.IngestAsync(CancellationToken.None);

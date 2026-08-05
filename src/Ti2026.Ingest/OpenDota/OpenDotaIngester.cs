@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ti2026.Data;
 using Ti2026.Data.Entities;
+using Ti2026.Ingest.Media;
 
 namespace Ti2026.Ingest.OpenDota;
 
@@ -13,6 +14,8 @@ public class OpenDotaIngester(
     Ti2026DbContext db,
     OpenDotaClient client,
     TeamResolver resolver,
+    MediaCache media,
+    MediaPaths mediaPaths,
     ILogger<OpenDotaIngester> logger)
 {
     public async Task<int> IngestAsync(CancellationToken ct)
@@ -155,6 +158,13 @@ public class OpenDotaIngester(
                 if (string.IsNullOrWhiteSpace(avatar)) continue;
 
                 player.AvatarUrl = avatar;
+
+                // Tải về máy mình. Avatar Steam CHỈ có trên avatars.steamstatic.com — đường
+                // akamai chỉ 301 trả về đúng host đó — mà cả họ *.steamstatic.com không tới được
+                // từ mạng người dùng. Không có host thay thế, nên hotlink là bế tắc.
+                var asset = await media.EnsureAsync(avatar, mediaPaths.MediaDirectory, ct);
+                if (asset is not null) player.PhotoMediaAssetId = asset.Id;
+
                 done++;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

@@ -10,7 +10,20 @@
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-const HERO_CDN = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/';
+/**
+ * Host ảnh hero. Phải là steamcdn-a.akamaihd.net, KHÔNG phải cdn.cloudflare.steamstatic.com.
+ *
+ * Bằng chứng thu được từ chính trang này, ba lần thất bại và hai lần thành công:
+ *   cdn.cloudflare.steamstatic.com  → ảnh KHÔNG hiện (tier list, hero pool, và cả tab Học từ pro
+ *                                     trước khi sửa) — dù curl từ VPS vẫn trả 200
+ *   avatars.steamstatic.com         → ảnh KHÔNG hiện (avatar tuyển thủ)
+ *   steamcdn-a.akamaihd.net         → hiện bình thường (logo đội, tab Học từ pro sau khi sửa)
+ *   cdn.steamusercontent.com        → hiện bình thường (logo đội)
+ *
+ * Tức là *.steamstatic.com không tới được từ mạng người dùng. Không rõ vì sao — nhưng không cần
+ * biết vì sao để chọn đúng: dùng host đã chứng minh chạy được.
+ */
+const HERO_CDN = 'https://steamcdn-a.akamaihd.net/apps/dota2/images/dota_react/heroes/';
 
 /** Thoát HTML. Mọi giá trị từ API đều đi qua đây trước khi vào innerHTML. */
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (

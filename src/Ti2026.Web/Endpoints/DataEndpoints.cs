@@ -78,8 +78,17 @@ public static class DataEndpoints
         {
             var rows = await db.RosterEntries
                 .Where(r => r.ValidTo == null)
-                .Include(r => r.Team)
-                .Include(r => r.Player)
+                .Select(r => new
+                {
+                    r.Role,
+                    Team = r.Team,
+                    Player = r.Player,
+
+                    // Ảnh đã tải về. Nối tay thay vì Include vì Player.PhotoMediaAssetId là
+                    // khoá trần, không có navigation property.
+                    Asset = db.MediaAssets
+                        .FirstOrDefault(m => m.Id == r.Player!.PhotoMediaAssetId),
+                })
                 .ToListAsync();
 
             var rosters = rows
@@ -91,11 +100,13 @@ public static class DataEndpoints
                     real = r.Player.RealName,
                     role = r.Role,
 
-                    // AvatarUrl (Steam), KHÔNG phải PhotoUrl (dltv.org/uploads). Ảnh dltv bị
-                    // chặn hotlink theo referrer nên mọi thẻ img đó đều vỡ trên trình duyệt —
-                    // trả về URL không hiện được thì tệ hơn trả null, vì null cho UI biết để
-                    // hiện chữ cái thay thế.
-                    photo = r.Player.AvatarUrl,
+                    // Ảnh phục vụ từ CHÍNH MÁY MÌNH, không hotlink.
+                    //
+                    // Hai nguồn ngoài đều bế tắc: dltv.org/uploads chặn hotlink theo referrer,
+                    // còn avatar Steam chỉ có trên avatars.steamstatic.com mà cả họ
+                    // *.steamstatic.com không tới được từ mạng người dùng. Nên tải về rồi trả
+                    // đường dẫn tương đối — nó cũng tự đúng khi app chạy sau PathBase /ti2026.
+                    photo = r.Asset != null ? $"media/{r.Asset.LocalPath}" : null,
                 }).ToList());
 
             return Results.Ok(new { source = "dltv.org", rosters });

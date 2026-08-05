@@ -1,0 +1,49 @@
+{
+  "event": "The International 2026",
+  "source": "CHƯA ĐIỀN — dán bảng hệ số chính thức của Valve vào đây",
+  "updatedAt": null,
+  "_note": "Hệ số null nghĩa là CHƯA BIẾT, khác hẳn 0 (biết và bằng không). Endpoint api/fantasy sẽ từ chối tính điểm khi còn hệ số null, thay vì trả về những con số 0 trông như số đo. Điền xong thì đổi updatedAt và source.",
+
+  "series": {
+    "countBestGames": 2,
+    "_note": "Điểm một trận = tổng N ván CAO NHẤT trong series, không phải tổng tất cả các ván."
+  },
+
+  "stats": {
+    "kills":        { "label": "Hạ gục",            "field": "Kills",                  "per": 1,   "points": null },
+    "deaths":       { "label": "Tử trận",           "field": "Deaths",                 "per": 1,   "points": null },
+    "creeps":       { "label": "Lính (LH + deny)",  "field": "Creeps",                 "per": 100, "points": null },
+    "gpm":          { "label": "GPM",               "field": "GoldPerMin",             "per": 100, "points": null },
+    "towerKills":   { "label": "Phá trụ",           "field": "TowerKills",             "per": 1,   "points": null },
+    "roshanKills":  { "label": "Hạ Roshan",         "field": "RoshanKills",            "per": 1,   "points": null },
+    "teamfight":    { "label": "Tham chiến",        "field": "TeamfightParticipation",  "per": 1,  "points": null },
+    "wards":        { "label": "Cắm mắt",           "field": "ObserversPlaced",        "per": 1,   "points": null },
+    "camps":        { "label": "Stack rừng",        "field": "CampsStacked",           "per": 1,   "points": null },
+    "runes":        { "label": "Nhặt rune",         "field": "RunePickups",            "per": 1,   "points": null },
+    "firstBlood":   { "label": "First blood",       "field": "FirstBloodClaimed",      "per": 1,   "points": null },
+    "stuns":        { "label": "Giây giữ đứng hình","field": "StunSeconds",            "per": 1,   "points": null },
+    "courierKills": { "label": "Hạ courier",        "field": "CourierKills",           "per": 1,   "points": null }
+  },
+
+  "tiers": {
+    "_note": "Emblem tier nhân thêm phần trăm vào chỉ số của emblem đó.",
+    "I": 0.10,
+    "II": 0.30,
+    "III": 0.60,
+    "IV": 1.00,
+    "V": 1.50
+  },
+
+  "banners": {
+    "_note": "Ba banner theo nhóm vị trí. Vị trí suy từ lane + tài sản (PositionInference).",
+    "core":    { "label": "Core",    "positions": [1] },
+    "mid":     { "label": "Mid",     "positions": [2] },
+    "support": { "label": "Support", "positions": [4, 5] },
+    "offlane": { "label": "Offlane", "positions": [3] }
+  },
+
+  "traits": {
+    "_note": "CHƯA ĐIỀN. Tên trait đã biết từ luật TI2026; cách chúng đổi điểm thì cần bảng chính thức.",
+    "known": ["Fractal", "Benevolent", "Vampiric", "Unique", "Friendly"]
+  }
+}

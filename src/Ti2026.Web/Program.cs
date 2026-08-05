@@ -133,6 +133,7 @@ app.MapTrendEndpoints();
 app.MapAnalyticsEndpoints();
 app.MapLearnEndpoints();
 app.MapTierListEndpoints();
+app.MapFantasyEndpoints();
 app.MapOpsEndpoints();
 
 app.Run();

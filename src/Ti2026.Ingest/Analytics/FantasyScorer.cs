@@ -1,7 +1,14 @@
 namespace Ti2026.Ingest.Analytics;
 
-/// <summary>Một chỉ số chấm điểm: bao nhiêu điểm cho mỗi <paramref name="Per"/> đơn vị.</summary>
-public readonly record struct FantasyStat(string Key, string Label, double Per, double? Points);
+/// <summary>
+/// Một chỉ số chấm điểm: <c>Base + raw / Per × Points</c>.
+///
+/// Base tồn tại vì luật TI2026 chấm điểm chết là "1950 − 195 × số lần chết" — một hàm bậc
+/// nhất CÓ HẰNG SỐ, không phải phép nhân đơn thuần. Bản đầu của engine chỉ có phép nhân, nên
+/// nếu lắp bảng hệ số vào mà không sửa thì điểm chết sẽ ra âm ở mọi ván và không ai biết vì sao.
+/// </summary>
+public readonly record struct FantasyStat(
+    string Key, string Label, double Per, double? Points, double Base = 0);
 
 /// <summary>
 /// Bảng hệ số fantasy. <see cref="Ready"/> false nghĩa là chưa điền đủ — khi đó KHÔNG được
@@ -65,9 +72,9 @@ public static class FantasyScorer
                 continue;
             }
 
-            // Chia cho Per trước rồi nhân hệ số: "0.5 điểm mỗi 100 lính" viết được thẳng
-            // thành Per=100, Points=0.5 mà không phải tự quy đổi ở chỗ nhập liệu.
-            var points = raw.Value / (stat.Per == 0 ? 1 : stat.Per) * stat.Points.Value;
+            // Base + raw/Per × Points. Base chỉ khác 0 ở "deaths" (1950 − 195 × số lần chết).
+            var points = stat.Base
+                       + raw.Value / (stat.Per == 0 ? 1 : stat.Per) * stat.Points.Value;
 
             parts.Add(new FantasyBreakdown(stat.Key, stat.Label, raw, Math.Round(points, 3)));
             total += points;

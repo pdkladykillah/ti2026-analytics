@@ -1,171 +1,110 @@
 {
   "event": "The International 2026",
-  "source": "CHƯA ĐIỀN — dán bảng hệ số chính thức của Valve vào đây",
-  "updatedAt": null,
-  "_madstone": "KHÔNG có trong bảng stats vì OpenDota không lộ sự kiện nhặt lotus — không ở cấp người chơi lẫn cấp trận. Công cụ fantasy khác cũng chỉ ước lượng được. Nếu Valve chấm điểm Madstone thì phải trình bày là ƯỚC LƯỢNG, tách khỏi số đo.",
-  "_khongMoHinhHoaDuoc": [
-    "first blood trước tiếng còi",
-    "giết ở fountain"
-  ],
-  "_note": "Hệ số null nghĩa là CHƯA BIẾT, khác hẳn 0 (biết và bằng không). Endpoint api/fantasy sẽ từ chối tính điểm khi còn hệ số null, thay vì trả về những con số 0 trông như số đo. Điền xong thì đổi updatedAt và source.",
+  "source": "Luật fantasy TI2026 — lấy từ dự án dota2-fantasy-optimizer-2026 (chủ dự án xác nhận cho phép dùng)",
+  "updatedAt": "2026-08-05T00:00:00Z",
+  "_canKiemLai": "Đây là bản chép lại luật của Valve qua một dự án khác. Nên đối chiếu với trang Fantasy trong client Dota 2 trước khi tin tuyệt đối — một bản chép sai thì mọi con số phía sau sai theo mà không có gì báo.",
+
   "series": {
     "countBestGames": 2,
     "_note": "Điểm một trận = tổng N ván CAO NHẤT trong series, không phải tổng tất cả các ván."
   },
+
+  "_congThuc": "Điểm mỗi chỉ số = base + (giá trị thô / per) × points. base khác 0 chỉ ở 'deaths', vì luật là 1950 − 195 × số lần chết — hàm bậc nhất CÓ hằng số, không phải phép nhân đơn thuần.",
+
   "stats": {
-    "kills": {
-      "label": "Hạ gục",
-      "field": "Kills",
-      "per": 1,
-      "points": null
+    "kills":      { "label": "Hạ gục",             "color": "red",   "field": "Kills",                  "per": 1, "points": 107,  "base": 0 },
+    "deaths":     { "label": "Tử trận",            "color": "red",   "field": "Deaths",                 "per": 1, "points": -195, "base": 1950 },
+    "creeps":     { "label": "Lính (LH + deny)",   "color": "red",   "field": "Creeps",                 "per": 1, "points": 3,    "base": 0 },
+    "gpm":        { "label": "GPM",                "color": "red",   "field": "GoldPerMin",             "per": 1, "points": 2,    "base": 0 },
+    "towers":     { "label": "Phá trụ",            "color": "red",   "field": "TowerKills",             "per": 1, "points": 352,  "base": 0 },
+    "madstones":  { "label": "Madstone",           "color": "red",   "field": null,                     "per": 1, "points": 13,   "base": 0 },
+
+    "wards":      { "label": "Cắm mắt",            "color": "blue",  "field": "ObserversPlaced",        "per": 1, "points": 117,  "base": 0 },
+    "stacks":     { "label": "Stack rừng",         "color": "blue",  "field": "CampsStacked",           "per": 1, "points": 234,  "base": 0 },
+    "runes":      { "label": "Nhặt rune",          "color": "blue",  "field": "RunePickups",            "per": 1, "points": 141,  "base": 0 },
+    "watchers":   { "label": "Chiếm watcher",      "color": "blue",  "field": null,                     "per": 1, "points": 147,  "base": 0 },
+    "lotuses":    { "label": "Lotus",              "color": "blue",  "field": null,                     "per": 1, "points": 176,  "base": 0 },
+    "smokes":     { "label": "Dùng smoke",         "color": "blue",  "field": null,                     "per": 1, "points": 293,  "base": 0 },
+
+    "teamfight":  { "label": "Tham chiến",         "color": "green", "field": "TeamfightParticipation", "per": 1, "points": 2124, "base": 0 },
+    "stuns":      { "label": "Giây giữ đứng hình", "color": "green", "field": "StunSeconds",            "per": 1, "points": 10,   "base": 0 },
+    "firstBlood": { "label": "First blood",        "color": "green", "field": "FirstBloodClaimed",      "per": 1, "points": 1934, "base": 0 },
+    "tormentor":  { "label": "Hạ Tormentor",       "color": "green", "field": null,                     "per": 1, "points": 879,  "base": 0 },
+    "roshan":     { "label": "Hạ Roshan",          "color": "green", "field": "RoshanKills",            "per": 1, "points": 1172, "base": 0 },
+    "courier":    { "label": "Hạ courier",         "color": "green", "field": "CourierKills",           "per": 1, "points": 703,  "base": 0 }
+  },
+
+  "_nguonDuLieu": {
+    "_note": "field = null nghĩa là CHƯA lấy được từ OpenDota. Scorer để null và khai ra ở phần phân rã, KHÔNG quy về 0 — điền 0 thì cả bảng lặng lẽ thành 'chưa ai làm bao giờ'.",
+    "chuaNapDuoc": {
+      "smokes": "item_uses.smoke_of_deceit CÓ trong payload — cần schema v5 để nạp",
+      "madstones": "item_uses.madstone_bundle CÓ, nhưng đó là SỐ LẦN DÙNG BUNDLE, chưa chắc bằng số madstone nhặt — phải kiểm trước",
+      "tormentor": "objectives có CHAT_MESSAGE_MINIBOSS_KILL — cần kiểm có player_slot để quy về từng người không"
     },
-    "deaths": {
-      "label": "Tử trận",
-      "field": "Deaths",
-      "per": 1,
-      "points": null
-    },
-    "creeps": {
-      "label": "Lính (LH + deny)",
-      "field": "Creeps",
-      "per": 100,
-      "points": null
-    },
-    "gpm": {
-      "label": "GPM",
-      "field": "GoldPerMin",
-      "per": 100,
-      "points": null
-    },
-    "towerKills": {
-      "label": "Phá trụ",
-      "field": "TowerKills",
-      "per": 1,
-      "points": null
-    },
-    "roshanKills": {
-      "label": "Hạ Roshan",
-      "field": "RoshanKills",
-      "per": 1,
-      "points": null
-    },
-    "teamfight": {
-      "label": "Tham chiến",
-      "field": "TeamfightParticipation",
-      "per": 1,
-      "points": null
-    },
-    "camps": {
-      "label": "Stack rừng",
-      "field": "CampsStacked",
-      "per": 1,
-      "points": null
-    },
-    "runes": {
-      "label": "Nhặt rune",
-      "field": "RunePickups",
-      "per": 1,
-      "points": null
-    },
-    "firstBlood": {
-      "label": "First blood",
-      "field": "FirstBloodClaimed",
-      "per": 1,
-      "points": null
-    },
-    "stuns": {
-      "label": "Giây giữ đứng hình",
-      "field": "StunSeconds",
-      "per": 1,
-      "points": null
-    },
-    "courierKills": {
-      "label": "Hạ courier",
-      "field": "CourierKills",
-      "per": 1,
-      "points": null
-    },
-    "smokeUses": {
-      "label": "Dùng smoke",
-      "field": "SmokeUses",
-      "per": 1,
-      "points": null
-    },
-    "wardsPlaced": {
-      "label": "Cắm mắt",
-      "field": "ObserversPlaced",
-      "per": 1,
-      "points": null
-    },
-    "watchers": {
-      "label": "Watcher",
-      "field": null,
-      "per": 1,
-      "points": null,
-      "_nguon": "CHƯA tìm được trường nào trong OpenDota"
-    },
-    "madstones": {
-      "label": "Madstone",
-      "field": null,
-      "per": 1,
-      "points": null,
-      "_nguon": "item_uses.madstone_bundle là SỐ LẦN DÙNG BUNDLE, chưa chắc bằng số madstone nhặt — cần kiểm trước khi dùng"
+    "khongCoNguon": {
+      "watchers": "không tìm thấy trường nào trong OpenDota",
+      "lotuses": "OpenDota không lộ sự kiện nhặt lotus"
     }
   },
+
   "roster": {
-    "_note": "Số suất mỗi nhóm vị trí trong một đội hình fantasy. CẦN XÁC NHẬN theo luật TI2026 — đây là phỏng đoán theo thể thức các năm trước, sửa cùng lúc với bảng hệ số.",
+    "_note": "Ba banner theo nhóm vị trí, đúng như luật TI2026.",
     "_confirmed": false,
-    "slots": {
-      "core": 2,
-      "mid": 1,
-      "support": 2
-    }
+    "slots": { "core": 2, "mid": 1, "support": 2 }
   },
+
   "tiers": {
-    "_note": "Emblem tier nhân thêm phần trăm vào chỉ số của emblem đó. Trait nhân SAU khi đã áp tier, không cộng song song — thứ tự này đổi kết quả.",
-    "I": 0.1,
-    "II": 0.3,
-    "III": 0.6,
-    "IV": 1,
-    "V": 1.5
+    "_note": "Nhân thêm phần trăm vào chỉ số của emblem đó. Trait nhân SAU khi đã áp tier.",
+    "I": 10,
+    "II": 30,
+    "III": 60,
+    "IV": 100,
+    "V": 150
   },
-  "banners": {
-    "_note": "Ba banner theo nhóm vị trí. Vị trí suy từ lane + tài sản (PositionInference).",
-    "core": {
-      "label": "Core",
-      "positions": [
-        1
-      ]
+
+  "bannerSlotColors": {
+    "_note": "Màu ba ô emblem của từng banner. Emblem chỉ gắn được chỉ số cùng màu với ô.",
+    "core": ["red", "green", "red"],
+    "mid": ["red", "blue", "green"],
+    "support": ["blue", "green", "blue"]
+  },
+
+  "traits": {
+    "_note": "Hệ số nhân, áp SAU tier. 'Kề nhau' nghĩa là hai ô có thứ tự chênh đúng 1.",
+    "none":       { "label": "Không có",   "factor": 1.0 },
+    "fractal":    { "label": "Fractal",    "factor": 1.6, "dieuKien": "cả ba tier trên banner khác nhau" },
+    "benevolent": { "label": "Benevolent", "factor": 1.2, "apCho": "cac-o-ke-ben" },
+    "vampiric":   { "label": "Vampiric",   "factor": 1.5, "apChoKeBen": 0.9 },
+    "unique":     { "label": "Unique",     "factor": 1.3, "dieuKien": "không có emblem Unique nào khác trên banner" },
+    "friendly":   { "label": "Friendly",   "factor": 1.5, "dieuKien": "banner có ít nhất ba emblem Friendly" }
+  },
+
+  "titles": {
+    "_note": "Chọn một Prefix + một Suffix cho TOÀN BỘ đội hình. Hai thưởng áp độc lập vào điểm mỗi ván khi thoả điều kiện.",
+    "prefixes": {
+      "crimson":      { "label": "Crimson",      "bonus": 6,  "dieuKien": "chơi hero màu đỏ" },
+      "cerulean":     { "label": "Cerulean",     "bonus": 11, "dieuKien": "chơi hero màu xanh dương" },
+      "emerald":      { "label": "Emerald",      "bonus": 6,  "dieuKien": "chơi hero màu xanh lá" },
+      "royal":        { "label": "Royal",        "bonus": 10, "dieuKien": "chơi hero màu tím" },
+      "golden":       { "label": "Golden",       "bonus": 8,  "dieuKien": "chơi hero màu vàng hoặc nâu" },
+      "elemental":    { "label": "Elemental",    "bonus": 8,  "dieuKien": "chơi hero nước, lửa hoặc băng" },
+      "otherworldly": { "label": "Otherworldly", "bonus": 7,  "dieuKien": "chơi hero undead, quỷ hoặc linh hồn" },
+      "heroic":       { "label": "Heroic",       "bonus": 9,  "dieuKien": "chơi hero đeo mặt nạ hoặc khoác áo choàng" }
     },
-    "mid": {
-      "label": "Mid",
-      "positions": [
-        2
-      ]
-    },
-    "support": {
-      "label": "Support",
-      "positions": [
-        4,
-        5
-      ]
-    },
-    "offlane": {
-      "label": "Offlane",
-      "positions": [
-        3
-      ]
+    "suffixes": {
+      "tormented":   { "label": "the Tormented",           "bonus": 23 },
+      "flayedTwins": { "label": "the Flayed Twins Acolyte", "bonus": 9 },
+      "patient":     { "label": "the Patient",             "bonus": 23 },
+      "underdog":    { "label": "the Underdog",            "bonus": 6 },
+      "decisive":    { "label": "the Decisive",            "bonus": 24 },
+      "clutch":      { "label": "the Clutch",              "bonus": 16 },
+      "lucky":       { "label": "the Lucky",               "bonus": 21 },
+      "cruel":       { "label": "the Cruel",               "bonus": 13 }
     }
   },
-  "traits": {
-    "_note": "CHƯA ĐIỀN. Tên trait đã biết từ luật TI2026; cách chúng đổi điểm thì cần bảng chính thức.",
-    "known": [
-      "Fractal",
-      "Benevolent",
-      "Vampiric",
-      "Unique",
-      "Friendly"
-    ]
-  },
-  "_emblemStats": "Danh sách chỉ số lấy từ UI của trang tham khảo (emblem thật của TI2026): Creeps, GPM, Deaths, Towers, Kills, Madstones, Teamfight, Runes, Camps stacked, Watchers, Wards placed, Smoke uses, Courier kills, Roshan kills."
+
+  "_khongMoHinhHoaDuoc": [
+    "first blood trước tiếng còi",
+    "giết ở fountain"
+  ]
 }

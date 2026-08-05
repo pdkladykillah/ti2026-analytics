@@ -272,29 +272,32 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
     /// lời hứa, mà hotlink thì không hiện được. Test này khoá lời hứa đó lại.
     /// </summary>
     /// <summary>
-    /// Khung fantasy phải dựng sẵn và TỪ CHỐI tính điểm khi chưa có hệ số — chứ không trả về
-    /// một bảng toàn số 0 trông y hệt một bảng đã đo.
+    /// Bản trước của test này assert ready == false — nó khoá TRẠNG THÁI TẠM THỜI "chưa điền hệ
+    /// số" chứ không phải một tính chất bền vững, nên vừa điền xong bảng hệ số là nó đỏ.
+    ///
+    /// Giờ nó kiểm ba điều đúng mãi: bảng hệ số đọc được, giới hạn của NGUỒN luôn được khai
+    /// (điền hệ số cũng không cứu được Lotus), và chưa có ván nào thì xuống cấp tử tế.
     /// </summary>
     [Fact]
-    public async Task api_fantasy_chua_co_he_so_thi_tu_choi_tinh_diem()
+    public async Task api_fantasy_doc_duoc_he_so_va_xuong_cap_tu_te_khi_chua_co_van()
     {
         var client = factory.CreateClient();
 
         using var cfg = JsonDocument.Parse(await client.GetStringAsync("/api/fantasy/config"));
-        cfg.RootElement.GetProperty("ready").GetBoolean().Should().BeFalse();
-        cfg.RootElement.GetProperty("missingCoefficients").GetArrayLength()
-            .Should().BeGreaterThan(0);
+        cfg.RootElement.GetProperty("ready").GetBoolean().Should().BeTrue(
+            "data/fantasy.json đã có đủ hệ số");
+        cfg.RootElement.GetProperty("missingCoefficients").GetArrayLength().Should().Be(0);
+        cfg.RootElement.GetProperty("stats").GetArrayLength().Should().BeGreaterThan(10);
 
-        // Giới hạn của NGUỒN phải luôn được khai, kể cả khi đã điền hệ số
+        // Giới hạn của NGUỒN phải luôn được khai, kể cả khi hệ số đã đủ
         cfg.RootElement.GetProperty("unavailable").GetArrayLength().Should().BeGreaterThan(0);
 
+        // DB của test chưa có ván nào — phải nói rõ, không được trả bảng rỗng không lời giải thích
         using var pl = JsonDocument.Parse(await client.GetStringAsync("/api/fantasy/players"));
-        pl.RootElement.GetProperty("ready").GetBoolean().Should().BeFalse();
         pl.RootElement.GetProperty("players").GetArrayLength().Should().Be(0);
         pl.RootElement.GetProperty("note").GetString().Should().NotBeNullOrWhiteSpace();
 
         using var op = JsonDocument.Parse(await client.GetStringAsync("/api/fantasy/optimize"));
-        op.RootElement.GetProperty("ready").GetBoolean().Should().BeFalse();
         op.RootElement.GetProperty("roster").GetArrayLength().Should().Be(0);
     }
 

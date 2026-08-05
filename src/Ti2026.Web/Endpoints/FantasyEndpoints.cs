@@ -284,14 +284,18 @@ public static class FantasyEndpoints
         ["gpm"] = r.GoldPerMin,
         ["creeps"] = r.LastHits is int lh ? lh + (r.Denies as int? ?? 0) : (double?)null,
         ["wards"] = r.ObserversPlaced,
-        ["camps"] = r.CampsStacked,
+        ["stacks"] = r.CampsStacked,
         ["runes"] = r.RunePickups,
         ["stuns"] = r.StunSeconds,
         ["teamfight"] = r.TeamfightParticipation,
-        ["towerKills"] = r.TowerKills,
-        ["roshanKills"] = r.RoshanKills,
-        ["courierKills"] = r.CourierKills,
+        ["towers"] = r.TowerKills,
+        ["roshan"] = r.RoshanKills,
+        ["courier"] = r.CourierKills,
         ["firstBlood"] = r.FirstBloodClaimed is bool fb ? (fb ? 1.0 : 0.0) : (double?)null,
+
+        // KHONG co: madstones, watchers, lotuses, smokes, tormentor.
+        // Thieu khoa thi scorer de null va khai ra o phan ra — dung thu can. Xem
+        // data/fantasy.json muc _nguonDuLieu de biet cai nao nap duoc, cai nao khong.
     };
 
     private static object Blocked(string note) => new
@@ -357,7 +361,11 @@ public static class FantasyEndpoints
                         s.Value.TryGetProperty("points", out var pt)
                             && pt.ValueKind == JsonValueKind.Number
                             ? pt.GetDouble()
-                            : null));
+                            : null,
+                        s.Value.TryGetProperty("base", out var bs)
+                            && bs.ValueKind == JsonValueKind.Number
+                            ? bs.GetDouble()
+                            : 0));
                 }
             }
 

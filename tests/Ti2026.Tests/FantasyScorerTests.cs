@@ -14,6 +14,10 @@ public class FantasyScorerTests
         new(stats.Select(s => new FantasyStat(s.Key, s.Key, s.Per, s.Points)).ToList(),
             CountBestGames: 2, Source: "test", UpdatedAt: null);
 
+    private static FantasyConfig ConfigWithBase(string key, double per, double points, double bas) =>
+        new([new FantasyStat(key, key, per, points, bas)],
+            CountBestGames: 2, Source: "test", UpdatedAt: null);
+
     private static FantasyGame Game(long id, long? series, params (string, double?)[] values) =>
         new(id, series, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             values.ToDictionary(v => v.Item1, v => v.Item2));
@@ -25,6 +29,35 @@ public class FantasyScorerTests
         var score = FantasyScorer.ScoreGame(Game(1, null, ("creeps", 300)), cfg);
 
         score.Points.Should().Be(1.5, "300 lính, 0.5 điểm mỗi 100 lính");
+    }
+
+    /// <summary>
+    /// Luật TI2026 chấm điểm chết là "1950 − 195 × số lần chết" — hàm bậc nhất CÓ hằng số.
+    /// Engine bản đầu chỉ có phép nhân, nên nếu lắp bảng hệ số vào mà không sửa thì điểm chết
+    /// ra âm ở MỌI ván và không ai biết vì sao.
+    /// </summary>
+    [Fact]
+    public void Tinh_dung_ham_bac_nhat_co_hang_so_cho_diem_chet()
+    {
+        var cfg = ConfigWithBase("deaths", per: 1, points: -195, bas: 1950);
+
+        FantasyScorer.ScoreGame(Game(1, null, ("deaths", 0)), cfg).Points.Should().Be(1950,
+            "không chết lần nào thì được trọn hằng số");
+        FantasyScorer.ScoreGame(Game(2, null, ("deaths", 5)), cfg).Points.Should().Be(975,
+            "1950 − 195 × 5");
+        FantasyScorer.ScoreGame(Game(3, null, ("deaths", 12)), cfg).Points.Should().Be(-390,
+            "điểm chết KHÔNG chặn ở 0, được phép âm — đúng luật");
+    }
+
+    /// <summary>Chưa đo được thì không cộng cả hằng số: chưa biết chết mấy lần ≠ chết 0 lần.</summary>
+    [Fact]
+    public void Chua_do_duoc_thi_khong_cong_ca_hang_so()
+    {
+        var cfg = ConfigWithBase("deaths", per: 1, points: -195, bas: 1950);
+        var score = FantasyScorer.ScoreGame(Game(1, null, ("deaths", null)), cfg);
+
+        score.Points.Should().Be(0);
+        score.Parts.Single().Points.Should().BeNull();
     }
 
     [Fact]

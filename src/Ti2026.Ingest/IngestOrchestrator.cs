@@ -79,6 +79,17 @@ public class IngestOrchestrator(
         run.ItemsWritten = written;
         run.ErrorMessage = Truncate(error, 4000);
         run.FinishedAt = DateTime.UtcNow;
+
+        // Update() thay vì dựa vào change tracker, và đây KHÔNG phải thừa.
+        //
+        // MatchDetailIngester gọi db.ChangeTracker.Clear() sau mỗi ván để giữ bộ nhớ — việc đó
+        // gỡ luôn `run` khỏi tracker. Khi ấy gán thuộc tính rồi SaveChanges sẽ không phát ra
+        // UPDATE nào, và bản ghi nằm lại ở trạng thái Running VĨNH VIỄN.
+        //
+        // Hậu quả không phải chuyện nhỏ: một vòng đã chết trông y hệt một vòng đang chạy, nên
+        // mọi thứ đọc IngestRun — trang trạng thái, cảnh báo, chẩn đoán — đều nói sai. Và nó
+        // im lặng: không lỗi, không log, chỉ là một dòng không bao giờ kết thúc.
+        db.IngestRuns.Update(run);
         await db.SaveChangesAsync(ct);
     }
 

@@ -17,6 +17,7 @@ public sealed record IngestSchedule(
 public class IngestBackgroundService(
     IServiceScopeFactory scopeFactory,
     IngestSchedule schedule,
+    IngestStatusTracker status,
     ILogger<IngestBackgroundService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -27,6 +28,10 @@ public class IngestBackgroundService(
 
         // Hoãn vòng đầu để restart liên tục không thành spam nguồn dữ liệu, và để app kịp
         // phục vụ request trước khi làm việc nặng.
+        status.Enabled = true;
+        status.Interval = schedule.Interval;
+        status.MarkNextRun(DateTime.UtcNow + schedule.InitialDelay);
+
         try
         {
             await Task.Delay(schedule.InitialDelay, stoppingToken);
@@ -44,6 +49,8 @@ public class IngestBackgroundService(
             // layout không được phép làm trang không truy cập được.
             try
             {
+                status.MarkRunStarted(DateTime.UtcNow);
+
                 using var scope = scopeFactory.CreateScope();
                 var pipeline = scope.ServiceProvider.GetRequiredService<IngestPipeline>();
                 await pipeline.RunAllAsync(stoppingToken);
@@ -55,6 +62,12 @@ public class IngestBackgroundService(
             catch (Exception ex)
             {
                 logger.LogError(ex, "Vòng ingest lỗi không mong đợi — sẽ thử lại ở vòng sau");
+            }
+            finally
+            {
+                // Đặt trong finally: vòng lỗi vẫn phải công bố mốc kế tiếp, nếu không trang sẽ
+                // hiện "không biết bao giờ chạy lại" đúng lúc người ta cần biết nhất.
+                status.MarkNextRun(DateTime.UtcNow + schedule.Interval);
             }
         }
         while (await WaitAsync(timer, stoppingToken));

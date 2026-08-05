@@ -51,6 +51,38 @@ public class IngestPipelineTests : IDisposable
         (await db.Teams.AnyAsync(t => t.Slug == "rac")).Should().BeFalse();
     }
 
+    /// <summary>
+    /// Ingester nào gọi ChangeTracker.Clear() — MatchDetailIngester làm thế để giữ bộ nhớ — sẽ
+    /// gỡ luôn bản ghi IngestRun khỏi tracker. Khi đó gán trạng thái rồi SaveChanges không phát
+    /// ra UPDATE nào, và vòng chạy nằm lại ở Running VĨNH VIỄN.
+    ///
+    /// Đã xảy ra thật trên production: match-detail kẹt "Running" trong khi các vòng sau đó
+    /// đã xong. Một vòng đã chết trông y hệt một vòng đang chạy, nên trang trạng thái nói sai.
+    /// </summary>
+    [Fact]
+    public async Task Trang_thai_van_duoc_ghi_du_ingester_xoa_change_tracker()
+    {
+        using var db = NewDb();
+
+        var run = await Orchestrator(db).RunSourceAsync("opendota", async ct =>
+        {
+            db.Teams.Add(new Team { Slug = "x", Name = "X" });
+            await db.SaveChangesAsync(ct);
+            db.ChangeTracker.Clear();
+            return 1;
+        }, SanityKind.None, CancellationToken.None);
+
+        run.Status.Should().Be(IngestStatus.Succeeded);
+
+        db.ChangeTracker.Clear();
+        var stored = await db.IngestRuns.OrderByDescending(r => r.StartedAt).FirstAsync();
+
+        stored.Status.Should().Be(IngestStatus.Succeeded,
+            "trạng thái phải xuống được DB, không chỉ nằm trên đối tượng trong bộ nhớ");
+        stored.FinishedAt.Should().NotBeNull("vòng đã xong thì phải có mốc kết thúc");
+        stored.ItemsWritten.Should().Be(1);
+    }
+
     [Fact]
     public async Task Ban_ghi_IngestRun_song_sot_qua_rollback()
     {

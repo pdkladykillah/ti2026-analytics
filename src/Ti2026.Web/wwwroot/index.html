@@ -95,12 +95,20 @@
     <section class="view active" id="view-overview" role="tabpanel" aria-labelledby="tab-overview">
       <div class="bento" id="kpi-grid"></div>
       <div id="kpi-caveat"></div>
-      <div class="card">
+      <div class="card" data-sec="Xếp hạng">
         <header>
           <h2>Xếp hạng theo winrate</h2>
           <p class="desc">Cửa sổ 6 tháng gần nhất. Thanh dài hơn nghĩa là tỷ lệ thắng cao hơn.</p>
         </header>
         <div id="ranking"></div>
+      </div>
+
+      <div class="card" data-sec="Cập nhật dữ liệu">
+        <header>
+          <h2>Trạng thái cập nhật</h2>
+          <p class="desc">Dữ liệu tự nạp theo lịch. Đây là chỗ nói rõ vòng nào đang chạy, bao giờ chạy tiếp, và vòng nào đã hỏng — thay vì phải đi đọc log.</p>
+        </header>
+        <div id="sched-body" aria-live="polite"></div>
       </div>
     </section>
 

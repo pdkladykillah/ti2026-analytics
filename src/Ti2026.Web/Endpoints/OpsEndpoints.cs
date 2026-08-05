@@ -54,6 +54,60 @@ public static class OpsEndpoints
             });
         });
 
+        // ---------- Trạng thái scheduler ----------
+        app.MapGet("/api/ingest/status", async (
+            Ti2026DbContext db, IngestGate gate, IngestStatusTracker status) =>
+        {
+            var runs = await db.IngestRuns
+                .OrderByDescending(r => r.StartedAt)
+                .Take(24)
+                .Select(r => new
+                {
+                    source = r.Source,
+                    status = r.Status.ToString(),
+                    startedAt = r.StartedAt,
+                    finishedAt = r.FinishedAt,
+                    itemsWritten = r.ItemsWritten,
+
+                    // Cắt ngắn: thông báo lỗi đầy đủ là stack trace vài nghìn ký tự, không hợp
+                    // để hiện trên trang — nhưng câu đầu thường đã nói đủ nguyên nhân.
+                    error = r.ErrorMessage == null
+                        ? null
+                        : (r.ErrorMessage.Length > 220 ? r.ErrorMessage.Substring(0, 220) + "…" : r.ErrorMessage),
+                })
+                .ToListAsync();
+
+            var pending = await db.Matches.CountAsync(
+                m => m.DetailsIngestedAt == null
+                     || m.DetailSchemaVersion < MatchDetailIngester.SchemaVersion);
+
+            var total = await db.Matches.CountAsync();
+
+            return Results.Ok(new
+            {
+                running = gate.IsRunning,
+                enabled = status.Enabled,
+                intervalHours = status.Interval == TimeSpan.Zero ? (double?)null : status.Interval.TotalHours,
+                lastStartedAt = status.LastStartedAt,
+                nextRunAt = status.NextRunAt,
+                serverTime = DateTime.UtcNow,
+
+                backfill = new
+                {
+                    pending,
+                    total,
+                    donePercent = total == 0 ? 100 : Math.Round((total - pending) * 100.0 / total, 1),
+                    schemaVersion = MatchDetailIngester.SchemaVersion,
+                    perRun = 200,
+                },
+
+                runs,
+                note = status.Enabled
+                    ? null
+                    : "Scheduler đang TẮT — dữ liệu chỉ cập nhật khi chạy tay qua api/ingest/run.",
+            });
+        });
+
         app.MapPost("/api/ingest/run", async (
             HttpContext ctx,
             IOptions<Ti2026Options> opt,

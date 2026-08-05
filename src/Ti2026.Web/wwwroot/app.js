@@ -102,6 +102,7 @@ async function boot() {
 
     renderStatus();
     renderOverview();
+  loadSchedule();
     renderTable();
     renderTeams();
     setupH2h();
@@ -1334,6 +1335,108 @@ async function loadProPub() {
       </div>`;
   } catch (err) {
     body.innerHTML = `<div class="error">Không tải được <code>api/pro-pub</code>.<br><small>${esc(err.serverMessage || err.message)}</small></div>`;
+  }
+}
+
+/* ============================ Trạng thái cập nhật ============================ */
+
+/** "3 phút nữa" / "12 phút trước". Mốc tuyệt đối vô dụng khi người đọc ở múi giờ khác. */
+function relTime(iso, now) {
+  if (!iso) return null;
+  const diff = (new Date(iso) - now) / 1000;
+  const abs = Math.abs(diff);
+
+  const say = abs < 90 ? `${Math.round(abs)} giây`
+    : abs < 5400 ? `${Math.round(abs / 60)} phút`
+    : abs < 172800 ? `${Math.round(abs / 3600)} giờ`
+    : `${Math.round(abs / 86400)} ngày`;
+
+  return diff >= 0 ? `${say} nữa` : `${say} trước`;
+}
+
+function fmtClock(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+const RUN_TONE = { Succeeded: 'ok', Failed: 'bad', Running: 'run' };
+
+async function loadSchedule() {
+  const body = $('#sched-body');
+  if (!body) return;
+  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+
+  try {
+    const d = await getJson('api/ingest/status');
+
+    // Dùng giờ CỦA MÁY CHỦ làm mốc, không dùng giờ máy người đọc: đồng hồ lệch vài phút là
+    // chuyện thường, và "chạy tiếp sau -3 phút" trông như hỏng.
+    const now = new Date(d.serverTime);
+
+    const bf = d.backfill || {};
+    const busy = d.running;
+
+    const state = busy
+      ? ['Đang chạy', 'run', 'Một vòng nạp đang diễn ra']
+      : d.enabled
+        ? ['Đang chờ', 'ok', `Chạy mỗi ${d.intervalHours} giờ`]
+        : ['Đã tắt', 'bad', 'Chỉ cập nhật khi chạy tay'];
+
+    const rows = (d.runs || []).map((r) => `<tr>
+      <td><span class="run-dot ${RUN_TONE[r.status] || ''}" aria-hidden="true"></span>${esc(r.source)}</td>
+      <td>${esc(r.status === 'Succeeded' ? 'Xong' : r.status === 'Failed' ? 'Lỗi' : 'Đang chạy')}</td>
+      <td class="num">${fmtClock(r.startedAt)}</td>
+      <td class="num">${r.finishedAt
+        ? Math.max(1, Math.round((new Date(r.finishedAt) - new Date(r.startedAt)) / 1000)) + 's'
+        : '—'}</td>
+      <td class="num">${r.itemsWritten}</td>
+      <td class="run-err">${r.error ? esc(r.error) : ''}</td>
+    </tr>`).join('');
+
+    body.innerHTML = `
+      <div class="bento">
+        <article class="kpi p2">
+          <div class="kpi-label">Trạng thái</div>
+          <div class="kpi-value"><span class="run-dot ${state[1]}" aria-hidden="true"></span>${state[0]}</div>
+          <div class="kpi-note">${esc(state[2])}</div>
+        </article>
+        <article class="kpi p3">
+          <div class="kpi-label">${busy ? 'Bắt đầu lúc' : 'Chạy tiếp'}</div>
+          <div class="kpi-value">${busy
+            ? fmtClock(d.lastStartedAt)
+            : (relTime(d.nextRunAt, now) || '—')}</div>
+          <div class="kpi-note">${busy
+            ? (relTime(d.lastStartedAt, now) || '')
+            : (d.nextRunAt ? fmtClock(d.nextRunAt) : 'chưa lên lịch')}</div>
+        </article>
+        <article class="kpi p5">
+          <div class="kpi-label">Đã nạp chi tiết</div>
+          <div class="kpi-value">${bf.donePercent}%</div>
+          <div class="kpi-note">${(bf.total - bf.pending).toLocaleString('vi-VN')} / ${(bf.total || 0).toLocaleString('vi-VN')} ván</div>
+        </article>
+      </div>
+
+      ${bf.pending > 0 ? `
+      <div class="progress" role="progressbar" aria-valuenow="${bf.donePercent}"
+           aria-valuemin="0" aria-valuemax="100" aria-label="Tiến độ nạp chi tiết trận">
+        <span style="width:${bf.donePercent}%"></span>
+      </div>
+      <p class="desc" style="margin:var(--s-2) 0 var(--s-4)">Còn <b>${bf.pending.toLocaleString('vi-VN')}</b> ván
+      cần nạp lại ở phiên bản dữ liệu ${bf.schemaVersion}, tối đa ${bf.perRun} ván mỗi vòng —
+      khoảng <b>${Math.ceil(bf.pending / bf.perRun)}</b> vòng nữa.</p>` : ''}
+
+      ${d.note ? `<div class="note warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg><div>${esc(d.note)}</div></div>` : ''}
+
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Lịch sử các vòng nạp dữ liệu gần đây</caption>
+        <thead><tr>
+          <th scope="col">Nguồn</th><th scope="col">Kết quả</th><th scope="col">Bắt đầu</th>
+          <th scope="col">Mất</th><th scope="col">Ghi</th><th scope="col">Lỗi</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được trạng thái.<br><small>${esc(err.serverMessage || err.message)}</small></div>`;
   }
 }
 

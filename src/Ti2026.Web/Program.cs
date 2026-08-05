@@ -45,6 +45,7 @@ builder.Services.AddSingleton(new MediaPaths(paths.MediaDirectory));
 builder.Services.AddHttpClient<MediaCache>(c => c.Timeout = TimeSpan.FromSeconds(20));
 
 builder.Services.AddSingleton<IngestGate>();
+builder.Services.AddSingleton<IngestStatusTracker>();
 builder.Services.AddSingleton<PlayerLookup>();
 builder.Services.AddScoped<TeamResolver>();
 builder.Services.AddScoped<OpenDotaIngester>();

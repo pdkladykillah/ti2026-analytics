@@ -55,17 +55,20 @@ async function boot() {
 
     // Các nguồn phụ được phép hỏng mà không kéo cả trang xuống: thiếu tier list
     // thì chỉ tab tier list trống, không phải trang trắng.
-    const [meta, rosters, h2h, tiers] = await Promise.all([
+    const [meta, rosters, h2h, tiers, players] = await Promise.all([
       getJson('api/meta').catch(() => ({})),
       getJson('api/rosters').then((d) => d.rosters || {}).catch(() => ({})),
       getJson('api/h2h').catch(() => null),
       getJson('api/tiers').catch(() => null),
+      getJson('api/players').catch(() => null),
     ]);
 
     state.meta = meta;
     state.rosters = rosters;
     state.h2h = h2h;
     state.tiers = tiers;
+    // pl.h là bảng tra cứu { heroId: [tên, mã ảnh] } — dùng để đặt tên cho hero pool
+    state.heroLookup = (players && players.h) || {};
 
     renderStatus();
     renderOverview();
@@ -74,6 +77,10 @@ async function boot() {
     setupH2h();
     setupTiers();
     setupForm();
+    setupPredict();
+    setupChanges();
+    setupPlayerStats();
+    setupHeroPool();
   } catch (err) {
     const box = $('#global-error');
     box.hidden = false;
@@ -756,6 +763,312 @@ function renderForm(rows) {
       renderForm(rows);
     };
   });
+}
+
+/* ============================ Dự đoán ============================ */
+
+async function setupPredict() {
+  const body = $('#ratings-body');
+  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+
+  try {
+    const ratings = await getJson('api/ratings');
+    renderRatings(ratings);
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/ratings</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+
+  const data = withStats();
+  if (data.length < 2) {
+    $('#predict-body').innerHTML = '<div class="empty">Cần ít nhất hai đội có dữ liệu.</div>';
+    return;
+  }
+
+  const options = data.map((t) => `<option value="${esc(t.slug)}">${esc(t.name)}</option>`).join('');
+  const a = $('#pred-a');
+  const b = $('#pred-b');
+  a.innerHTML = options;
+  b.innerHTML = options;
+  a.value = data[0].slug;
+  b.value = data[1].slug;
+  a.onchange = b.onchange = loadPredict;
+
+  loadPredict();
+}
+
+function renderRatings(rows) {
+  if (!rows || !rows.length) {
+    $('#ratings-body').innerHTML =
+      '<div class="empty">Chưa có Elo. Cần ít nhất một vòng ingest có trận đấu.</div>';
+    return;
+  }
+
+  const max = Math.max(...rows.map((r) => r.elo));
+  const min = Math.min(...rows.map((r) => r.elo));
+  const span = Math.max(max - min, 1);
+
+  $('#ratings-body').innerHTML = rows.map((r, i) => {
+    const width = Math.max(((r.elo - min) / span) * 100, 3);
+    // Đội ít ván: Elo dao động mạnh vì mỗi trận đổi tới 24 điểm
+    const thin = r.maps < MIN_MAPS_FOR_LEADERBOARD;
+    return `<div class="rank-row">
+      <span class="rank-no num">${i + 1}</span>
+      <div class="rank-team">
+        ${teamLogo({ name: r.teamName, logo: r.logo })}
+        <span class="rank-name">${esc(r.teamName)}</span>
+        ${thin ? `<span class="rank-thin" title="Ít ván nên Elo còn dao động">${r.maps} ván</span>` : ''}
+      </div>
+      <div class="elo-track"><span class="elo-bar" style="width:${width}%"></span></div>
+      <span class="rank-val num">${r.elo}<small class="elo-wr">${r.winrate}%</small></span>
+    </div>`;
+  }).join('') + `<p class="desc" style="margin-top:var(--s-3)">
+      Chênh 100 điểm Elo ≈ 64% cơ hội thắng; chênh 200 điểm ≈ 76%.
+      Cột phải là winrate thô để bạn thấy hai thước đo lệch nhau ở đâu.</p>`;
+}
+
+async function loadPredict() {
+  const a = $('#pred-a').value;
+  const b = $('#pred-b').value;
+  const body = $('#predict-body');
+
+  if (a === b) {
+    body.innerHTML = '<div class="empty">Chọn hai đội khác nhau.</div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="skeleton" style="height:240px"></div>';
+
+  try {
+    renderPredict(await getJson(`api/predict?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`));
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được dự đoán.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+function renderPredict(p) {
+  const pa = p.probabilityA;
+  const pb = p.probabilityB;
+
+  const head = pa === null
+    ? '<div class="empty">Chưa đủ dữ liệu Elo cho một trong hai đội.</div>'
+    : `<div class="pred-head">
+         <div class="pred-side">
+           ${teamLogo({ name: p.teamA.name, logo: p.teamA.logo }, 40)}
+           <div><strong>${esc(p.teamA.name)}</strong><div class="pred-elo">Elo ${Math.round(p.teamA.elo)}</div></div>
+         </div>
+         <div class="pred-odds">
+           <div class="pred-pct num">${fmt(pa, 1, '%')}</div>
+           <div class="pred-split" role="img" aria-label="Xác suất ${pa}% so với ${pb}%">
+             <span style="width:${pa}%"></span><span style="width:${pb}%"></span>
+           </div>
+           <div class="pred-pct num right">${fmt(pb, 1, '%')}</div>
+         </div>
+         <div class="pred-side right">
+           <div><strong>${esc(p.teamB.name)}</strong><div class="pred-elo">Elo ${Math.round(p.teamB.elo)}</div></div>
+           ${teamLogo({ name: p.teamB.name, logo: p.teamB.logo }, 40)}
+         </div>
+       </div>`;
+
+  const caveat = p.confidence.lowSample
+    ? `<div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+       <div>${esc(p.confidence.note)} Chỉ dựa trên ${p.confidence.matchesConsidered} trận.</div></div>`
+    : '';
+
+  const h2h = p.headToHead.played > 0
+    ? `<div class="pred-block">
+         <h3>Đối đầu trực tiếp</h3>
+         <p class="pred-h2h num"><b>${p.headToHead.aWins}</b> – <b>${p.headToHead.bWins}</b>
+            <span class="mu">sau ${p.headToHead.played} ván</span></p>
+         ${p.headToHead.recent.map((m) => `<div class="pred-hist">
+             <span>${esc(m.date)}</span>
+             <span class="${m.aWon ? 'pos' : 'neg'}">${m.aWon ? esc(p.teamA.name) : esc(p.teamB.name)} thắng</span>
+             <span class="num">${esc(m.score)}</span>
+           </div>`).join('')}
+       </div>`
+    : '<div class="pred-block"><h3>Đối đầu trực tiếp</h3><p class="desc">Hai đội chưa từng gặp nhau trong dữ liệu.</p></div>';
+
+  $('#predict-body').innerHTML = head + caveat + `
+    <div class="pred-grid">
+      ${lineBlock('Tổng kills mỗi ván', p.totalKills, '')}
+      ${lineBlock('Thời lượng mỗi ván', p.duration, '′')}
+    </div>
+    ${h2h}`;
+
+  function lineBlock(title, section, unit) {
+    const d = section.dist;
+    const rows = section.lines.map((l) => `<div class="line-row">
+        <span class="num">over ${l.line}${unit}</span>
+        ${l.overPct === null
+          ? '<span class="mu">mẫu nhỏ</span>'
+          : `<span class="line-bar"><span style="width:${l.overPct}%"></span></span>
+             <span class="num line-pct">${l.overPct}%</span>`}
+      </div>`).join('');
+
+    return `<div class="pred-block">
+      <h3>${esc(title)}</h3>
+      <p class="desc">Trung vị <b>${d.median}${unit}</b> · nửa số trận nằm trong
+         <b>${d.p25}–${d.p75}${unit}</b> · dải ${d.min}–${d.max}${unit} qua ${d.count} ván</p>
+      ${rows}
+    </div>`;
+  }
+}
+
+/* ============================ Biến động ============================ */
+
+function setupChanges() {
+  $$('#changes-controls .pill').forEach((btn) => {
+    btn.onclick = () => {
+      $$('#changes-controls .pill').forEach((b) =>
+        b.setAttribute('aria-pressed', String(b === btn)));
+      loadChanges(Number(btn.dataset.days));
+    };
+  });
+
+  loadChanges(1);
+  loadSeries();
+}
+
+async function loadChanges(days) {
+  const body = $('#changes-body');
+  body.innerHTML = '<div class="skeleton" style="height:160px"></div>';
+
+  try {
+    const r = await getJson(`api/changes?days=${days}`);
+
+    if (!r.changes || !r.changes.length) {
+      body.innerHTML = `<div class="empty">${esc(r.note || 'Không có biến động nào vượt ngưỡng đáng chú ý.')}</div>`;
+      return;
+    }
+
+    body.innerHTML = `<p class="desc" style="margin-bottom:var(--s-3)">
+        So <b>${esc(r.baseline)}</b> với <b>${esc(r.latest)}</b> · ${r.changes.length} biến động</p>` +
+      r.changes.map((c) => `<div class="change ${c.improved ? 'up' : 'down'}">
+          <span class="change-arrow" aria-hidden="true">${c.improved ? '▲' : '▼'}</span>
+          <div>
+            <div class="change-text">${esc(c.narrative)}</div>
+            <div class="change-meta num">${esc(c.label)} · ${c.before} → ${c.after}
+              · mạnh gấp ${c.magnitude}× ngưỡng</div>
+          </div>
+        </div>`).join('');
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/changes</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+async function loadSeries() {
+  const body = $('#series-body');
+  try {
+    const s = await getJson('api/series');
+
+    if (!s.seriesCount) {
+      body.innerHTML = '<div class="empty">Chưa nhận diện được series nào.</div>';
+      return;
+    }
+
+    body.innerHTML = `<div class="bento">
+      <article class="kpi p3">
+        <div class="kpi-label">Thắng ván 1 → thắng series</div>
+        <div class="kpi-value">${fmt(s.game1PredictsSeriesPct, 1, '%')}</div>
+        <div class="kpi-note">qua ${s.decided} series có kết quả</div>
+      </article>
+      <article class="kpi p4">
+        <div class="kpi-label">Số series</div>
+        <div class="kpi-value">${s.seriesCount}</div>
+        <div class="kpi-note">${s.gamesInSeries} ván nằm trong series</div>
+      </article>
+    </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/series</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+/* ============================ Chỉ số cá nhân ============================ */
+
+function setupPlayerStats() {
+  const sel = $('#player-team');
+  sel.innerHTML = '<option value="">— Tất cả các đội —</option>' +
+    state.teams.map((t) => `<option value="${esc(t.slug)}">${esc(t.name)}</option>`).join('');
+  sel.onchange = () => loadPlayerStats(sel.value);
+  loadPlayerStats('');
+}
+
+async function loadPlayerStats(team) {
+  const body = $('#player-body');
+  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+
+  try {
+    const r = await getJson('api/player-stats' + (team ? `?team=${encodeURIComponent(team)}` : ''));
+
+    if (!r.players.length) {
+      body.innerHTML = '<div class="empty">Chưa đủ dữ liệu (cần tối thiểu 5 ván mỗi người).</div>';
+      return;
+    }
+
+    body.innerHTML = `<div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">Tuyển thủ</th><th scope="col">Ván</th><th scope="col">K</th>
+        <th scope="col">D</th><th scope="col">A</th><th scope="col">GPM</th>
+        <th scope="col">XPM</th><th scope="col">10′ đầu</th>
+      </tr></thead>
+      <tbody>${r.players.map((p) => `<tr>
+        <td><span style="font-weight:600">${esc(p.nick)}</span></td>
+        <td class="num">${p.games}</td>
+        <td class="num">${fmt(p.kills, 2)}</td>
+        <td class="num">${fmt(p.deaths, 2)}</td>
+        <td class="num">${fmt(p.assists, 2)}</td>
+        <td class="num">${fmt(p.gpm)}</td>
+        <td class="num">${fmt(p.xpm)}</td>
+        <td class="num${p.killsFirst10 === null ? ' na' : ''}"
+            ${p.earlySample ? `title="${p.earlySample} ván có timeline"` : ''}>
+          ${fmt(p.killsFirst10, 2)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/player-stats</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+/* ============================ Hero thực chiến ============================ */
+
+function setupHeroPool() {
+  const sel = $('#hero-team');
+  sel.innerHTML = '<option value="">— Toàn giải —</option>' +
+    state.teams.map((t) => `<option value="${esc(t.slug)}">${esc(t.name)}</option>`).join('');
+  sel.onchange = () => loadHeroPool(sel.value);
+  loadHeroPool('');
+}
+
+async function loadHeroPool(team) {
+  const body = $('#hero-pool-body');
+  body.innerHTML = '<div class="skeleton" style="height:140px"></div>';
+
+  try {
+    const r = await getJson('api/heroes' + (team ? `?team=${encodeURIComponent(team)}` : ''));
+
+    if (!r.heroes.length) {
+      body.innerHTML = '<div class="empty">Chưa đủ dữ liệu hero (cần tối thiểu 3 ván mỗi hero).</div>';
+      return;
+    }
+
+    // Tên hero lấy từ bảng tra cứu trong players.json (pl.h): { heroId: [tên, mã ảnh] }
+    const lookup = state.heroLookup || {};
+
+    body.innerHTML = '<div class="hero-strip">' + r.heroes.map((h) => {
+      const meta = lookup[h.heroId];
+      const name = meta ? meta[0] : `Hero ${h.heroId}`;
+      const img = meta ? meta[1] : null;
+      const tone = h.winrate >= 55 ? 'good' : h.winrate <= 45 ? 'bad' : '';
+      return `<div class="hero ${tone}" title="${esc(name)} · ${h.games} ván · winrate ${h.winrate}%">
+        ${img ? `<img src="${HERO_CDN}crops/${esc(img)}.png" alt="${esc(name)}" loading="lazy"
+             onerror="this.closest('.hero').classList.add('noimg');this.remove()">` : ''}
+        <span class="name">${esc(name)}</span>
+        <span class="fallback">${esc(name)}</span>
+        <span class="hero-badge num">${h.games}·${Math.round(h.winrate)}%</span>
+      </div>`;
+    }).join('') + '</div>';
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/heroes</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
 }
 
 /* ============================ Tab & theme ============================ */

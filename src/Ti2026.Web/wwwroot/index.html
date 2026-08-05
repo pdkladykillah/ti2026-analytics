@@ -62,6 +62,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
       Đội hình
     </button>
+    <button role="tab" type="button" data-view="predict" aria-selected="false" aria-controls="view-predict">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      Dự đoán
+    </button>
+    <button role="tab" type="button" data-view="changes" aria-selected="false" aria-controls="view-changes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+      Biến động
+    </button>
     <button role="tab" type="button" data-view="h2h" aria-selected="false" aria-controls="view-h2h">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"></path><path d="M6 8L2 12L6 16"></path><path d="M14.5 4l-5 16"></path></svg>
       Đối đầu
@@ -110,7 +118,69 @@
 
     <!-- ===== Đội hình ===== -->
     <section class="view" id="view-teams" role="tabpanel" aria-labelledby="tab-teams" hidden>
+      <div class="card">
+        <header>
+          <h2>Chỉ số cá nhân</h2>
+          <p class="desc">Trung bình mỗi ván. Cột <b>10′ đầu</b> là số mạng hạ được trong 10 phút mở màn — chỉ có ở ván đã được phân tích timeline.</p>
+        </header>
+        <div class="controls">
+          <label class="sr-only" for="player-team">Lọc theo đội</label>
+          <select id="player-team"></select>
+        </div>
+        <div id="player-body"></div>
+      </div>
+
       <div class="team-grid" id="team-grid"></div>
+    </section>
+
+    <!-- ===== Dự đoán ===== -->
+    <section class="view" id="view-predict" role="tabpanel" aria-labelledby="tab-predict" hidden>
+      <div class="card">
+        <header>
+          <h2>Sức mạnh theo Elo</h2>
+          <p class="desc">Winrate không biết đối thủ là ai. Elo thưởng khi thắng đội mạnh, nên hai con số mới so sánh được.</p>
+        </header>
+        <div id="ratings-body"></div>
+      </div>
+
+      <div class="card">
+        <header>
+          <h2>Dự đoán cặp đấu</h2>
+          <p class="desc">Xác suất tính từ chênh lệch Elo. Các mức kèo dựa trên phân phối thực tế, không phải trung bình.</p>
+        </header>
+        <div class="controls">
+          <label class="sr-only" for="pred-a">Đội thứ nhất</label>
+          <select id="pred-a"></select>
+          <span class="h2h-vs">gặp</span>
+          <label class="sr-only" for="pred-b">Đội thứ hai</label>
+          <select id="pred-b"></select>
+        </div>
+        <div id="predict-body"></div>
+      </div>
+    </section>
+
+    <!-- ===== Biến động ===== -->
+    <section class="view" id="view-changes" role="tabpanel" aria-labelledby="tab-changes" hidden>
+      <div class="card">
+        <header>
+          <h2>Dữ liệu đang nói gì</h2>
+          <p class="desc">So chỉ số hiện tại với mốc trước đó. Chỉ nêu biến động vượt ngưỡng đáng chú ý của từng chỉ số — im lặng nghĩa là không có gì bất thường.</p>
+        </header>
+        <div class="controls" id="changes-controls">
+          <button class="pill" type="button" data-days="1" aria-pressed="true">1 ngày</button>
+          <button class="pill" type="button" data-days="7" aria-pressed="false">7 ngày</button>
+          <button class="pill" type="button" data-days="30" aria-pressed="false">30 ngày</button>
+        </div>
+        <div id="changes-body"></div>
+      </div>
+
+      <div class="card">
+        <header>
+          <h2>Series Bo3 / Bo5</h2>
+          <p class="desc">Thắng ván đầu có nói lên điều gì về cả series không?</p>
+        </header>
+        <div id="series-body"></div>
+      </div>
     </section>
 
     <!-- ===== Đối đầu ===== -->
@@ -150,6 +220,7 @@
             <option value="deaths">Deaths trung bình</option>
             <option value="totalKills">Tổng kills mỗi trận</option>
             <option value="duration">Thời lượng (phút)</option>
+            <option value="elo">Elo (sức mạnh)</option>
           </select>
         </div>
         <div id="form-body"></div>
@@ -170,6 +241,18 @@
         </div>
         <div id="tier-body"></div>
         <div id="tier-caveat"></div>
+      </div>
+
+      <div class="card">
+        <header>
+          <h2>Hero thực chiến</h2>
+          <p class="desc">Đo từ trận thật của giải, khác với tier list ở trên vốn là nhận định dựa trên winrate pub.</p>
+        </header>
+        <div class="controls">
+          <label class="sr-only" for="hero-team">Lọc theo đội</label>
+          <select id="hero-team"></select>
+        </div>
+        <div id="hero-pool-body"></div>
       </div>
     </section>
   </main>

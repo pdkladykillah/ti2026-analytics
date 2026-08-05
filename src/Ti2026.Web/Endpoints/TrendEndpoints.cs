@@ -57,6 +57,7 @@ public static class TrendEndpoints
                     killDiff = Math.Round(s.KillDiff, 2),
                     totalKills = Math.Round(s.TotalKills, 2),
                     duration = Math.Round(s.AvgDurationMinutes, 1),
+                    elo = s.Elo == null ? (double?)null : Math.Round(s.Elo.Value, 1),
                     source = s.Source,
                 })
                 .ToListAsync();

@@ -333,7 +333,7 @@ public class MatchDetailIngesterTests : IDisposable
 
         var ingester = new OpenDotaIngester(
             db,
-            new OpenDotaClient(new HttpClient(new RouteHandler(heroesJson))
+            new OpenDotaClient(new HttpClient(new RouteHandler(heroesJson: heroesJson))
             {
                 BaseAddress = new Uri("https://x/api/"),
             }),
@@ -352,14 +352,67 @@ public class MatchDetailIngesterTests : IDisposable
         lone.ImageUrl.Should().NotContain("npc_dota_hero_");
     }
 
-    /// <summary>Trả heroes cho đường /heroes, mảng rỗng cho mọi đường khác.</summary>
-    private sealed class RouteHandler(string heroesJson) : HttpMessageHandler
+    /// <summary>
+    /// Tên item phải lấy từ nguồn, không tự suy từ khoá kỹ thuật.
+    ///
+    /// Bản đầu tự làm đẹp khoá và cho ra "Ring OF Basilius" — quy tắc "viết hoa từ dài không
+    /// quá 2 chữ cái" bắt luôn cả chữ "of". Và giá là thứ không thể suy ra được, mà không có
+    /// giá thì bảng mốc lên đồ đầy Iron Branch với Circlet.
+    /// </summary>
+    [Fact]
+    public async Task Nap_bang_item_kem_ten_hien_thi_va_gia()
+    {
+        using var db = NewDb();
+        db.Teams.Add(new Team { Slug = "t", Name = "T", OpenDotaTeamId = 1, LogoUrl = "https://steamcdn/x.png" });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var itemsJson = """
+        {
+          "ring_of_basilius": { "dname": "Ring of Basilius", "cost": 425, "qual": "rare" },
+          "blink":            { "dname": "Blink Dagger", "cost": 2250, "qual": "component" },
+          "tango":            { "dname": "Tango", "cost": 90, "qual": "consumable" }
+        }
+        """;
+
+        var ingester = new OpenDotaIngester(
+            db,
+            new OpenDotaClient(new HttpClient(new RouteHandler(itemsJson: itemsJson))
+            {
+                BaseAddress = new Uri("https://x/api/"),
+            }),
+            new TeamResolver(db, NullLogger<TeamResolver>.Instance),
+            NullLogger<OpenDotaIngester>.Instance);
+
+        await ingester.IngestAsync(CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var basilius = await db.Items.FirstOrDefaultAsync(i => i.Key == "ring_of_basilius");
+        basilius.Should().NotBeNull();
+        basilius!.Name.Should().Be("Ring of Basilius", "chữ 'of' phải viết thường");
+        basilius.Cost.Should().Be(425);
+
+        (await db.Items.FirstAsync(i => i.Key == "tango")).IsConsumable.Should().BeTrue();
+
+        // Chốt lý do lọc theo GIÁ chứ không theo qual: OpenDota gắn "component" cho Blink
+        // Dagger, món chủ lực 2250 vàng. Lọc theo qual sẽ vứt đúng thứ người ta muốn xem.
+        var blink = await db.Items.FirstAsync(i => i.Key == "blink");
+        blink.Quality.Should().Be("component");
+        blink.Cost.Should().Be(2250);
+        blink.IsConsumable.Should().BeFalse();
+    }
+
+    /// <summary>Trả đúng payload theo đường dẫn, mảng rỗng cho mọi đường khác.</summary>
+    private sealed class RouteHandler(string? heroesJson = null, string? itemsJson = null)
+        : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage r, CancellationToken ct)
         {
-            var body = r.RequestUri!.AbsolutePath.EndsWith("/heroes", StringComparison.Ordinal)
-                ? heroesJson
+            var path = r.RequestUri!.AbsolutePath;
+
+            var body = path.EndsWith("/heroes", StringComparison.Ordinal) ? heroesJson ?? "[]"
+                : path.EndsWith("/constants/items", StringComparison.Ordinal) ? itemsJson ?? "{}"
                 : "[]";
 
             return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)

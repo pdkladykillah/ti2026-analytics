@@ -36,6 +36,7 @@ public class OpenDotaIngester(
         }
 
         await UpdateHeroesAsync(ct);
+        await UpdateItemsAsync(ct);
         await UpdateLeaguesAsync(ct);
 
         var teams = await db.Teams
@@ -114,6 +115,46 @@ public class OpenDotaIngester(
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Nạp {Count} hero vào bảng Heroes", heroes.Count);
+    }
+
+    /// <summary>
+    /// Nạp bảng item: tên hiển thị và giá.
+    ///
+    /// Giá là thứ thật sự cần: bảng mốc lên đồ sắp theo tần suất, và nếu không lọc được linh
+    /// kiện thì Iron Branch với Circlet sẽ chiếm hết chỗ của Black King Bar. Tên hiển thị thì
+    /// thay cho việc tự làm đẹp khoá kỹ thuật — cách tự làm cho ra "Ring OF Basilius".
+    /// </summary>
+    private async Task UpdateItemsAsync(CancellationToken ct)
+    {
+        // Dota có trên 300 mục trong constants/items; dưới ngưỡng này là bảng chưa đủ.
+        const int expectedAtLeast = 200;
+
+        if (await db.Items.CountAsync(ct) >= expectedAtLeast) return;
+
+        var items = await client.GetItemsAsync(ct);
+        if (items.Count == 0)
+        {
+            logger.LogWarning("OpenDota trả về 0 item — giữ nguyên bảng cũ");
+            return;
+        }
+
+        var existing = await db.Items.ToDictionaryAsync(x => x.Key, ct);
+
+        foreach (var (key, value) in items)
+        {
+            if (!existing.TryGetValue(key, out var row))
+            {
+                row = new Item { Key = key };
+                db.Items.Add(row);
+            }
+
+            row.Name = value.DisplayName;
+            row.Cost = value.Cost;
+            row.Quality = value.Quality;
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Nạp {Count} item vào bảng Items", items.Count);
     }
 
     /// <summary>

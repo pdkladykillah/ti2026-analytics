@@ -43,4 +43,15 @@ public class OpenDotaClient(HttpClient http)
         res.EnsureSuccessStatusCode();
         return await res.Content.ReadFromJsonAsync<List<T>>(Json, ct) ?? [];
     }
+
+    /// <summary>
+    /// constants/items trả về đối tượng khoá theo tên item, không phải mảng — nên không dùng
+    /// được <see cref="GetListAsync{T}"/>.
+    /// </summary>
+    public async Task<Dictionary<string, OpenDotaItem>> GetItemsAsync(CancellationToken ct)
+    {
+        using var res = await http.GetAsync("constants/items", ct);
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<Dictionary<string, OpenDotaItem>>(Json, ct) ?? [];
+    }
 }

@@ -22,6 +22,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<League> Leagues => Set<League>();
     public DbSet<DraftEvent> DraftEvents => Set<DraftEvent>();
     public DbSet<ItemPurchase> ItemPurchases => Set<ItemPurchase>();
+    public DbSet<Item> Items => Set<Item>();
 
     /// <summary>
     /// Mọi DateTime ghi xuống đều chuyển sang UTC, mọi DateTime đọc lên đều được gắn
@@ -102,6 +103,11 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<ItemPurchase>()
             .HasOne(x => x.Match).WithMany()
             .HasForeignKey(x => x.MatchId).OnDelete(DeleteBehavior.Cascade);
+
+        // Khoá chính là chuỗi vì đó là thứ ItemPurchase lưu; thêm một id số chỉ tạo thêm một
+        // bước tra cứu mà không giải quyết gì.
+        b.Entity<Item>().HasKey(x => x.Key);
+        b.Entity<Item>().Ignore(x => x.IsConsumable);
 
         // Khoá chống nhân đôi khi ingest chạy lại trong cùng ngày
         b.Entity<TeamStatSnapshot>()

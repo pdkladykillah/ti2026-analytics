@@ -1338,6 +1338,7 @@ async function loadItems(heroId) {
                onerror="this.style.visibility='hidden'">
           <span>${esc(it.name)}</span>
         </td>
+        <td class="num">${it.cost === null || it.cost === undefined ? '—' : it.cost}</td>
         <td class="num"><b>${mmss(it.medianSeconds)}</b></td>
         <td class="num">${mmss(it.p25Seconds)} – ${mmss(it.p75Seconds)}</td>
         <td class="num">${mmss(w)}</td>
@@ -1351,7 +1352,8 @@ async function loadItems(heroId) {
       <div class="table-scroll"><table>
         <caption class="sr-only">Mốc mua đồ của ${esc(d.heroName || '')} ở bản hiện tại</caption>
         <thead><tr>
-          <th scope="col">Món</th><th scope="col">Trung vị</th><th scope="col">Khoảng thường gặp</th>
+          <th scope="col">Món</th><th scope="col">Giá</th>
+          <th scope="col">Trung vị</th><th scope="col">Khoảng thường gặp</th>
           <th scope="col">Ván thắng</th><th scope="col">Ván thua</th>
           <th scope="col">Thắng lên sớm hơn</th><th scope="col">Mẫu</th>
         </tr></thead>
@@ -1360,7 +1362,7 @@ async function loadItems(heroId) {
 
       <div class="note" style="margin-top:var(--s-4)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
-        <div>${esc(d.caveat || '')}<br><br><small>${esc(d.consumablesNote || '')}</small></div>
+        <div>${esc(d.caveat || '')}<br><br><small>${esc(d.filterNote || '')}</small></div>
       </div>`;
   } catch (err) {
     body.innerHTML = `<div class="error">Không tải được mốc lên đồ.<br><small>${esc(err.message)}</small></div>`;

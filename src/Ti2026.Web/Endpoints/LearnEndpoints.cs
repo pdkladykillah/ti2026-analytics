@@ -29,16 +29,16 @@ public static class LearnEndpoints
     private const int EarlyBanOrderLimit = 6;
 
     /// <summary>
-    /// Đồ tiêu hao: mua đi mua lại nên mốc mua không nói lên chiến thuật gì.
-    /// Lọc ở lúc ĐỌC, không phải lúc nạp — dữ liệu thô vẫn còn nguyên, và bật lại được bằng
-    /// includeConsumables=true. Lọc lúc nạp thì mất hẳn, và danh sách này chắc chắn sẽ lỗi thời.
+    /// Giá tối thiểu để một món được vào bảng mốc lên đồ.
+    ///
+    /// Vì sao cần: bảng sắp theo tần suất, và ai cũng mua Iron Branch (55) với Circlet (155),
+    /// nên không lọc thì linh kiện chiếm hết chỗ của Black King Bar. Lọc theo GIÁ chứ không
+    /// theo trường qual của OpenDota, vì qual gắn nhãn "component" cho cả Blink Dagger
+    /// (2250 vàng, món chủ lực của nửa số hero) — lọc theo qual sẽ vứt đúng thứ cần xem.
+    ///
+    /// Lọc ở lúc ĐỌC và có tham số để hạ xuống: dữ liệu thô vẫn còn nguyên trong DB.
     /// </summary>
-    private static readonly HashSet<string> Consumables = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "tango", "tango_single", "clarity", "flask", "enchanted_mango", "great_famango",
-        "faerie_fire", "tpscroll", "ward_observer", "ward_sentry", "ward_dispenser",
-        "smoke_of_deceit", "dust", "blood_grenade", "tome_of_knowledge", "bottle_of_stars",
-    };
+    private const int DefaultMinItemCost = 1000;
 
     public static void MapLearnEndpoints(this IEndpointRouteBuilder app)
     {
@@ -147,7 +147,7 @@ public static class LearnEndpoints
             int? hero = null,
             string? patch = null,
             int minSamples = DefaultMinItemSamples,
-            bool includeConsumables = false) =>
+            int minCost = DefaultMinItemCost) =>
         {
             var currentPatch = patch ?? await CurrentPatchAsync(db);
 
@@ -211,19 +211,24 @@ public static class LearnEndpoints
                 })
                 .ToList();
 
-            var excludedConsumables = includeConsumables
-                ? 0
-                : firstBuys.Count(x => Consumables.Contains(x.ItemKey));
+            // Bảng item cho tên hiển thị và giá. Thiếu bảng này thì không lọc được linh kiện,
+            // và phải nói ra chứ không được im lặng trả về một bảng đầy Iron Branch.
+            var catalogue = await db.Items.ToDictionaryAsync(i => i.Key);
 
-            var considered = includeConsumables
-                ? firstBuys
-                : firstBuys.Where(x => !Consumables.Contains(x.ItemKey)).ToList();
+            bool Keep(string key) =>
+                catalogue.TryGetValue(key, out var meta)
+                && !meta.IsConsumable
+                && meta.Cost >= minCost;
+
+            var considered = firstBuys.Where(x => Keep(x.ItemKey)).ToList();
+            var filteredOut = firstBuys.Count - considered.Count;
 
             var items = considered
                 .GroupBy(x => x.ItemKey)
                 .Where(g => g.Count() >= minSamples)
                 .Select(g =>
                 {
+                    catalogue.TryGetValue(g.Key, out var meta);
                     var wins = g.Where(x => x.Won).Select(x => (double)x.TimeSeconds).ToList();
                     var losses = g.Where(x => !x.Won).Select(x => (double)x.TimeSeconds).ToList();
 
@@ -232,7 +237,8 @@ public static class LearnEndpoints
                     return new
                     {
                         itemKey = g.Key,
-                        name = PrettyItemName(g.Key),
+                        name = meta?.Name ?? PrettyItemName(g.Key),
+                        cost = meta?.Cost,
                         image = $"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/{g.Key}.png",
                         samples = g.Count(),
 
@@ -267,16 +273,17 @@ public static class LearnEndpoints
                 heroName,
                 patch = PatchIndex.Name(currentPatch),
                 minSamples,
+                minCost,
                 items,
 
                 // Nói ra những gì đã bị lọc: một bảng đã cắt bớt mà không khai thì đọc như
                 // thể đó là toàn bộ sự thật.
-                excludedConsumables,
-                consumablesNote = includeConsumables
-                    ? "Đang hiển thị cả đồ tiêu hao."
-                    : $"Đã ẩn {excludedConsumables} lượt mua đồ tiêu hao (tango, tp, mắt…) vì "
-                    + "mua đi mua lại nên mốc mua không nói lên chiến thuật. "
-                    + "Thêm includeConsumables=true để xem.",
+                filteredOut,
+                filterNote = catalogue.Count == 0
+                    ? "CHƯA có bảng item nên không lọc được linh kiện — bảng dưới đây trộn cả "
+                    + "Iron Branch với Black King Bar. Cần một vòng ingest để nạp constants/items."
+                    : $"Đã ẩn {filteredOut} lượt mua đồ tiêu hao và món dưới {minCost} vàng, vì "
+                    + "ai cũng mua linh kiện nên chúng sẽ chiếm hết chỗ. Hạ minCost để xem thêm.",
                 caveat = "Mốc của pro giả định có người hỗ trợ nhường lính và không bị bỏ lane. "
                        + "Ở pub chậm hơn 2–4 phút là bình thường; hãy dùng khoảng P25–P75 làm "
                        + "mục tiêu, đừng lấy trung vị làm chuẩn phải đạt.",
@@ -302,10 +309,18 @@ public static class LearnEndpoints
     }
 
     /// <summary>
-    /// "black_king_bar" -> "Black King Bar". Chỉ là làm đẹp khoá kỹ thuật, không phải bản dịch
-    /// chính thức — đổi lấy việc không phải nạp và đồng bộ thêm một bảng constants nữa.
+    /// Dự phòng khi bảng Items chưa có khoá đó: "black_king_bar" -> "Black King Bar".
+    ///
+    /// Bản đầu viết hoa mọi từ dài không quá 2 chữ cái, và cho ra "Ring OF Basilius" — lý do
+    /// tên hiển thị phải lấy từ nguồn chứ không tự suy. Ở đây giữ lại chỉ để không hiện khoá
+    /// kỹ thuật trần trụi khi bảng Items còn thiếu.
     /// </summary>
+    private static readonly HashSet<string> LowercaseWords =
+        new(StringComparer.OrdinalIgnoreCase) { "of", "the", "and" };
+
     private static string PrettyItemName(string key) =>
         string.Join(' ', key.Split('_', StringSplitOptions.RemoveEmptyEntries)
-            .Select(w => w.Length <= 2 ? w.ToUpperInvariant() : char.ToUpperInvariant(w[0]) + w[1..]));
+            .Select((w, i) => i > 0 && LowercaseWords.Contains(w)
+                ? w.ToLowerInvariant()
+                : char.ToUpperInvariant(w[0]) + w[1..]));
 }

@@ -60,3 +60,14 @@ public class OpenDotaHero
     [JsonPropertyName("name")] public string Name { get; set; } = "";
     [JsonPropertyName("localized_name")] public string? LocalizedName { get; set; }
 }
+
+/// <summary>
+/// Một mục trong constants/items. Endpoint đó trả về ĐỐI TƯỢNG khoá theo tên item, không phải
+/// mảng — nên phải đọc thành Dictionary chứ không phải List.
+/// </summary>
+public class OpenDotaItem
+{
+    [JsonPropertyName("dname")] public string? DisplayName { get; set; }
+    [JsonPropertyName("cost")] public int? Cost { get; set; }
+    [JsonPropertyName("qual")] public string? Quality { get; set; }
+}

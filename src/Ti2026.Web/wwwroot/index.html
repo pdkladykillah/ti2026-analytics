@@ -86,6 +86,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5z"></path><path d="M9 7h7M9 11h5"></path></svg>
       Học từ pro
     </button>
+    <button role="tab" type="button" data-view="fantasy" aria-selected="false" aria-controls="view-fantasy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 8a5 5 0 01-9 0z"></path><path d="M12 11v6M8.5 21h7M9 17h6"></path></svg>
+      Fantasy
+    </button>
   </nav>
 
   <main id="main">
@@ -358,6 +362,35 @@
           <button class="pill" type="button" id="me-go">So sánh</button>
         </div>
         <div id="me-body"></div>
+      </div>
+    </section>
+
+    <!-- ===== Fantasy ===== -->
+    <section class="view" id="view-fantasy" role="tabpanel" aria-labelledby="tab-fantasy" hidden>
+      <div id="fantasy-state"></div>
+
+      <div class="card" data-sec="Đội hình gợi ý">
+        <header>
+          <h2>Đội hình fantasy điểm cao nhất</h2>
+          <p class="desc">Chọn theo điểm trung bình mỗi trận của từng người trong cửa sổ gần đây. Điểm một trận là tổng <b>hai ván cao nhất</b> trong series — đúng luật TI2026.</p>
+        </header>
+        <div id="fantasy-roster"></div>
+      </div>
+
+      <div class="card" data-sec="Điểm tuyển thủ">
+        <header>
+          <h2>Bảng điểm tuyển thủ</h2>
+          <p class="desc">Bấm tiêu đề cột để sắp xếp. Cột phân rã cho biết điểm đến từ đâu — một con số tổng mà không xem được thành phần thì chỉ còn cách tin.</p>
+        </header>
+        <div id="fantasy-players"></div>
+      </div>
+
+      <div class="card" data-sec="Bảng hệ số">
+        <header>
+          <h2>Bảng hệ số đang dùng</h2>
+          <p class="desc">Lấy từ <code>data/fantasy.json</code>. Hệ số để trống nghĩa là <b>chưa biết</b>, không phải bằng không — và khi còn trống thì trang từ chối tính điểm.</p>
+        </header>
+        <div id="fantasy-config"></div>
       </div>
     </section>
   </main>

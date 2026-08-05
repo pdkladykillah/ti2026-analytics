@@ -1818,6 +1818,157 @@ async function loadItems(heroId) {
   }
 }
 
+/* ============================ Fantasy ============================ */
+
+async function loadFantasy() {
+  loadFantasyConfig();
+  loadFantasyRoster();
+  loadFantasyPlayers();
+}
+
+/**
+ * Dải trạng thái ở đầu tab.
+ *
+ * Nó tồn tại để trả lời đúng một câu: trang này đang tính hay đang chờ? Không có nó thì ba
+ * thẻ trống bên dưới trông như lỗi, chứ không phải như "chưa tới lúc".
+ */
+async function loadFantasyConfig() {
+  const state = $('#fantasy-state');
+  const body = $('#fantasy-config');
+
+  try {
+    const c = await getJson('api/fantasy/config');
+
+    state.className = c.ready ? 'note' : 'note warn';
+    state.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+      <div>${c.ready
+        ? `<b>Đang tính điểm.</b> Nguồn hệ số: ${esc(c.source || '—')}.`
+        : `<b>Đang chờ bảng hệ số.</b> Khung đã dựng xong và sẽ tự chạy ngay khi
+           <code>data/fantasy.json</code> được điền — còn thiếu
+           <b>${(c.missingCoefficients || []).length}</b> hệ số. Không tính điểm khi còn thiếu,
+           vì một bảng toàn số 0 trông y hệt một bảng đã đo.`}</div>`;
+
+    const rows = (c.stats || []).map((s) => `<tr>
+      <td>${esc(s.label)}</td>
+      <td class="num">${s.per === 1 ? '1' : s.per}</td>
+      <td class="num">${s.points === null || s.points === undefined
+        ? '<span class="na">chưa điền</span>' : s.points}</td>
+    </tr>`).join('');
+
+    const slots = (c.slots || []).map((s) => `${esc(s.group)} × ${s.count}`).join(' · ');
+
+    body.innerHTML = `
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Hệ số tính điểm fantasy</caption>
+        <thead><tr><th scope="col">Chỉ số</th><th scope="col">Mỗi</th><th scope="col">Điểm</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <p class="desc" style="margin-top:var(--s-3)">Suất đội hình: <b>${esc(slots || '—')}</b>
+      ${c.slotsConfirmed ? '' : ' — <b>chưa xác nhận</b> theo luật TI2026, đang là phỏng đoán.'}</p>
+
+      <div class="note warn" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+        <div><b>Ba thứ không nguồn nào lấy được</b>, kể cả khi đã điền hệ số:
+        <br>${(c.unavailable || []).map((u) => '· ' + esc(u)).join('<br>')}</div>
+      </div>`;
+  } catch (err) {
+    state.className = 'error';
+    state.textContent = 'Không tải được cấu hình fantasy: ' + (err.serverMessage || err.message);
+    body.innerHTML = '';
+  }
+}
+
+async function loadFantasyRoster() {
+  const body = $('#fantasy-roster');
+  body.innerHTML = '<div class="skeleton" style="height:160px"></div>';
+
+  try {
+    const d = await getJson('api/fantasy/optimize');
+
+    if (!d.ready) {
+      body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa xếp được đội hình.')}</div>`;
+      return;
+    }
+
+    const cards = d.roster.map((p) => `<article class="kpi p3">
+      <div class="kpi-label">${esc(p.positionName || p.group)}</div>
+      <div class="kpi-value">${esc(p.nick)}</div>
+      <div class="kpi-note">${p.avgPerMatch} điểm/trận · ${p.matches} trận</div>
+    </article>`).join('');
+
+    body.innerHTML = `
+      <div class="bento">${cards}</div>
+
+      <div class="bento" style="margin-top:var(--s-4)">
+        <article class="kpi p2">
+          <div class="kpi-label">Tổng điểm dự kiến</div>
+          <div class="kpi-value">${d.projectedTotal}</div>
+          <div class="kpi-note">mỗi trận, cộng cả đội hình</div>
+        </article>
+      </div>
+
+      ${(d.shortfall || []).length ? `<div class="note warn" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+        <div>Chưa đủ người cho vài suất: ${d.shortfall.map((s) => esc(s)).join(' · ')}</div>
+      </div>` : ''}
+
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(d.method || '')}<br><br><b>${esc(d.limitation || '')}</b></div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
+  }
+}
+
+async function loadFantasyPlayers() {
+  const body = $('#fantasy-players');
+  body.innerHTML = '<div class="skeleton" style="height:220px"></div>';
+
+  try {
+    const d = await getJson('api/fantasy/players');
+
+    if (!d.ready || !d.players?.length) {
+      body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa có dữ liệu.')}</div>`;
+      return;
+    }
+
+    // Cột phân rã dựng từ chính danh sách chỉ số API trả về, không hardcode —
+    // thêm một chỉ số vào fantasy.json là bảng tự có thêm cột.
+    const keys = d.players[0].parts.map((p) => ({ key: p.key, label: p.label }));
+
+    const head = keys.map((k) => `<th scope="col">${esc(k.label)}</th>`).join('');
+
+    const rows = d.players.map((p) => `<tr>
+      <td>${esc(p.nick)}</td>
+      <td>${esc(p.positionName || '—')}</td>
+      <td class="num"><b>${p.avgPerMatch}</b></td>
+      <td class="num">${p.matches}</td>
+      ${p.parts.map((x) => `<td class="num">${x.avgPoints === null || x.avgPoints === undefined
+        ? '<span class="na">—</span>' : x.avgPoints}</td>`).join('')}
+    </tr>`).join('');
+
+    body.innerHTML = `
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Điểm fantasy trung bình mỗi trận của từng tuyển thủ</caption>
+        <thead><tr>
+          <th scope="col">Tuyển thủ</th><th scope="col">Vị trí</th>
+          <th scope="col">Điểm/trận</th><th scope="col">Trận</th>${head}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(d.method || '')}<br><br>${esc(d.caveat || '')}</div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
+  }
+}
+
 /* ============================ Sắp xếp bảng ============================ */
 
 /**
@@ -2016,6 +2167,11 @@ function setupTabs() {
       // Nạp muộn: hai truy vấn của tab này quét bảng mua đồ cả triệu hàng, không có lý gì
       // bắt mọi người mở trang phải chờ nó khi họ chỉ muốn xem bảng xếp hạng.
       const view = btn.dataset.view;
+      if (view === 'fantasy' && !loadedViews.has('fantasy')) {
+        loadedViews.add('fantasy');
+        loadFantasy();
+      }
+
       if (view === 'tiers' && !loadedViews.has('tiers')) {
         loadedViews.add('tiers');
         setupTierList();

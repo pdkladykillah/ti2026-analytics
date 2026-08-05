@@ -271,6 +271,33 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
     /// api/me hứa KHÔNG lưu gì xuống DB, nên nó cũng không được trả URL avatar: cache thì phá
     /// lời hứa, mà hotlink thì không hiện được. Test này khoá lời hứa đó lại.
     /// </summary>
+    /// <summary>
+    /// Khung fantasy phải dựng sẵn và TỪ CHỐI tính điểm khi chưa có hệ số — chứ không trả về
+    /// một bảng toàn số 0 trông y hệt một bảng đã đo.
+    /// </summary>
+    [Fact]
+    public async Task api_fantasy_chua_co_he_so_thi_tu_choi_tinh_diem()
+    {
+        var client = factory.CreateClient();
+
+        using var cfg = JsonDocument.Parse(await client.GetStringAsync("/api/fantasy/config"));
+        cfg.RootElement.GetProperty("ready").GetBoolean().Should().BeFalse();
+        cfg.RootElement.GetProperty("missingCoefficients").GetArrayLength()
+            .Should().BeGreaterThan(0);
+
+        // Giới hạn của NGUỒN phải luôn được khai, kể cả khi đã điền hệ số
+        cfg.RootElement.GetProperty("unavailable").GetArrayLength().Should().BeGreaterThan(0);
+
+        using var pl = JsonDocument.Parse(await client.GetStringAsync("/api/fantasy/players"));
+        pl.RootElement.GetProperty("ready").GetBoolean().Should().BeFalse();
+        pl.RootElement.GetProperty("players").GetArrayLength().Should().Be(0);
+        pl.RootElement.GetProperty("note").GetString().Should().NotBeNullOrWhiteSpace();
+
+        using var op = JsonDocument.Parse(await client.GetStringAsync("/api/fantasy/optimize"));
+        op.RootElement.GetProperty("ready").GetBoolean().Should().BeFalse();
+        op.RootElement.GetProperty("roster").GetArrayLength().Should().Be(0);
+    }
+
     [Fact]
     public async Task api_me_khong_tra_ve_avatar()
     {

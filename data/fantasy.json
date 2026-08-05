@@ -27,6 +27,12 @@
     "courierKills": { "label": "Hạ courier",        "field": "CourierKills",           "per": 1,   "points": null }
   },
 
+  "roster": {
+    "_note": "Số suất mỗi nhóm vị trí trong một đội hình fantasy. CẦN XÁC NHẬN theo luật TI2026 — đây là phỏng đoán theo thể thức các năm trước, sửa cùng lúc với bảng hệ số.",
+    "_confirmed": false,
+    "slots": { "core": 2, "mid": 1, "support": 2 }
+  },
+
   "tiers": {
     "_note": "Emblem tier nhân thêm phần trăm vào chỉ số của emblem đó. Trait nhân SAU khi đã áp tier, không cộng song song — thứ tự này đổi kết quả.",
     "I": 0.10,

@@ -73,6 +73,55 @@ public class EloEngineTests
             .Should().Be(EloEngine.Compute(shuffled, [1, 2])[1].Elo);
     }
 
+    // ---------- Hiệu chuẩn hồi tố ----------
+
+    [Fact]
+    public void Backtest_bo_qua_giai_doan_khoi_dong()
+    {
+        // 4 trận, warmup 5 -> chưa đội nào đủ ván, không đánh giá trận nào
+        var matches = Enumerable.Range(1, 4).Select(i => M(i, 1, 2));
+
+        EloEngine.Backtest(matches, [1, 2], warmupGamesPerTeam: 5).Should().BeEmpty(
+            "khi cả hai còn ở 1500 thì dự đoán 50% không phản ánh hiểu biết nào");
+    }
+
+    /// <summary>
+    /// Lỗi chết người của mọi backtest: dùng rating ĐÃ cập nhật bằng chính trận đang dự đoán.
+    /// Khi đó mô hình nhìn trộm đáp án và đường hiệu chuẩn đẹp một cách giả tạo.
+    ///
+    /// Kiểm bằng cách: đội 1 thắng liên tục nên rating tăng dần. Nếu dự đoán dùng rating
+    /// TRƯỚC trận, xác suất của trận thứ n phải THẤP HƠN của trận thứ n+1.
+    /// </summary>
+    [Fact]
+    public void Backtest_dung_rating_TRUOC_tran_chu_khong_nhin_trom_dap_an()
+    {
+        var matches = Enumerable.Range(1, 20).Select(i => M(i, 1, 2));
+
+        var r = EloEngine.Backtest(matches, [1, 2], warmupGamesPerTeam: 2);
+
+        r.Should().HaveCountGreaterThan(5);
+        r.Should().OnlyContain(x => x.Correct, "đội 1 luôn thắng nên kèo trên luôn đúng");
+
+        for (var i = 1; i < r.Count; i++)
+            r[i].PredictedProbability.Should().BeGreaterThan(r[i - 1].PredictedProbability,
+                "rating chênh dần nên xác suất phải tăng dần; nếu dùng rating sau trận thì " +
+                "con số đầu tiên đã cao sẵn");
+    }
+
+    [Fact]
+    public void Backtest_ghi_theo_goc_nhin_keo_tren_nen_xac_suat_luon_tu_50_tro_len()
+    {
+        var matches = new List<RatedMatch>();
+        for (var i = 1; i <= 10; i++) matches.Add(M(i, 1, 2));
+        for (var i = 11; i <= 20; i++) matches.Add(M(i, 2, 1));   // đội yếu lật kèo
+
+        var r = EloEngine.Backtest(matches, [1, 2], warmupGamesPerTeam: 2);
+
+        r.Should().OnlyContain(x => x.PredictedProbability >= 50,
+            "ghi theo góc nhìn đội được đánh giá cao hơn để bucket không triệt tiêu lẫn nhau");
+        r.Should().Contain(x => !x.Correct, "kèo trên phải có lúc sai");
+    }
+
     [Fact]
     public void Bo_qua_tran_co_doi_khong_nam_trong_he()
     {

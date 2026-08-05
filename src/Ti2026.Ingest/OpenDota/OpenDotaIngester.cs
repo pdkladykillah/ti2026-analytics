@@ -35,6 +35,8 @@ public class OpenDotaIngester(
             await UpdateLogosAsync(odTeams, ct);
         }
 
+        await UpdateLeaguesAsync(ct);
+
         var teams = await db.Teams
             .Where(t => t.OpenDotaTeamId != null)
             .ToListAsync(ct);
@@ -59,6 +61,53 @@ public class OpenDotaIngester(
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Nạp xong {Written} ván từ {Teams} đội", written, teams.Count);
         return written;
+    }
+
+    /// <summary>
+    /// Nạp danh sách giải kèm hạng, để lọc trận nào được tính vào Elo.
+    ///
+    /// Chỉ gọi khi có leagueid trong Match mà chưa có trong bảng League — response ~1 MB,
+    /// không cần tải lại mỗi 6 giờ khi đã đủ.
+    /// </summary>
+    private async Task UpdateLeaguesAsync(CancellationToken ct)
+    {
+        var haveIds = await db.Leagues.Select(l => l.Id).ToListAsync(ct);
+        var missing = await db.Matches
+            .Where(m => m.LeagueId != null && !haveIds.Contains(m.LeagueId.Value))
+            .Select(m => m.LeagueId!.Value)
+            .Distinct()
+            .AnyAsync(ct);
+
+        // Lần đầu chạy thì bảng rỗng và cũng chưa có Match nào -> vẫn phải nạp một lần
+        if (!missing && haveIds.Count > 0) return;
+
+        var leagues = await client.GetLeaguesAsync(ct);
+        if (leagues.Count == 0) return;
+
+        var existing = await db.Leagues.ToDictionaryAsync(l => l.Id, ct);
+        var now = DateTime.UtcNow;
+        var added = 0;
+
+        foreach (var l in leagues)
+        {
+            if (existing.TryGetValue(l.LeagueId, out var row))
+            {
+                row.Name = l.Name;
+                row.Tier = l.Tier;
+                row.UpdatedAt = now;
+            }
+            else
+            {
+                db.Leagues.Add(new League
+                {
+                    Id = l.LeagueId, Name = l.Name, Tier = l.Tier, UpdatedAt = now
+                });
+                added++;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Nạp {Total} giải ({Added} mới)", leagues.Count, added);
     }
 
     /// <summary>

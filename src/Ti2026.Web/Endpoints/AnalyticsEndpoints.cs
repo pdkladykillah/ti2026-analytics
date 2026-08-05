@@ -328,35 +328,67 @@ public static class AnalyticsEndpoints
             });
         });
 
-        // ---------- Hiệu chuẩn dự đoán ----------
+        // ---------- Hiệu chuẩn dự đoán (hồi tố) ----------
         api.MapGet("/calibration", async (Ti2026DbContext db) =>
         {
-            var resolved = await db.Predictions
-                .Where(p => p.TeamAWon != null)
-                .Select(p => new { p.ProbabilityA, p.TeamAWon })
+            var ratedLeagues = await db.Leagues
+                .Where(l => l.Tier != null && League.RatedTiers.Contains(l.Tier))
+                .Select(l => l.Id).ToListAsync();
+            var known = ratedLeagues.Count > 0;
+
+            var rows = await db.Matches
+                .Where(m => m.RadiantTeamId != null && m.DireTeamId != null)
+                .Where(m => !known || (m.LeagueId != null && ratedLeagues.Contains(m.LeagueId.Value)))
+                .Select(m => new { m.StartTime, m.RadiantTeamId, m.DireTeamId, m.RadiantWin })
                 .ToListAsync();
 
-            if (resolved.Count == 0)
+            var teamIds = await db.Teams.Select(t => t.Id).ToListAsync();
+
+            var rated = rows.Select(r => new RatedMatch(
+                r.StartTime,
+                r.RadiantWin ? r.RadiantTeamId!.Value : r.DireTeamId!.Value,
+                r.RadiantWin ? r.DireTeamId!.Value : r.RadiantTeamId!.Value));
+
+            var results = EloEngine.Backtest(rated, teamIds);
+
+            if (results.Count == 0)
                 return Results.Ok(new
                 {
-                    resolved = 0,
+                    evaluated = 0,
                     buckets = Array.Empty<object>(),
-                    note = "Chưa có dự đoán nào được đối chiếu kết quả. Mô hình chưa thể coi là "
-                         + "đã kiểm chứng — một dự đoán không đo được là một dự đoán không bác bỏ được.",
+                    note = "Chưa đủ trận để hiệu chuẩn. Mỗi đội cần ít nhất vài ván để rating "
+                         + "mang thông tin — trước đó mọi dự đoán đều là 50% vô nghĩa.",
                 });
 
-            var buckets = resolved
-                .GroupBy(p => Math.Clamp((int)(p.ProbabilityA / 10) * 10, 0, 90))
+            var buckets = results
+                .GroupBy(r => Math.Clamp((int)(r.PredictedProbability / 10) * 10, 50, 90))
                 .OrderBy(g => g.Key)
                 .Select(g => new
                 {
-                    range = $"{g.Key}-{g.Key + 10}%",
-                    predicted = Math.Round(g.Average(x => x.ProbabilityA), 1),
-                    actual = Math.Round(g.Count(x => x.TeamAWon!.Value) * 100.0 / g.Count(), 1),
+                    range = $"{g.Key}–{g.Key + 10}%",
+                    predicted = Math.Round(g.Average(x => x.PredictedProbability), 1),
+                    actual = Math.Round(g.Count(x => x.Correct) * 100.0 / g.Count(), 1),
                     samples = g.Count(),
-                });
+                })
+                .ToList();
 
-            return Results.Ok(new { resolved = resolved.Count, buckets });
+            // Brier score: sai số bình phương trung bình. 0 là hoàn hảo, 0.25 là đoán bừa 50/50.
+            var brier = results.Average(r =>
+                Math.Pow(r.PredictedProbability / 100 - (r.Correct ? 1 : 0), 2));
+
+            var hitRate = results.Count(r => r.Correct) * 100.0 / results.Count;
+
+            return Results.Ok(new
+            {
+                evaluated = results.Count,
+                method = "Hồi tố: mỗi trận được dự đoán bằng Elo TẠI THỜI ĐIỂM TRƯỚC trận đó, "
+                       + "rồi mới dùng kết quả để cập nhật rating. Không nhìn trộm đáp án.",
+                hitRate = Math.Round(hitRate, 1),
+                brierScore = Math.Round(brier, 4),
+                brierNote = "0 là hoàn hảo; 0.25 tương đương tung đồng xu. Thấp hơn 0.25 nghĩa "
+                          + "là mô hình có thông tin thật.",
+                buckets,
+            });
         });
     }
 

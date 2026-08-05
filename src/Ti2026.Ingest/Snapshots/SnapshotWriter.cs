@@ -91,8 +91,22 @@ public class SnapshotWriter(Ti2026DbContext db)
     private async Task<Dictionary<int, TeamRating>> ComputeEloAsync(
         List<Team> teams, CancellationToken ct)
     {
+        // Chỉ tính trận ở giải chuyên nghiệp trở lên. Hôm nay dữ liệu 100% là tier
+        // "professional" nên bộ lọc này KHÔNG đổi con số nào — đó chính là bằng chứng nó
+        // đúng. Nó tồn tại cho lúc vòng loại TI hoặc giải hạng thấp bắt đầu lọt vào, khi mà
+        // rating sẽ lệch mà không có gì báo.
+        var ratedLeagues = await db.Leagues
+            .Where(l => l.Tier != null && League.RatedTiers.Contains(l.Tier))
+            .Select(l => l.Id)
+            .ToListAsync(ct);
+
+        var known = await db.Leagues.AnyAsync(ct);
+
         var rows = await db.Matches
             .Where(m => m.RadiantTeamId != null && m.DireTeamId != null)
+            // Chưa nạp được bảng League thì KHÔNG lọc, vì lọc theo danh sách rỗng sẽ vứt
+            // sạch mọi trận và Elo về 1500 hết — im lặng và sai.
+            .Where(m => !known || (m.LeagueId != null && ratedLeagues.Contains(m.LeagueId.Value)))
             .Select(m => new { m.StartTime, m.RadiantTeamId, m.DireTeamId, m.RadiantWin })
             .ToListAsync(ct);
 

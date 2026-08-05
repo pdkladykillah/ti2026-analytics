@@ -19,6 +19,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<IngestRun> IngestRuns => Set<IngestRun>();
     public DbSet<SeedState> SeedStates => Set<SeedState>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
+    public DbSet<League> Leagues => Set<League>();
 
     /// <summary>
     /// Mọi DateTime ghi xuống đều chuyển sang UTC, mọi DateTime đọc lên đều được gắn
@@ -97,6 +98,9 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<MediaAsset>().HasIndex(x => x.ContentHash).IsUnique();
 
         b.Entity<SeedState>().HasIndex(x => x.Key).IsUnique();
+
+        b.Entity<League>().Property(x => x.Id).ValueGeneratedNever();
+        b.Entity<League>().HasIndex(x => x.Tier);
 
         b.Entity<Prediction>().HasIndex(x => x.CreatedAt);
         b.Entity<Prediction>().HasIndex(x => x.ResolvedMatchId);

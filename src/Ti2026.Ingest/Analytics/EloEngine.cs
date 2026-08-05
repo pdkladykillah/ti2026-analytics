@@ -68,4 +68,52 @@ public static class EloEngine
             kv => kv.Key,
             kv => new TeamRating(kv.Key, Math.Round(kv.Value, 1), games[kv.Key]));
     }
+
+    /// <summary>
+    /// Hiệu chuẩn HỒI TỐ: với mỗi trận, dự đoán bằng rating TẠI THỜI ĐIỂM TRƯỚC TRẬN ĐÓ, rồi
+    /// so với kết quả thật.
+    ///
+    /// Đây là cách duy nhất kiểm chứng mô hình ngay lập tức thay vì chờ hàng tháng. Điều
+    /// quan trọng: dự đoán phải dùng rating TRƯỚC khi cập nhật bằng chính trận đó — nếu
+    /// không thì mô hình đang nhìn trộm đáp án, và mọi đường hiệu chuẩn sẽ đẹp một cách giả tạo.
+    ///
+    /// Bỏ qua N trận đầu của mỗi đội: khi cả hai còn ở 1500 thì "dự đoán 50%" không phản ánh
+    /// hiểu biết nào, chỉ làm loãng kết quả.
+    /// </summary>
+    public static List<(double PredictedProbability, bool Correct)> Backtest(
+        IEnumerable<RatedMatch> matches, IEnumerable<int> allTeamIds, int warmupGamesPerTeam = 5)
+    {
+        var ratings = allTeamIds.ToDictionary(id => id, _ => InitialRating);
+        var games = ratings.Keys.ToDictionary(id => id, _ => 0);
+        var results = new List<(double, bool)>();
+
+        foreach (var m in matches.OrderBy(x => x.StartTime))
+        {
+            if (!ratings.ContainsKey(m.WinnerTeamId) || !ratings.ContainsKey(m.LoserTeamId))
+                continue;
+
+            var rw = ratings[m.WinnerTeamId];
+            var rl = ratings[m.LoserTeamId];
+
+            var warmedUp = games[m.WinnerTeamId] >= warmupGamesPerTeam
+                        && games[m.LoserTeamId] >= warmupGamesPerTeam;
+
+            if (warmedUp)
+            {
+                // Ghi lại dưới góc nhìn của đội ĐƯỢC ĐÁNH GIÁ CAO HƠN, để bucket xác suất
+                // trải đều 50-100% thay vì đối xứng quanh 50 và triệt tiêu lẫn nhau.
+                var favouriteIsWinner = rw >= rl;
+                var pFavourite = ExpectedScore(Math.Max(rw, rl), Math.Min(rw, rl));
+                results.Add((pFavourite * 100, favouriteIsWinner));
+            }
+
+            var delta = KFactor * (1.0 - ExpectedScore(rw, rl));
+            ratings[m.WinnerTeamId] = rw + delta;
+            ratings[m.LoserTeamId] = rl - delta;
+            games[m.WinnerTeamId]++;
+            games[m.LoserTeamId]++;
+        }
+
+        return results;
+    }
 }

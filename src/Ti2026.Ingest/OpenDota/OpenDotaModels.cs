@@ -43,6 +43,16 @@ public class OpenDotaTeamMatch
     [JsonPropertyName("opposing_team_name")] public string? OpposingTeamName { get; set; }
 }
 
+/// <summary>GET /leagues — dùng để lọc trận nào được tính vào Elo.</summary>
+public class OpenDotaLeague
+{
+    [JsonPropertyName("leagueid")] public long LeagueId { get; set; }
+    [JsonPropertyName("name")] public string? Name { get; set; }
+
+    /// <summary>"premium" | "professional" | "amateur" | "excluded" | null</summary>
+    [JsonPropertyName("tier")] public string? Tier { get; set; }
+}
+
 /// <summary>GET /heroes</summary>
 public class OpenDotaHero
 {

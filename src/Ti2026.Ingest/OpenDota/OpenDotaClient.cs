@@ -19,6 +19,9 @@ public class OpenDotaClient(HttpClient http)
     public Task<List<OpenDotaHero>> GetHeroesAsync(CancellationToken ct) =>
         GetListAsync<OpenDotaHero>("heroes", ct);
 
+    public Task<List<OpenDotaLeague>> GetLeaguesAsync(CancellationToken ct) =>
+        GetListAsync<OpenDotaLeague>("leagues", ct);
+
     public async Task<OpenDotaMatchDetail> GetMatchAsync(long matchId, CancellationToken ct)
     {
         using var res = await http.GetAsync($"matches/{matchId}", ct);

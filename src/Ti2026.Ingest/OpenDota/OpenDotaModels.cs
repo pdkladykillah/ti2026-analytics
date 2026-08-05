@@ -63,11 +63,14 @@ public class OpenDotaHero
 
 /// <summary>
 /// players/{id}/heroes — thành tích của MỘT người chơi trên từng hero.
-/// hero_id là chuỗi trong response của OpenDota, không phải số.
+///
+/// hero_id là SỐ. Bản đầu tôi khai là chuỗi theo phỏng đoán và endpoint trả 500 ngay lần gọi
+/// thật đầu tiên; shape đã đối chiếu với response thật:
+/// {"hero_id":11,"last_played":1782853806,"games":167,"win":115,...}
 /// </summary>
 public class OpenDotaPlayerHero
 {
-    [JsonPropertyName("hero_id")] public string HeroId { get; set; } = "";
+    [JsonPropertyName("hero_id")] public int HeroId { get; set; }
     [JsonPropertyName("games")] public int Games { get; set; }
     [JsonPropertyName("win")] public int Win { get; set; }
     [JsonPropertyName("last_played")] public long? LastPlayed { get; set; }

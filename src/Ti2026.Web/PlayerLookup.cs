@@ -102,10 +102,8 @@ public class PlayerLookup(ILogger<PlayerLookup> logger)
             var heroes = await client.GetPlayerHeroesAsync(accountId, ct);
 
             var stats = heroes
-                .Where(h => h.Games > 0)
-                .Select(h => new PlayerHeroStat(
-                    int.TryParse(h.HeroId, out var id) ? id : 0, h.Games, h.Win))
-                .Where(h => h.HeroId > 0)
+                .Where(h => h.Games > 0 && h.HeroId > 0)
+                .Select(h => new PlayerHeroStat(h.HeroId, h.Games, h.Win))
                 .ToList();
 
             // OpenDota vẫn trả 200 với hồ sơ để riêng tư, chỉ là profile rỗng và không có hero
@@ -122,10 +120,14 @@ public class PlayerLookup(ILogger<PlayerLookup> logger)
             _cache[accountId] = (DateTimeOffset.UtcNow, snapshot);
             return snapshot;
         }
+        // JsonException nằm trong danh sách này có lý do cụ thể: tôi đã khai hero_id là chuỗi
+        // trong khi nguồn trả về số, và endpoint trả 500 ngay lần gọi thật đầu tiên. Kiểu dữ
+        // liệu thì sửa được, nhưng shape của nguồn ngoài đổi lúc nào không ai hứa — và nó đổi
+        // thì phải xuống cấp thành "không tra được", không được thành 500.
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
-                                        or TimeoutException)
+                                        or TimeoutException or System.Text.Json.JsonException)
         {
-            logger.LogInformation(ex, "Không tra được hồ sơ {AccountId}", accountId);
+            logger.LogWarning(ex, "Không tra được hồ sơ {AccountId}", accountId);
             return null;
         }
     }

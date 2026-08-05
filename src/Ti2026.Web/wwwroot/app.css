@@ -623,22 +623,37 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 
 /* ============================ Mục con trong một tab ============================ */
 
-/* Thanh mục con: nhạt hơn nav chính có chủ đích. Hai thanh điều hướng cùng độ đậm thì người
-   dùng không biết cái nào là cấp trên. */
+/* Thanh mục con là SEGMENTED CONTROL, không phải mấy chữ rời.
+   Bản trước chỉ là text trần trên nền trang: không có hình khối nào nói rằng bấm được, nên nó
+   biến mất khỏi tầm mắt. Giờ có vỏ lõm + ô đang chọn NỔI LÊN — cùng ngôn ngữ với nav chính
+   nhưng nhỏ hơn và không icon, nên vẫn đọc ra là cấp dưới. */
 .subnav {
-  display: flex; flex-wrap: wrap; gap: var(--s-2);
-  margin-bottom: var(--s-4); padding-bottom: var(--s-3);
-  border-bottom: 1px solid var(--border);
+  display: inline-flex; flex-wrap: wrap; gap: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 4px;
+  margin-bottom: var(--s-5);
+  max-width: 100%;
 }
 .subpill {
-  border: 1px solid transparent; background: transparent; color: var(--muted);
-  padding: 7px 14px; border-radius: var(--r-pill); cursor: pointer;
-  font: inherit; font-size: 13px; font-weight: 600;
-  transition: background .15s, color .15s;
+  border: none; background: transparent; color: var(--ink-2);
+  padding: 8px 16px; min-height: 38px; border-radius: var(--r-pill); cursor: pointer;
+  font: inherit; font-size: 13.5px; font-weight: 600; white-space: nowrap;
+  transition: background .15s var(--ease), color .15s var(--ease), box-shadow .15s var(--ease);
 }
-.subpill:hover { background: var(--surface-2); color: var(--ink-2); }
+.subpill:hover { color: var(--ink); }
+
+/* Ô đang chọn nổi lên khỏi rãnh — bóng đổ làm việc nặng ở đây, màu chỉ là lớp xác nhận */
 .subpill[aria-selected="true"] {
-  background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-soft);
+  background: var(--surface);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 560px) {
+  .subnav { width: 100%; }
+  .subpill { flex: 1 1 auto; text-align: center; padding: 8px 10px; }
 }
 
 /* ============================ Tier list tính động ============================ */

@@ -216,6 +216,7 @@ public static class FantasyEndpoints
                 mp.ObserversPlaced, mp.CampsStacked, mp.RunePickups,
                 mp.StunSeconds, mp.TeamfightParticipation,
                 mp.TowerKills, mp.RoshanKills, mp.CourierKills, mp.FirstBloodClaimed,
+                mp.Lotuses, mp.Watchers, mp.Smokes, mp.MadstoneBundles, mp.TormentorKills,
             })
             .ToListAsync();
 
@@ -276,9 +277,8 @@ public static class FantasyEndpoints
     /// <summary>
     /// Ánh xạ cột DB sang khoá trong bảng hệ số.
     ///
-    /// Khoá KHÔNG có ở đây thì scorer để null và khai ra ở phần phân rã — đúng thứ cần cho
-    /// Madstone: OpenDota không lộ sự kiện nhặt lotus, không ở cấp người chơi lẫn cấp trận, nên
-    /// không ai đo chính xác được. Điền 0 cho nó thì cả bảng lặng lẽ thành "chưa ai nhặt bao giờ".
+    /// Khoá KHÔNG có ở đây thì scorer để null và khai ra ở phần phân rã, chứ không quy về 0 —
+    /// điền 0 thì cả bảng lặng lẽ thành "chưa ai làm bao giờ".
     /// </summary>
     private static Dictionary<string, double?> Values(dynamic r) => new()
     {
@@ -296,9 +296,16 @@ public static class FantasyEndpoints
         ["courier"] = r.CourierKills,
         ["firstBlood"] = r.FirstBloodClaimed is bool fb ? (fb ? 1.0 : 0.0) : (double?)null,
 
-        // KHONG co: madstones, watchers, lotuses, smokes, tormentor.
-        // Thieu khoa thi scorer de null va khai ra o phan ra — dung thu can. Xem
-        // data/fantasy.json muc _nguonDuLieu de biet cai nao nap duoc, cai nao khong.
+        // Nam chi so tung bi ket luan nham la "OpenDota khong co". Chung nam trong cung payload
+        // matches/{id}, chi la trong item_uses/ability_uses/killed. Xem FantasyFields.
+        ["lotuses"] = r.Lotuses,
+        ["watchers"] = r.Watchers,
+        ["smokes"] = r.Smokes,
+        ["tormentor"] = r.TormentorKills,
+
+        // GAN DUNG: so tui madstone da dung, khong phai so madstone nhat duoc. Danh dau
+        // approx trong fantasy.json de moi cho hien thi deu noi ro dieu do.
+        ["madstones"] = r.MadstoneBundles,
     };
 
     /// <summary>
@@ -312,7 +319,8 @@ public static class FantasyEndpoints
     private static object? BiasWarning(FantasyConfig config)
     {
         var missing = config.UnsourcedStats;
-        if (missing.Count == 0) return null;
+        var approx = config.ApproximateStats;
+        if (missing.Count == 0 && approx.Count == 0) return null;
 
         var byColor = missing
             .GroupBy(s => s.Color ?? "?")
@@ -334,9 +342,23 @@ public static class FantasyEndpoints
                 colorLabel = colorName.GetValueOrDefault(kv.Key, kv.Key),
                 stats = kv.Value,
             }),
-            message = "Những chỉ số này CÓ hệ số nhưng CHƯA có nguồn dữ liệu, nên bị bỏ khỏi "
-                    + "phép tính. Đây là thiên lệch có hệ thống chứ không phải nhiễu: nhóm vị trí "
-                    + "nào dùng nhiều chỉ số đang thiếu sẽ bị chấm thấp hơn thực tế.",
+            message = missing.Count == 0
+                ? null
+                : "Những chỉ số này CÓ hệ số nhưng CHƯA có nguồn dữ liệu, nên bị bỏ khỏi "
+                + "phép tính. Đây là thiên lệch có hệ thống chứ không phải nhiễu: nhóm vị trí "
+                + "nào dùng nhiều chỉ số đang thiếu sẽ bị chấm thấp hơn thực tế.",
+
+            // Loại sai thứ hai, và là loại khó thấy hơn: chỉ số VẪN được tính, vẫn hiện ra
+            // một con số trông bình thường, nhưng nguồn của nó chỉ gần đúng. Gộp nó chung với
+            // "chưa có nguồn" thành một con số duy nhất sẽ giấu mất đúng cái cần nói.
+            approximate = approx.Count == 0 ? null : new
+            {
+                count = approx.Count,
+                stats = approx.Select(s => new { s.Key, s.Label, s.Color }),
+                message = "Những chỉ số này CÓ được tính, nhưng nguồn chỉ gần đúng nên con số "
+                        + "thấp hơn thực tế. Chúng trông y hệt số đo thật — đó là lý do phải "
+                        + "nói riêng ra.",
+            },
         };
     }
 
@@ -412,7 +434,9 @@ public static class FantasyEndpoints
                         s.Value.TryGetProperty("field", out var fd)
                             && fd.ValueKind == JsonValueKind.String
                             ? fd.GetString()
-                            : null));
+                            : null,
+                        s.Value.TryGetProperty("approx", out var ap)
+                            && ap.ValueKind == JsonValueKind.True));
                 }
             }
 

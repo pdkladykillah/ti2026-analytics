@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ti2026.Data;
 using Ti2026.Data.Entities;
+using Ti2026.Ingest.Analytics;
 
 namespace Ti2026.Ingest.OpenDota;
 
@@ -29,8 +30,10 @@ public class MatchDetailIngester(
     /// 2 = thêm bàn draft, mốc mua đồ, chỉ số lane
     /// 3 = thêm chỉ số hỗ trợ, mốc Roshan đầu tiên, và vàng dẫn trước bị mất
     /// 4 = thêm chỉ số fantasy: phá trụ, hạ Roshan/courier/mắt, và first blood theo người
+    /// 5 = thêm hoa sen, watcher, smoke, túi madstone, Tormentor — năm chỉ số từng bị kết
+    ///     luận nhầm là "OpenDota không có". Chúng nằm trong item_uses/ability_uses/killed.
     /// </summary>
-    public const int SchemaVersion = 4;
+    public const int SchemaVersion = 5;
 
     /// <summary>
     /// Số lỗi LIÊN TIẾP thì dừng mẻ. Lỗi rải rác là chuyện thường (một ván OpenDota chưa parse
@@ -238,6 +241,26 @@ public class MatchDetailIngester(
 
             // OpenDota trả 0/1; ván chưa parse thì thiếu hẳn trường và phải giữ null
             existing.FirstBloodClaimed = p.FirstBloodClaimed is int fb ? fb != 0 : null;
+
+            // Năm chỉ số từng tưởng là không có nguồn — xem FantasyFields để biết vì sao
+            // tìm theo tên hiển thị thì không bao giờ thấy chúng.
+            existing.Lotuses = FantasyFields.Lotuses(p.ItemUses);
+            existing.Watchers = FantasyFields.Watchers(p.AbilityUses);
+            existing.Smokes = FantasyFields.Smokes(p.ItemUses);
+            existing.MadstoneBundles = FantasyFields.MadstoneBundles(p.ItemUses);
+            existing.TormentorKills = FantasyFields.TormentorKills(p.Killed);
+
+            // Hai nguồn Roshan lệch nhau trong ván mẫu: trường tổng hợp roshan_kills đếm dư,
+            // còn killed[npc_dota_roshan] khớp với objectives. Mới có MỘT ván làm bằng chứng
+            // nên chưa đổi hẳn sang killed — ghi log để còn biết chuyện này phổ biến đến đâu
+            // sau đợt nạp bù, thay vì lặng lẽ chọn một bên rồi quên mất là đã chọn.
+            var roshanFromKilled = FantasyFields.RoshanKills(p.Killed);
+            if (roshanFromKilled is int rk && p.RoshanKills is int rf && rk != rf)
+            {
+                logger.LogInformation(
+                    "Ván {MatchId} hero {HeroId}: roshan_kills={Field} nhưng killed[npc_dota_roshan]={Killed}",
+                    matchId, p.HeroId, rf, rk);
+            }
         }
     }
 

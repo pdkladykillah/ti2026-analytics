@@ -1822,16 +1822,38 @@ async function loadItems(heroId) {
 /* ============================ Fantasy ============================ */
 
 /** Dải cảnh báo thiên lệch — hiện ở cả ba mục vì cả ba đều bị ảnh hưởng. */
+/**
+ * Hai loại sai, và phải nói riêng ra.
+ *
+ * "Chưa có nguồn" thì chỉ số bị bỏ hẳn khỏi phép tính. "Nguồn gần đúng" thì chỉ số VẪN được
+ * tính và hiện ra một con số trông y hệt số đo thật — loại này khó thấy hơn nhiều, nên gộp
+ * cả hai vào một dòng "5/18" là giấu mất đúng cái cần nói.
+ */
 function biasNote(bias) {
   if (!bias) return "";
-  const groups = (bias.byColor || [])
-    .map((c) => "<b>" + esc(c.colorLabel) + "</b>: " + c.stats.map((x) => esc(x)).join(", "))
-    .join("<br>");
+  const warn = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' "
+    + "stroke-linecap='round'><path d='M12 3l9 16H3z'/><path d='M12 9v4M12 16.5v.01'/></svg>";
+  let html = "";
 
-  return "<div class='note warn' style='margin-top:var(--s-4)'>"
-    + "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'><path d='M12 3l9 16H3z'/><path d='M12 9v4M12 16.5v.01'/></svg>"
-    + "<div><b>" + bias.count + "/" + bias.total + " chỉ số chưa có nguồn dữ liệu.</b><br>" + groups
-    + "<br><br>" + esc(bias.message) + "</div></div>";
+  if (bias.count) {
+    const groups = (bias.byColor || [])
+      .map((c) => "<b>" + esc(c.colorLabel) + "</b>: " + c.stats.map((x) => esc(x)).join(", "))
+      .join("<br>");
+
+    html += "<div class='note warn' style='margin-top:var(--s-4)'>" + warn
+      + "<div><b>" + bias.count + "/" + bias.total + " chỉ số chưa có nguồn dữ liệu.</b><br>" + groups
+      + "<br><br>" + esc(bias.message || "") + "</div></div>";
+  }
+
+  const ap = bias.approximate;
+  if (ap && ap.count) {
+    html += "<div class='note' style='margin-top:var(--s-4)'>" + warn
+      + "<div><b>" + ap.count + " chỉ số dùng nguồn gần đúng: "
+      + ap.stats.map((s) => esc(s.label)).join(", ") + ".</b><br>"
+      + esc(ap.message) + "</div></div>";
+  }
+
+  return html;
 }
 
 async function loadFantasy() {

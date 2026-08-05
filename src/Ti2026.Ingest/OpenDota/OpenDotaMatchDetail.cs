@@ -108,6 +108,17 @@ public class OpenDotaMatchPlayer
     /// <summary>OpenDota trả 0/1 chứ không phải true/false, nên đọc thành số rồi tự quy đổi.</summary>
     [JsonPropertyName("firstblood_claimed")] public int? FirstBloodClaimed { get; set; }
 
+    // ---------- Ba từ điển mở khoá nốt năm chỉ số fantasy còn thiếu ----------
+    // Hoa sen, watcher, smoke, madstone và Tormentor đều nằm ở đây chứ không phải ở trường
+    // phẳng nào cả. Không có chữ "lotus", "watcher" hay "tormentor" nào trong payload — tên
+    // nội bộ lần lượt là famango, ability_lamp_use và npc_dota_miniboss. Xem FantasyFields.
+    //
+    // null = ván chưa được parse. Phải giữ nguyên null chứ không khởi tạo từ điển rỗng, vì
+    // rỗng nghĩa là "đo được và bằng không", khác hẳn "chưa biết".
+    [JsonPropertyName("item_uses")] public Dictionary<string, int>? ItemUses { get; set; }
+    [JsonPropertyName("ability_uses")] public Dictionary<string, int>? AbilityUses { get; set; }
+    [JsonPropertyName("killed")] public Dictionary<string, int>? Killed { get; set; }
+
     public bool OnRadiant => IsRadiant ?? PlayerSlot < 128;
 }
 

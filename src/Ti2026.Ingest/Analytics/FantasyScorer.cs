@@ -9,7 +9,7 @@ namespace Ti2026.Ingest.Analytics;
 /// </summary>
 public readonly record struct FantasyStat(
     string Key, string Label, double Per, double? Points, double Base = 0,
-    string? Color = null, string? Field = null);
+    string? Color = null, string? Field = null, bool Approximate = false);
 
 /// <summary>
 /// Bảng hệ số fantasy. <see cref="Ready"/> false nghĩa là chưa điền đủ — khi đó KHÔNG được
@@ -33,6 +33,15 @@ public sealed record FantasyConfig(
     /// </summary>
     public IReadOnlyList<FantasyStat> UnsourcedStats =>
         Stats.Where(s => string.IsNullOrEmpty(s.Field)).ToList();
+
+    /// <summary>
+    /// Chỉ số CÓ nguồn nhưng nguồn chỉ gần đúng. Tách riêng khỏi <see cref="UnsourcedStats"/>
+    /// vì hai thứ này sai theo hai kiểu khác nhau: thiếu nguồn thì chỉ số bị bỏ hẳn, còn gần
+    /// đúng thì nó ĐƯỢC tính và trông y hệt số đo thật. Loại thứ hai nguy hiểm hơn, nên nó
+    /// phải có tên riêng chứ không được gộp vào một con số "5/18" rồi coi như đã xong.
+    /// </summary>
+    public IReadOnlyList<FantasyStat> ApproximateStats =>
+        Stats.Where(s => s.Approximate && !string.IsNullOrEmpty(s.Field)).ToList();
 }
 
 /// <summary>Chỉ số thô của một người trong MỘT ván.</summary>

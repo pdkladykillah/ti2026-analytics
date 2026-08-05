@@ -17,33 +17,34 @@
     "creeps":     { "label": "Lính (LH + deny)",   "color": "red",   "field": "Creeps",                 "per": 1, "points": 3,    "base": 0 },
     "gpm":        { "label": "GPM",                "color": "red",   "field": "GoldPerMin",             "per": 1, "points": 2,    "base": 0 },
     "towers":     { "label": "Phá trụ",            "color": "red",   "field": "TowerKills",             "per": 1, "points": 352,  "base": 0 },
-    "madstones":  { "label": "Madstone",           "color": "red",   "field": null,                     "per": 1, "points": 13,   "base": 0 },
+    "madstones":  { "label": "Madstone",           "color": "red",   "field": "MadstoneBundles",        "per": 1, "points": 13,   "base": 0, "approx": true },
 
     "wards":      { "label": "Cắm mắt",            "color": "blue",  "field": "ObserversPlaced",        "per": 1, "points": 117,  "base": 0 },
     "stacks":     { "label": "Stack rừng",         "color": "blue",  "field": "CampsStacked",           "per": 1, "points": 234,  "base": 0 },
     "runes":      { "label": "Nhặt rune",          "color": "blue",  "field": "RunePickups",            "per": 1, "points": 141,  "base": 0 },
-    "watchers":   { "label": "Chiếm watcher",      "color": "blue",  "field": null,                     "per": 1, "points": 147,  "base": 0 },
-    "lotuses":    { "label": "Lotus",              "color": "blue",  "field": null,                     "per": 1, "points": 176,  "base": 0 },
-    "smokes":     { "label": "Dùng smoke",         "color": "blue",  "field": null,                     "per": 1, "points": 293,  "base": 0 },
+    "watchers":   { "label": "Chiếm watcher",      "color": "blue",  "field": "Watchers",               "per": 1, "points": 147,  "base": 0 },
+    "lotuses":    { "label": "Lotus",              "color": "blue",  "field": "Lotuses",                "per": 1, "points": 176,  "base": 0 },
+    "smokes":     { "label": "Dùng smoke",         "color": "blue",  "field": "Smokes",                 "per": 1, "points": 293,  "base": 0 },
 
     "teamfight":  { "label": "Tham chiến",         "color": "green", "field": "TeamfightParticipation", "per": 1, "points": 2124, "base": 0 },
     "stuns":      { "label": "Giây giữ đứng hình", "color": "green", "field": "StunSeconds",            "per": 1, "points": 10,   "base": 0 },
     "firstBlood": { "label": "First blood",        "color": "green", "field": "FirstBloodClaimed",      "per": 1, "points": 1934, "base": 0 },
-    "tormentor":  { "label": "Hạ Tormentor",       "color": "green", "field": null,                     "per": 1, "points": 879,  "base": 0 },
+    "tormentor":  { "label": "Hạ Tormentor",       "color": "green", "field": "TormentorKills",         "per": 1, "points": 879,  "base": 0 },
     "roshan":     { "label": "Hạ Roshan",          "color": "green", "field": "RoshanKills",            "per": 1, "points": 1172, "base": 0 },
     "courier":    { "label": "Hạ courier",         "color": "green", "field": "CourierKills",           "per": 1, "points": 703,  "base": 0 }
   },
 
   "_nguonDuLieu": {
-    "_note": "field = null nghĩa là CHƯA lấy được từ OpenDota. Scorer để null và khai ra ở phần phân rã, KHÔNG quy về 0 — điền 0 thì cả bảng lặng lẽ thành 'chưa ai làm bao giờ'.",
-    "chuaNapDuoc": {
-      "smokes": "item_uses.smoke_of_deceit CÓ trong payload — cần schema v5 để nạp",
-      "madstones": "item_uses.madstone_bundle CÓ, nhưng đó là SỐ LẦN DÙNG BUNDLE, chưa chắc bằng số madstone nhặt — phải kiểm trước",
-      "tormentor": "objectives có CHAT_MESSAGE_MINIBOSS_KILL — cần kiểm có player_slot để quy về từng người không"
+    "_note": "field = null nghĩa là CHƯA lấy được từ OpenDota. Scorer để null và khai ra ở phần phân rã, KHÔNG quy về 0 — điền 0 thì cả bảng lặng lẽ thành 'chưa ai làm bao giờ'. approx = true nghĩa là CÓ nguồn nhưng nguồn chỉ gần đúng.",
+    "_baiHoc": "Kết luận trước đó — 'OpenDota không có watcher/lotus' — là SAI, và sai vì tìm theo tên hiển thị. Trong payload không hề có chữ lotus, watcher hay tormentor: tên nội bộ lần lượt là famango, ability_lamp_use, npc_dota_miniboss. Cả năm chỉ số đều nằm trong cùng một payload matches/{id}, chỉ là trong ba từ điển con mà DTO chưa khai.",
+    "daNapDuoc": {
+      "smokes": "item_uses.smoke_of_deceit — khớp chính xác",
+      "watchers": "ability_uses.ability_lamp_use — cột đèn chính là watcher; nằm ở ability_uses chứ không phải item_uses",
+      "lotuses": "item_uses.famango + 3×great_famango + 6×greater_famango. Quy về hoa sen GỐC theo luật ghép (3 gốc → 1 Great, 2 Great → 1 Greater), vì đếm mỗi món bằng 1 thì người gom 6 bông bị tính bằng người nhặt 1 bông",
+      "tormentor": "killed.npc_dota_miniboss — đếm theo người kết liễu, từng người một"
     },
-    "khongCoNguon": {
-      "watchers": "không tìm thấy trường nào trong OpenDota",
-      "lotuses": "OpenDota không lộ sự kiện nhặt lotus"
+    "ganDung": {
+      "madstones": "item_uses.madstone_bundle chỉ là SỐ TÚI đã dùng. Phần lớn madstone đến từ dọn trại (2 cho người dọn + 1 cho đồng đội; trại cổ là 3 và 2) và OpenDota không lộ tổng đó. Đây là số sàn, gần như chắc chắn THẤP HƠN thực tế."
     }
   },
 
@@ -101,6 +102,11 @@
       "lucky":       { "label": "the Lucky",               "bonus": 21 },
       "cruel":       { "label": "the Cruel",               "bonus": 13 }
     }
+  },
+
+  "_cauHoiConBoNgo": {
+    "lotusDemTheoMonHayTheoBongGoc": "Đây là điều chưa chắc chắn LỚN NHẤT của cả mô hình. Ta đang quy Great = 3 và Greater = 6 bông gốc, vì luật ghép của Dota là vậy và vì chữ dùng trong luật là 'Lotuses Collected' — nhặt thì nhặt từng bông gốc. Nếu Valve thật ra đếm theo MÓN trong túi thì ta đang thổi phồng chỉ số này tối đa 6 lần, và nó là chỉ số 176 điểm nên sai số không nhỏ. Kiểm bằng cách đối chiếu điểm fantasy thật của một tuyển thủ trong ván đầu TI với điểm ta tính.",
+    "roshanDemDu": "Ván mẫu 8926048199 có đúng 2 Roshan chết, nhưng tổng trường roshan_kills của 10 người là 3, còn tổng killed[npc_dota_roshan] là 2. Mới một ván nên chưa đổi hẳn; bên nạp đang ghi log mỗi lần hai nguồn lệch để còn biết chuyện này phổ biến đến đâu."
   },
 
   "_khongMoHinhHoaDuoc": [

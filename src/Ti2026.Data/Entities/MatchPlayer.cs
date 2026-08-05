@@ -75,10 +75,6 @@ public class MatchPlayer
 
     // ---------- Chỉ số fantasy ----------
     // Cả năm đều nằm sẵn trong payload matches/{id} — chỉ là DTO trước đây không khai.
-    //
-    // KHÔNG có ở đây: Lotus/Madstone. OpenDota không lộ sự kiện nhặt, không ở cấp người chơi
-    // lẫn cấp trận. Công cụ fantasy khác cũng chỉ ước lượng được. Nếu bảng hệ số của Valve có
-    // Madstone thì phải đánh dấu là ƯỚC LƯỢNG, không được trộn vào số đo.
     public int? TowerKills { get; set; }
     public int? RoshanKills { get; set; }
     public int? CourierKills { get; set; }
@@ -87,4 +83,27 @@ public class MatchPlayer
 
     /// <summary>Người này có lấy first blood không. null = ván chưa parse.</summary>
     public bool? FirstBloodClaimed { get; set; }
+
+    // ---------- Năm chỉ số fantasy từng tưởng là KHÔNG CÓ NGUỒN ----------
+    // Chúng vẫn nằm trong cùng payload matches/{id}, chỉ là trong ba từ điển con mà DTO chưa
+    // khai: item_uses, ability_uses, killed. Không có chữ "lotus"/"watcher"/"tormentor" nào
+    // trong payload — tên nội bộ là famango, ability_lamp_use, npc_dota_miniboss — nên tìm
+    // theo tên hiển thị thì mãi không ra. Cách rút: Ti2026.Ingest.Analytics.FantasyFields.
+
+    /// <summary>Hoa sen QUY VỀ hoa sen gốc: Great tính 3, Greater tính 6 theo luật ghép.</summary>
+    public int? Lotuses { get; set; }
+
+    /// <summary>Số lần chiếm watcher (ability_lamp_use).</summary>
+    public int? Watchers { get; set; }
+
+    public int? Smokes { get; set; }
+
+    /// <summary>
+    /// SỐ TÚI madstone đã dùng, KHÔNG phải số madstone nhặt. Phần lớn madstone đến từ việc dọn
+    /// trại (2 cho người dọn, 1 cho đồng đội) và OpenDota không lộ tổng đó ở bất kỳ đâu. Đây là
+    /// số GẦN ĐÚNG, và mọi chỗ hiển thị phải nói rõ là gần đúng.
+    /// </summary>
+    public int? MadstoneBundles { get; set; }
+
+    public int? TormentorKills { get; set; }
 }

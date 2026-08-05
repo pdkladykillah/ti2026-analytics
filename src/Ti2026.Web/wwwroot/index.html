@@ -139,10 +139,16 @@
 
     <!-- ===== Dự đoán ===== -->
     <section class="view" id="view-predict" role="tabpanel" aria-labelledby="tab-predict" hidden>
+      <div class="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div><b>Elo ở đây KHÔNG phải MMR.</b> Nó không liên quan gì tới điểm xếp hạng trong game, và không phải tổng MMR của 5 người. Đây là điểm do trang này tự tính <b>chỉ từ kết quả các trận đấu giải</b>: cả 16 đội bắt đầu ở 1500, thắng thì cộng, thua thì trừ, và cộng nhiều hơn khi thắng đội mạnh. Tổng điểm của 16 đội luôn đúng 24.000 — đội này lên thì đội kia phải xuống.
+        <br><br><b>Điểm gắn với ĐỘI, không gắn với đội hình.</b> Đổi người thì điểm vẫn giữ nguyên, nên với đội vừa thay đội hình, con số này đang nói về phiên bản cũ của họ.</div>
+      </div>
+
       <div class="card">
         <header>
           <h2>Sức mạnh theo Elo</h2>
-          <p class="desc">Winrate không biết đối thủ là ai. Elo thưởng khi thắng đội mạnh, nên hai con số mới so sánh được.</p>
+          <p class="desc">Winrate không biết đối thủ là ai. Elo thưởng khi thắng đội mạnh, nên hai con số mới so sánh được. Mốc 1500 là quy ước — chỉ <b>khoảng cách</b> giữa hai đội mới có nghĩa.</p>
         </header>
         <div id="ratings-body"></div>
       </div>

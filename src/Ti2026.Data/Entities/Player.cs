@@ -22,6 +22,19 @@ public class Player
     public string? RealName { get; set; }
     public string? CountryName { get; set; }
     public string? CountryCode { get; set; }
+    /// <summary>
+    /// Ảnh từ players.json, trỏ dltv.org/uploads/. KHÔNG DÙNG ĐỂ HIỂN THỊ: dltv chặn hotlink
+    /// theo referrer nên ảnh không bao giờ hiện trên trình duyệt, và robots.txt của họ cấm
+    /// /uploads/ nên cũng không được phép cache về. Giữ lại chỉ để biết nguồn biên tập nói gì.
+    /// </summary>
     public string? PhotoUrl { get; set; }
+
+    /// <summary>
+    /// Avatar công khai trên Steam, lấy qua players/{account_id} của OpenDota.
+    /// Đây là ảnh DUY NHẤT hiển thị được — dùng cột này ở mọi nơi cần ảnh tuyển thủ.
+    /// null thì UI hiện chữ cái đầu, không hiện ảnh vỡ.
+    /// </summary>
+    public string? AvatarUrl { get; set; }
+
     public int? PhotoMediaAssetId { get; set; }
 }

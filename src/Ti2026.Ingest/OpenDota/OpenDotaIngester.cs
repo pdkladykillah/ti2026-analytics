@@ -37,6 +37,7 @@ public class OpenDotaIngester(
 
         await UpdateHeroesAsync(ct);
         await UpdateItemsAsync(ct);
+        await UpdatePlayerAvatarsAsync(ct);
         await UpdateLeaguesAsync(ct);
 
         var teams = await db.Teams
@@ -105,16 +106,74 @@ public class OpenDotaIngester(
 
             // name của OpenDota có dạng "npc_dota_hero_antimage"; ảnh trên Steam CDN dùng
             // đúng phần đuôi sau tiền tố đó.
-            var slug = h.Name.StartsWith("npc_dota_hero_", StringComparison.Ordinal)
-                ? h.Name["npc_dota_hero_".Length..]
-                : h.Name;
-
-            row.ImageUrl =
-                $"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/{slug}.png";
+            // KHÔNG lưu URL ảnh. Nó là hàm thuần của h.Name nên lưu xuống chỉ tạo một bản sao
+            // có thể lỗi thời: đổi host phải nạp lại cả bảng mới có tác dụng — và đó đúng là
+            // tình huống đã gặp. Nơi đọc dùng DotaImages.Hero(Name) để dựng tại chỗ.
+            row.ImageUrl = null;
         }
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Nạp {Count} hero vào bảng Heroes", heroes.Count);
+    }
+
+    /// <summary>
+    /// Nạp avatar Steam cho tuyển thủ.
+    ///
+    /// VÌ SAO CẦN: players.json chỉ có ảnh trỏ dltv.org/uploads/, mà dltv chặn hotlink theo
+    /// referrer — nên mọi thẻ img đó đều vỡ trên trình duyệt, và robots.txt của họ cấm cache
+    /// về. Avatar Steam là nguồn ảnh duy nhất hiển thị được một cách hợp lệ.
+    ///
+    /// Mỗi tuyển thủ MỘT request, nên chỉ gọi cho người còn thiếu avatar và có trần mỗi vòng.
+    /// 96 tuyển thủ sẽ xong sau hai vòng, rồi không bao giờ gọi lại.
+    /// </summary>
+    private async Task UpdatePlayerAvatarsAsync(CancellationToken ct)
+    {
+        const int maxPerRun = 60;
+
+        var missing = await db.Players
+            .Where(p => p.OpenDotaAccountId != null && p.AvatarUrl == null)
+            .OrderBy(p => p.Id)
+            .Take(maxPerRun)
+            .ToListAsync(ct);
+
+        if (missing.Count == 0) return;
+
+        var done = 0;
+
+        foreach (var player in missing)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                var profile = await client.GetPlayerAsync(player.OpenDotaAccountId!.Value, ct);
+                var avatar = profile?.Profile?.AvatarFull;
+
+                // Hồ sơ để riêng tư thì không có avatar. Bỏ qua, để null, và vòng sau thử lại —
+                // đặt một chuỗi rỗng để "đánh dấu đã thử" sẽ khiến ảnh không bao giờ về nữa nếu
+                // sau này người đó mở hồ sơ.
+                if (string.IsNullOrWhiteSpace(avatar)) continue;
+
+                player.AvatarUrl = avatar;
+                done++;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException
+                                             or TimeoutException or System.Text.Json.JsonException)
+            {
+                logger.LogInformation(ex,
+                    "Chưa lấy được avatar của {Nick}, sẽ thử lại vòng sau", player.Nick);
+            }
+        }
+
+        if (done > 0)
+        {
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Nạp avatar Steam cho {Done} tuyển thủ", done);
+        }
     }
 
     /// <summary>

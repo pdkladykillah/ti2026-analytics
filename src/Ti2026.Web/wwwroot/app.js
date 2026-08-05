@@ -1234,6 +1234,23 @@ async function loadHeroPool(team) {
 
 /* ============================ Học từ pro ============================ */
 
+/**
+ * Thẻ ảnh hero, TỰ BIẾN MẤT nếu tải lỗi.
+ *
+ * Vì sao cần: một <img> lỗi hiện ra biểu tượng ảnh vỡ của trình duyệt, và ba mươi biểu tượng
+ * ảnh vỡ xếp thành cột trông như trang bị hỏng — trong khi phần số liệu vẫn đúng nguyên. Không
+ * có ảnh thì chỉ cần không có gì, đừng có một ô rỗng.
+ */
+function heroImg(url, w = 48, h = 27) {
+  if (!url) return '';
+  return `<img src="${esc(url)}" alt="" loading="lazy" width="${w}" height="${h}"
+    onerror="this.remove()">`;
+}
+
+function itemImg(url) {
+  return heroImg(url, 36, 27);
+}
+
 /** Giây -> "12:20". Đồ mua trước tiếng còi có thời gian âm, và đó là dữ liệu thật. */
 function mmss(seconds) {
   if (seconds === null || seconds === undefined) return '—';
@@ -1288,7 +1305,7 @@ async function loadLanes(role) {
       const tone = l.vsBaseline >= 5 ? 'cal-good' : l.vsBaseline <= -5 ? 'cal-bad' : '';
       return `<tr>
         <td class="hero-cell">
-          ${l.image ? `<img src="${esc(l.image)}" alt="" loading="lazy" width="48" height="27">` : ''}
+          ${heroImg(l.image)}
           <span>${esc(l.name)}</span>
         </td>
         <td>${esc(l.roleName)}</td>
@@ -1355,7 +1372,7 @@ async function loadMe(rawId) {
         : h.verdict === 'pro gần như đã bỏ' ? 'cal-bad' : '';
       return `<tr>
         <td class="hero-cell">
-          ${h.image ? `<img src="${esc(h.image)}" alt="" loading="lazy" width="48" height="27">` : ''}
+          ${heroImg(h.image)}
           <span>${esc(h.name)}</span>
         </td>
         <td class="num">${h.myGames}</td>
@@ -1413,7 +1430,7 @@ async function loadDraft() {
       const feared = h.avgBanOrder !== null && h.avgBanOrder < 8 && h.bans >= 3;
       return `<tr>
         <td class="hero-cell">
-          ${h.image ? `<img src="${esc(h.image)}" alt="" loading="lazy" width="48" height="27">` : ''}
+          ${heroImg(h.image)}
           <span>${esc(h.name)}</span>
         </td>
         <td><div class="minibar"><span style="width:${pct}%"></span></div></td>
@@ -1493,8 +1510,7 @@ async function loadItems(heroId) {
 
       return `<tr>
         <td class="hero-cell">
-          <img src="${esc(it.image)}" alt="" loading="lazy" width="36" height="27"
-               onerror="this.style.visibility='hidden'">
+          ${itemImg(it.image)}
           <span>${esc(it.name)}</span>
         </td>
         <td class="num">${it.cost === null || it.cost === undefined ? '—' : it.cost}</td>

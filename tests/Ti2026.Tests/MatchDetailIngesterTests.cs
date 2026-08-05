@@ -315,6 +315,9 @@ public class MatchDetailIngesterTests : IDisposable
     /// Bảng Heroes phải được nạp. Nó tồn tại từ đầu nhưng chưa bao giờ có ai ghi vào, và một
     /// bảng rỗng không làm gì đổ vỡ — nên nó nằm im cho tới lúc bảng ưu tiên cấm/chọn hiện ra
     /// 30 dòng "hero 80". Test này khoá lại điều đó.
+    ///
+    /// Lưu ý: ingester lưu TÊN nhưng KHÔNG lưu URL ảnh. URL là hàm thuần của tên, và bản trước
+    /// lưu nó xuống DB nên khi phát hiện host sai thì không sửa được mà không nạp lại cả bảng.
     /// </summary>
     [Fact]
     public async Task Nap_bang_hero_kem_ten_va_anh()
@@ -347,9 +350,14 @@ public class MatchDetailIngesterTests : IDisposable
 
         lone.Should().NotBeNull();
         lone!.LocalizedName.Should().Be("Lone Druid");
-        lone.ImageUrl.Should().Contain("lone_druid",
-            "ảnh Steam CDN dùng phần đuôi sau tiền tố npc_dota_hero_");
-        lone.ImageUrl.Should().NotContain("npc_dota_hero_");
+        lone.Name.Should().Be("npc_dota_hero_lone_druid", "tên là nguồn để dựng URL ảnh");
+
+        lone.ImageUrl.Should().BeNull(
+            "URL ảnh KHÔNG được lưu — nó là hàm thuần của tên, và lưu bản sao xuống DB nghĩa là "
+            + "đổi host phải nạp lại cả bảng mới có tác dụng");
+
+        Ti2026.Ingest.Analytics.DotaImages.Hero(lone.Name)
+            .Should().EndWith("/heroes/lone_druid.png");
     }
 
     /// <summary>

@@ -83,7 +83,7 @@ public static class LearnEndpoints
                 .ToDictionaryAsync(m => m.Id, m => m.RadiantWin);
 
             var heroNames = await db.Heroes
-                .ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name, h.ImageUrl });
+                .ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name });
 
             var total = draftMatchIds.Count;
 
@@ -104,7 +104,7 @@ public static class LearnEndpoints
                     {
                         heroId = g.Key,
                         name = meta?.LocalizedName ?? meta?.Name ?? $"hero {g.Key}",
-                        image = meta?.ImageUrl,
+                        image = DotaImages.Hero(meta?.Name),
 
                         picks = picks.Count,
                         bans = bans.Count,
@@ -243,7 +243,7 @@ public static class LearnEndpoints
                         itemKey = g.Key,
                         name = meta?.Name ?? PrettyItemName(g.Key),
                         cost = meta?.Cost,
-                        image = $"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/items/{g.Key}.png",
+                        image = DotaImages.Item(g.Key),
                         samples = g.Count(),
 
                         medianSeconds = (int)Math.Round(all.Median),
@@ -331,7 +331,7 @@ public static class LearnEndpoints
                 });
 
             var heroNames = await db.Heroes
-                .ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name, h.ImageUrl });
+                .ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name });
 
             // Mốc so sánh của TỪNG vị trí. Không có mốc thì "hiệu suất lane 62%" là con số
             // trống rỗng — người đọc không biết đó là tốt hay tệ.
@@ -353,7 +353,7 @@ public static class LearnEndpoints
                     {
                         heroId = g.Key.HeroId,
                         name = meta?.LocalizedName ?? meta?.Name ?? $"hero {g.Key.HeroId}",
-                        image = meta?.ImageUrl,
+                        image = DotaImages.Hero(meta?.Name),
 
                         role = g.Key.Role,
                         roleName = RoleName(g.Key.Role),
@@ -459,7 +459,7 @@ public static class LearnEndpoints
                 });
 
             var heroNames = await db.Heroes
-                .ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name, h.ImageUrl });
+                .ToDictionaryAsync(h => h.Id, h => new { h.LocalizedName, h.Name });
 
             var proTotal = draftMatchIds.Count;
 
@@ -479,7 +479,7 @@ public static class LearnEndpoints
                     {
                         heroId = h.HeroId,
                         name = meta?.LocalizedName ?? meta?.Name ?? $"hero {h.HeroId}",
-                        image = meta?.ImageUrl,
+                        image = DotaImages.Hero(meta?.Name),
 
                         myGames = h.Games,
                         myWinrate = Math.Round(h.Wins * 100.0 / h.Games, 1),

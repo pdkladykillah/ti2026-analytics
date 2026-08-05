@@ -90,7 +90,12 @@ public static class DataEndpoints
                     nick = r.Player!.Nick,
                     real = r.Player.RealName,
                     role = r.Role,
-                    photo = r.Player.PhotoUrl,
+
+                    // AvatarUrl (Steam), KHÔNG phải PhotoUrl (dltv.org/uploads). Ảnh dltv bị
+                    // chặn hotlink theo referrer nên mọi thẻ img đó đều vỡ trên trình duyệt —
+                    // trả về URL không hiện được thì tệ hơn trả null, vì null cho UI biết để
+                    // hiện chữ cái thay thế.
+                    photo = r.Player.AvatarUrl,
                 }).ToList());
 
             return Results.Ok(new { source = "dltv.org", rosters });

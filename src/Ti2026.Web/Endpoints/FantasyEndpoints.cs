@@ -39,6 +39,22 @@ public static class FantasyEndpoints
     /// </summary>
     private const int MinMatchesForTiBaseline = 2;
 
+    /// <summary>
+    /// Fantasy CHỈ tính ván giữa hai đội đều dự TI.
+    ///
+    /// Ván gặp đối thủ ngoài 16 đội vẫn được lưu và vẫn dùng cho tier list — nhưng không dùng
+    /// ở đây. Lý do: fantasy chỉ diễn ra Ở TI, nơi mọi đối thủ đều là một trong 16 đội này.
+    /// Trộn thêm thành tích gặp đội yếu hơn sẽ thổi phồng điểm dự kiến một cách có hệ thống,
+    /// và người bị thổi nhiều nhất lại là người có lịch thi đấu dễ nhất — tức đúng thứ tự sai.
+    ///
+    /// Mẫu vì thế nhỏ hơn, và đó là cái giá đúng phải trả: thà ít số liệu cùng một mặt bằng
+    /// còn hơn nhiều số liệu khác mặt bằng.
+    /// </summary>
+    private const string OnlyTiVsTiNote =
+        "Chỉ tính ván giữa hai đội đều dự TI2026. Ván gặp đối thủ ngoài 16 đội bị loại dù có "
+        + "trong dữ liệu — fantasy chỉ diễn ra ở TI, nơi mọi đối thủ đều thuộc nhóm này, nên "
+        + "trộn thành tích gặp đội yếu hơn vào sẽ thổi phồng điểm dự kiến.";
+
     private sealed record ScoredPlayer(
         int PlayerId, string Nick, int? Position, int Games, int Matches,
         double? Average, List<FantasyGameScore> Games_,
@@ -157,6 +173,7 @@ public static class FantasyEndpoints
                        + "thì ai thi đấu nhiều giải hơn luôn đứng đầu bất kể chơi hay dở.",
                 caveat = "Chỉ số chưa nạp được để null và bị loại khỏi phép tính, không quy về 0. "
                        + "Xem cột phân rã để biết thành phần nào đang trống.",
+                scope = OnlyTiVsTiNote,
             });
         });
 
@@ -186,7 +203,8 @@ public static class FantasyEndpoints
             var since = DateTime.UtcNow.AddDays(-Math.Clamp(days, 7, 400));
 
             var rows = await db.MatchPlayers
-                .Where(mp => mp.PlayerId != null && mp.Match!.StartTime >= since)
+                .Where(mp => mp.PlayerId != null && mp.Match!.StartTime >= since
+                             && mp.Match.RadiantTeamId != null && mp.Match.DireTeamId != null)
                 .Select(mp => new
                 {
                     mp.Match!.DurationSeconds,
@@ -536,8 +554,12 @@ public static class FantasyEndpoints
         var since = DateTime.UtcNow.AddDays(-Math.Clamp(days, 7, 400));
 
         var query = leagueId is long lg
-            ? db.MatchPlayers.Where(mp => mp.PlayerId != null && mp.Match!.LeagueId == lg)
-            : db.MatchPlayers.Where(mp => mp.PlayerId != null && mp.Match!.StartTime >= since);
+            ? db.MatchPlayers.Where(mp => mp.PlayerId != null && mp.Match!.LeagueId == lg
+                                          && mp.Match.RadiantTeamId != null
+                                          && mp.Match.DireTeamId != null)
+            : db.MatchPlayers.Where(mp => mp.PlayerId != null && mp.Match!.StartTime >= since
+                                          && mp.Match.RadiantTeamId != null
+                                          && mp.Match.DireTeamId != null);
 
         var rows = await query
             .Select(mp => new

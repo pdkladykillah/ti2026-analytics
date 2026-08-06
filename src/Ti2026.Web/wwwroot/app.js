@@ -1167,24 +1167,23 @@ function renderPredict(p) {
 /* ============================ Biến động ============================ */
 
 function setupChanges() {
-  $$('#changes-controls .pill').forEach((btn) => {
-    btn.onclick = () => {
-      $$('#changes-controls .pill').forEach((b) =>
-        b.setAttribute('aria-pressed', String(b === btn)));
-      loadChanges(Number(btn.dataset.days));
-    };
-  });
-
-  loadChanges(1);
+  loadChanges();
   loadSeries();
 }
 
-async function loadChanges(days) {
+/**
+ * Không còn nút chọn mốc thời gian.
+ *
+ * Bản trước có 1/7/30 ngày, tức bắt người đọc mở ba lần rồi tự nhớ cái nào có gì — trong khi
+ * câu hỏi của họ chỉ có một: "có gì mới không?". Giờ máy chủ rà cả bốn mốc và trả về mỗi biến
+ * động một lần, kèm NHỊP ĐỘ để biết đó là cú nhảy đột ngột hay xu hướng trôi chậm.
+ */
+async function loadChanges() {
   const body = $('#changes-body');
   body.innerHTML = '<div class="skeleton" style="height:160px"></div>';
 
   try {
-    const r = await getJson(`api/changes?days=${days}`);
+    const r = await getJson('api/changes');
 
     if (!r.changes || !r.changes.length) {
       body.innerHTML = `<div class="empty">${esc(r.note || 'Không có biến động nào vượt ngưỡng đáng chú ý.')}</div>`;
@@ -1192,15 +1191,21 @@ async function loadChanges(days) {
     }
 
     body.innerHTML = `<p class="desc" style="margin-bottom:var(--s-3)">
-        So <b>${esc(r.baseline)}</b> với <b>${esc(r.latest)}</b> · ${r.changes.length} biến động</p>` +
+        ${r.changes.length} biến động, tự rà ${(r.horizons || []).map((d) => d + ' ngày').join(' · ')}
+        · tính tới <b>${esc(r.latest)}</b></p>` +
       r.changes.map((c) => `<div class="change ${c.improved ? 'up' : 'down'}">
           <span class="change-arrow" aria-hidden="true">${c.improved ? '▲' : '▼'}</span>
           <div>
-            <div class="change-text">${esc(c.narrative)}</div>
+            <div class="change-text">${esc(c.narrative)}
+              <span class="chip" style="margin-left:var(--s-2)">${esc(c.pace)} · ${c.horizonDays} ngày</span></div>
             <div class="change-meta num">${esc(c.label)} · ${c.before} → ${c.after}
-              · mạnh gấp ${c.magnitude}× ngưỡng</div>
+              · mạnh gấp ${c.magnitude}× ngưỡng · mốc so sánh ${esc(c.baseline)}</div>
           </div>
-        </div>`).join('');
+        </div>`).join('') +
+      `<div class="note" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(r.method || '')}${r.pending ? '<br><br>' + esc(r.pending) : ''}</div>
+      </div>`;
   } catch (err) {
     body.innerHTML = `<div class="error">Không tải được <code>api/changes</code>.<br><small>${esc(err.message)}</small></div>`;
   }

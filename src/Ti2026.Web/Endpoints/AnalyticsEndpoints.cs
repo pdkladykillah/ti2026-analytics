@@ -146,53 +146,87 @@ public static class AnalyticsEndpoints
         });
 
         // ---------- Biến động: kể chuyện dữ liệu ----------
-        api.MapGet("/changes", async (Ti2026DbContext db, int days = 7) =>
+        // Tự quét MỌI mốc thời gian thay vì bắt người đọc thử từng cái.
+        //
+        // Bản trước có ba nút 1/7/30 ngày, tức là bắt người dùng đi TÌM xem có gì đáng chú ý —
+        // mở lần lượt ba lần rồi tự nhớ cái nào có gì. Nhưng câu hỏi của họ chỉ có một: "có gì
+        // mới không?". Việc rà cả ba mốc là việc của máy.
+        //
+        // Mỗi (đội, chỉ số) chỉ nêu MỘT lần, ở mốc NGẮN NHẤT mà nó vượt ngưỡng. Lý do: vượt
+        // ngưỡng trong một ngày là tin nóng, còn cùng mức đó trải ra một tháng chỉ là trôi
+        // chậm — và cái người đọc cần biết chính là nó thuộc loại nào.
+        api.MapGet("/changes", async (Ti2026DbContext db) =>
         {
-            if (days is < 1 or > 180)
-                return Results.BadRequest(new { error = "days phải trong khoảng 1..180" });
-
             var latest = await LatestSnapshotDateAsync(db);
-            if (latest is null) return Results.Ok(new { baseline = (string?)null, changes = Array.Empty<object>() });
-
-            var target = latest.Value.AddDays(-days);
-
-            // Lấy snapshot gần ngày mục tiêu nhất chứ không đòi đúng ngày: pipeline có thể
-            // lỡ một vòng, và khi đó "không có dữ liệu" là câu trả lời vô ích.
-            var baseline = await db.TeamStatSnapshots
-                .Where(s => s.WindowDays == 180 && s.CapturedOn <= target)
-                .OrderByDescending(s => s.CapturedOn)
-                .Select(s => (DateOnly?)s.CapturedOn)
-                .FirstOrDefaultAsync();
-
-            if (baseline is null)
-                return Results.Ok(new
-                {
-                    baseline = (string?)null,
-                    latest = latest.Value.ToString("yyyy-MM-dd"),
-                    changes = Array.Empty<object>(),
-                    note = "Chưa đủ lịch sử để so sánh. Mỗi ngày pipeline chạy sẽ thêm một mốc.",
-                });
+            if (latest is null)
+                return Results.Ok(new { changes = Array.Empty<object>(), horizons = Horizons });
 
             var after = await SnapshotMapAsync(db, latest.Value);
-            var before = await SnapshotMapAsync(db, baseline.Value);
 
-            var all = new List<TeamChange>();
-            foreach (var (teamId, a) in after)
+            // Ngắn trước dài sau, để mốc ngắn nhất thắng khi trùng chỉ số
+            var seen = new HashSet<(string Team, string Metric)>();
+            var found = new List<DatedChange>();
+            var usable = new List<int>();
+
+            foreach (var days in Horizons)
             {
-                if (!before.TryGetValue(teamId, out var bsnap)) continue;
+                var baseline = await db.TeamStatSnapshots
+                    .Where(s => s.WindowDays == 180 && s.CapturedOn <= latest.Value.AddDays(-days))
+                    .OrderByDescending(s => s.CapturedOn)
+                    .Select(s => (DateOnly?)s.CapturedOn)
+                    .FirstOrDefaultAsync();
 
-                var metrics = ChangeDetector.Metrics(k => Metric(bsnap, k), k => Metric(a, k));
-                all.AddRange(ChangeDetector.Detect(a.Team!.Slug, a.Team.Name, metrics));
+                if (baseline is null) continue;
+                usable.Add(days);
+
+                var before = await SnapshotMapAsync(db, baseline.Value);
+
+                foreach (var (teamId, a) in after)
+                {
+                    if (!before.TryGetValue(teamId, out var bsnap)) continue;
+
+                    var metrics = ChangeDetector.Metrics(k => Metric(bsnap, k), k => Metric(a, k));
+
+                    foreach (var c in ChangeDetector.Detect(a.Team!.Slug, a.Team.Name, metrics))
+                    {
+                        if (!seen.Add((c.TeamSlug, c.MetricKey))) continue;
+
+                        found.Add(new DatedChange(
+                            c, days, baseline.Value.ToString("yyyy-MM-dd"),
+                            days <= 1 ? "đột ngột" : days <= 7 ? "trong tuần" : "trôi chậm"));
+                    }
+                }
             }
 
             return Results.Ok(new
             {
-                baseline = baseline.Value.ToString("yyyy-MM-dd"),
                 latest = latest.Value.ToString("yyyy-MM-dd"),
-                days,
-                changes = all.OrderByDescending(c => c.Magnitude).Take(20),
-                note = all.Count == 0
-                    ? "Không có biến động nào vượt ngưỡng đáng chú ý trong khoảng này."
+                horizons = usable,
+                changes = found
+                    .OrderByDescending(c => c.Change.Magnitude)
+                    .Take(25)
+                    .Select(c => new
+                    {
+                        c.Change.TeamSlug, c.Change.TeamName, c.Change.MetricKey, c.Change.Label,
+                        c.Change.Before, c.Change.After, c.Change.Delta,
+                        c.Change.Improved, c.Change.Magnitude, c.Change.Narrative,
+                        horizonDays = c.HorizonDays,
+                        baseline = c.Baseline,
+                        pace = c.Pace,
+                    }),
+
+                method = "Tự rà cả " + string.Join(", ", Horizons.Select(d => d + " ngày"))
+                       + ". Mỗi biến động chỉ nêu một lần, ở mốc NGẮN NHẤT mà nó vượt ngưỡng — "
+                       + "nên nhãn nhịp độ cho biết đây là cú nhảy đột ngột hay một xu hướng trôi chậm.",
+
+                note = found.Count == 0
+                    ? "Không có biến động nào vượt ngưỡng ở bất kỳ mốc nào. Im lặng ở đây là "
+                    + "câu trả lời thật, không phải thiếu dữ liệu."
+                    : null,
+
+                pending = usable.Count < Horizons.Length
+                    ? $"Mới đủ lịch sử cho {usable.Count}/{Horizons.Length} mốc. Mỗi vòng nạp "
+                    + "thêm một ngày lịch sử, các mốc dài sẽ tự mở."
                     : null,
             });
         });
@@ -623,6 +657,18 @@ public static class AnalyticsEndpoints
     }
 
     // ---------- tiện ích ----------
+
+    /// <summary>
+    /// Các mốc thời gian được rà TỰ ĐỘNG, ngắn trước dài sau.
+    ///
+    /// Thứ tự có ý nghĩa: mỗi (đội, chỉ số) chỉ nêu một lần, ở mốc ĐẦU TIÊN nó vượt ngưỡng.
+    /// Duyệt từ ngắn tới dài nên thứ vượt ngưỡng trong một ngày được gắn nhãn "đột ngột", còn
+    /// thứ chỉ lộ ra khi nhìn cả tháng thì gắn "trôi chậm" — hai loại tin khác hẳn nhau.
+    /// </summary>
+    private static readonly int[] Horizons = [1, 7, 30, 90];
+
+    private sealed record DatedChange(
+        TeamChange Change, int HorizonDays, string Baseline, string Pace);
 
     private static async Task<DateOnly?> LatestSnapshotDateAsync(Ti2026DbContext db) =>
         await db.TeamStatSnapshots

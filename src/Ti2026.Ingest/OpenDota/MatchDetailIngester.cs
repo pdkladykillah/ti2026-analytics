@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Ti2026.Data;
@@ -47,6 +48,36 @@ public class MatchDetailIngester(
     /// </summary>
     public const int MaxConsecutiveFailures = 3;
 
+    /// <summary>
+    /// Ván gặp đối thủ NGOÀI 16 đội chỉ nạp chi tiết khi còn trong ngần này ngày.
+    ///
+    /// Vì sao phải chặn. Bỏ bộ lọc "cả hai đội đều thuộc 16" làm tổng số ván nhảy từ 1.798 lên
+    /// 13.495 — phần lớn là lịch sử đấu với đội ngoài giải, có ván từ 2016. Nạp chi tiết tất cả
+    /// tốn khoảng 6,7 triệu dòng ItemPurchases và nhiều giờ ghi SQLite.
+    ///
+    /// Mà chúng gần như vô dụng. Ván một phe chỉ dùng cho phân tích hero, và tier list cân theo
+    /// độ mới với chu kỳ bán rã 14 ngày: một ván 180 ngày tuổi có trọng số 2^(-180/14), tức
+    /// khoảng 0,0001 — nạp nó về là trả tiền và thời gian cho một con số bằng không.
+    ///
+    /// 180 ngày là mức rộng rãi so với chu kỳ 14 ngày, đủ để đổi cách tính sau này mà không
+    /// phải nạp lại. Ván đội-vs-đội thì KHÔNG bị chặn: Elo và lịch sử đối đầu cần cả quá khứ xa.
+    /// </summary>
+    public const int OneSidedDetailDays = 180;
+
+    /// <summary>
+    /// Điều kiện "ván này còn cần nạp chi tiết". Dùng CHUNG cho cả bên nạp lẫn trang trạng
+    /// thái — hai nơi đếm theo hai cách là hai nơi sẽ báo hai con số khác nhau, và người vận
+    /// hành sẽ thấy tiến độ đứng yên ở một mẫu số không bao giờ về 0.
+    /// </summary>
+    public static Expression<Func<Match, bool>> NeedsDetail(DateTime now)
+    {
+        var cutoff = now.AddDays(-OneSidedDetailDays);
+
+        return m => (m.DetailsIngestedAt == null || m.DetailSchemaVersion < SchemaVersion)
+                    && ((m.RadiantTeamId != null && m.DireTeamId != null)
+                        || m.StartTime >= cutoff);
+    }
+
     public async Task<int> IngestAsync(int maxMatchesPerRun, CancellationToken ct)
     {
         await RelinkOrphanPlayersAsync(ct);
@@ -54,7 +85,7 @@ public class MatchDetailIngester(
         // Ván mới nhất trước: phong độ gần đây là thứ đáng có sớm nhất, và nếu vì lý do gì
         // đó việc nạp bù không bao giờ hoàn tất thì phần thiếu là quá khứ xa, ít giá trị hơn.
         var pending = await db.Matches
-            .Where(m => m.DetailsIngestedAt == null || m.DetailSchemaVersion < SchemaVersion)
+            .Where(NeedsDetail(DateTime.UtcNow))
             .OrderByDescending(m => m.StartTime)
             .Take(maxMatchesPerRun)
             .Select(m => m.Id)
@@ -66,8 +97,7 @@ public class MatchDetailIngester(
             return 0;
         }
 
-        var remaining = await db.Matches.CountAsync(
-            m => m.DetailsIngestedAt == null || m.DetailSchemaVersion < SchemaVersion, ct);
+        var remaining = await db.Matches.CountAsync(NeedsDetail(DateTime.UtcNow), ct);
         logger.LogInformation(
             "Nạp match detail cho {Batch} ván (còn tổng cộng {Remaining} ván chưa có detail)",
             pending.Count, remaining);

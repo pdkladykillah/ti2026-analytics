@@ -37,8 +37,7 @@ public static class OpsEndpoints
                 // nâng MatchDetailIngester.SchemaVersion — nhưng nếu con số này đứng yên qua
                 // nhiều vòng thì việc nạp bù đã tắc, và không có chỗ nào khác nhìn ra điều đó.
                 pendingDetails = await db.Matches.CountAsync(
-                    m => m.DetailsIngestedAt == null
-                         || m.DetailSchemaVersion < MatchDetailIngester.SchemaVersion),
+                    MatchDetailIngester.NeedsDetail(DateTime.UtcNow)),
                 detailSchemaVersion = MatchDetailIngester.SchemaVersion,
 
                 draftEvents = await db.DraftEvents.CountAsync(),
@@ -99,10 +98,15 @@ public static class OpsEndpoints
             }).ToList();
 
             var pending = await db.Matches.CountAsync(
-                m => m.DetailsIngestedAt == null
-                     || m.DetailSchemaVersion < MatchDetailIngester.SchemaVersion);
+                MatchDetailIngester.NeedsDetail(DateTime.UtcNow));
 
-            var total = await db.Matches.CountAsync();
+            // Mẫu số là số ván THUỘC DIỆN cần detail, không phải toàn bộ bảng Match. Từ khi
+            // lưu cả ván gặp đối thủ ngoài 16 đội, bảng có hơn mười ba nghìn ván nhưng phần
+            // lớn là lịch sử xa và cố tình không nạp detail — lấy tổng làm mẫu số thì tiến độ
+            // mãi mãi không bao giờ chạm 100% và con số đó vô nghĩa.
+            var cutoff = DateTime.UtcNow.AddDays(-MatchDetailIngester.OneSidedDetailDays);
+            var total = await db.Matches.CountAsync(
+                m => (m.RadiantTeamId != null && m.DireTeamId != null) || m.StartTime >= cutoff);
 
             return Results.Ok(new
             {

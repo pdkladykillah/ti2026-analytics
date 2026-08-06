@@ -34,10 +34,26 @@ public static class TierListEndpoints
     private const double ACut = 0.75;
     private const double BCut = 0.45;
 
+    /// <summary>
+    /// Cửa sổ mặc định, tính theo NGÀY, áp THÊM lên bộ lọc bản game.
+    ///
+    /// Vì sao cần: chỉ số bản game của OpenDota KHÔNG phân biệt 7.41a với 7.41e — cả họ 7.41
+    /// dùng chung một chỉ số. Bản 60 vì thế đã sống từ tháng Ba, và "toàn bản" là một cửa sổ
+    /// gần năm tháng meta.
+    ///
+    /// Hậu quả đã xảy ra thật, và là lý do hằng số này tồn tại: Lina không được chọn lần nào
+    /// từ tháng Ba tới tháng Sáu, rồi từ tháng Bảy thành hàng chủ lực ở mid với tỷ lệ được coi
+    /// trọng 3,5%. Tính bình quân cả bản thì con số đó bị dìm xuống 0,74% và Lina rơi từ hạng
+    /// 10 xuống hạng 52 — tức từ tier S/A xuống tier C. Một tier list nói "đang mạnh" mà lấy
+    /// bình quân năm tháng thì nó đang nói về quá khứ.
+    /// </summary>
+    public const int DefaultWindowDays = 30;
+
     public static void MapTierListEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/tierlist", async (
-            Ti2026DbContext db, string? source = null, int? position = null, string? patch = null) =>
+            Ti2026DbContext db, string? source = null, int? position = null, string? patch = null,
+            int? days = null) =>
         {
             var proOnly = !string.Equals(source, "combined", StringComparison.OrdinalIgnoreCase);
 
@@ -45,13 +61,23 @@ public static class TierListEndpoints
             if (currentPatch is null)
                 return Results.Ok(Empty("Chưa có trận nào biết bản game."));
 
+            // days <= 0 nghĩa là "toàn bản" — vẫn giữ được cách xem cũ để đối chiếu.
+            var windowDays = days ?? DefaultWindowDays;
+            var since = windowDays > 0
+                ? DateTime.UtcNow.AddDays(-Math.Clamp(windowDays, 7, 400))
+                : (DateTime?)null;
+
             var matchIds = await db.Matches
-                .Where(m => m.PatchVersion == currentPatch)
+                .Where(m => m.PatchVersion == currentPatch
+                            && (since == null || m.StartTime >= since))
                 .Select(m => m.Id)
                 .ToListAsync();
 
             if (matchIds.Count == 0)
-                return Results.Ok(Empty($"Chưa có ván nào ở bản {PatchIndex.Name(currentPatch)}."));
+                return Results.Ok(Empty(since is null
+                    ? $"Chưa có ván nào ở bản {PatchIndex.Name(currentPatch)}."
+                    : $"Chưa có ván nào ở bản {PatchIndex.Name(currentPatch)} trong "
+                      + $"{windowDays} ngày gần nhất. Thử cửa sổ dài hơn."));
 
             // ---------- Phần pro: đo từ chính 16 đội TI ----------
             var draftMatchIds = await db.DraftEvents
@@ -171,6 +197,24 @@ public static class TierListEndpoints
                 draftsAnalysed = draftTotal,
                 proWeight = proOnly ? 1.0 : ProWeight,
                 minGamesPerPosition = MinGamesPerPosition,
+
+                windowDays = since is null ? (int?)null : windowDays,
+                matchesInWindow = matchIds.Count,
+
+                windowNote = since is null
+                    ? "Đang tính TOÀN BẢN. Chỉ số bản game của OpenDota không phân biệt 7.41a với "
+                    + "7.41e, nên bản này đã sống nhiều tháng — một hero mới nổi ba tuần gần đây "
+                    + "sẽ bị bình quân dìm xuống. Đổi sang cửa sổ ngắn để thấy meta hiện tại."
+                    : $"Chỉ tính {windowDays} ngày gần nhất TRONG bản {PatchIndex.Name(currentPatch)}. "
+                    + "Cần cửa sổ này vì chỉ số bản game của OpenDota gộp cả họ 7.41 vào một số, "
+                    + "nên 'toàn bản' là gần năm tháng meta — đủ để một hero mới thành chủ lực bị "
+                    + "bình quân dìm từ hạng 10 xuống hạng 52.",
+
+                thinSample = draftTotal < 40
+                    ? $"Chỉ {draftTotal} bàn draft trong cửa sổ này — thứ hạng còn nhảy mạnh. "
+                    + "Nới cửa sổ nếu muốn con số ổn định hơn."
+                    : null,
+
                 heroes = rows,
 
                 method = proOnly

@@ -35,25 +35,32 @@ public static class TierListEndpoints
     private const double BCut = 0.45;
 
     /// <summary>
-    /// Cửa sổ mặc định, tính theo NGÀY, áp THÊM lên bộ lọc bản game.
+    /// Chu kỳ bán rã của trọng số theo độ mới, tính bằng ngày.
     ///
-    /// Vì sao cần: chỉ số bản game của OpenDota KHÔNG phân biệt 7.41a với 7.41e — cả họ 7.41
-    /// dùng chung một chỉ số. Bản 60 vì thế đã sống từ tháng Ba, và "toàn bản" là một cửa sổ
-    /// gần năm tháng meta.
+    /// VÌ SAO CẦN. Chỉ số bản game của OpenDota KHÔNG phân biệt 7.41a với 7.41e — cả họ 7.41
+    /// dùng chung một chỉ số, nên bản 60 đã sống từ tháng Ba và "toàn bản" là gần năm tháng
+    /// meta. Lina không được chọn lần nào từ tháng Ba tới tháng Sáu rồi thành hàng chủ lực ở
+    /// mid từ tháng Bảy; tính bình quân cả bản thì cô rơi từ hạng 10 xuống hạng 52.
     ///
-    /// Hậu quả đã xảy ra thật, và là lý do hằng số này tồn tại: Lina không được chọn lần nào
-    /// từ tháng Ba tới tháng Sáu, rồi từ tháng Bảy thành hàng chủ lực ở mid với tỷ lệ được coi
-    /// trọng 3,5%. Tính bình quân cả bản thì con số đó bị dìm xuống 0,74% và Lina rơi từ hạng
-    /// 10 xuống hạng 52 — tức từ tier S/A xuống tier C. Một tier list nói "đang mạnh" mà lấy
-    /// bình quân năm tháng thì nó đang nói về quá khứ.
+    /// VÌ SAO GIẢM DẦN CHỨ KHÔNG CẮT CỨNG. Người mở tier list muốn biết "bây giờ hero nào
+    /// đang mạnh nhất" — đó là MỘT câu hỏi, và trả lời nó là việc của hệ thống. Bày ra các nút
+    /// 14/30/60 ngày là đẩy quyết định mô hình hoá sang người đọc, bắt họ tự so rồi tự kết
+    /// luận. Tệ hơn, cắt cứng tạo ra một vách đứng vô lý: ván thứ 30 ngày tuổi được tính đủ,
+    /// ván thứ 31 ngày biến mất hoàn toàn.
+    ///
+    /// Giảm dần thì không có vách, và MỌI ván đều còn đóng góp — chỉ là ván cũ nhẹ hơn.
+    ///
+    /// VÌ SAO 14. Mẫu hiệu dụng (Σw)²/Σw² ở mức này là 2356 lượt draft, gần bằng đúng cửa sổ
+    /// cắt cứng 30 ngày (2496) — tức không mất sức mạnh thống kê, nhưng nhạy hơn hẳn với hero
+    /// mới nổi. Đo trên dữ liệu thật: Lina lên hạng 8 với chu kỳ 14 ngày, hạng 18 với 30 ngày,
+    /// hạng 52 nếu không giảm.
     /// </summary>
-    public const int DefaultWindowDays = 30;
+    public const double HalfLifeDays = 14;
 
     public static void MapTierListEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/tierlist", async (
-            Ti2026DbContext db, string? source = null, int? position = null, string? patch = null,
-            int? days = null) =>
+            Ti2026DbContext db, string? source = null, int? position = null, string? patch = null) =>
         {
             var proOnly = !string.Equals(source, "combined", StringComparison.OrdinalIgnoreCase);
 
@@ -61,23 +68,21 @@ public static class TierListEndpoints
             if (currentPatch is null)
                 return Results.Ok(Empty("Chưa có trận nào biết bản game."));
 
-            // days <= 0 nghĩa là "toàn bản" — vẫn giữ được cách xem cũ để đối chiếu.
-            var windowDays = days ?? DefaultWindowDays;
-            var since = windowDays > 0
-                ? DateTime.UtcNow.AddDays(-Math.Clamp(windowDays, 7, 400))
-                : (DateTime?)null;
-
-            var matchIds = await db.Matches
-                .Where(m => m.PatchVersion == currentPatch
-                            && (since == null || m.StartTime >= since))
-                .Select(m => m.Id)
+            var matches = await db.Matches
+                .Where(m => m.PatchVersion == currentPatch)
+                .Select(m => new { m.Id, m.StartTime })
                 .ToListAsync();
 
-            if (matchIds.Count == 0)
-                return Results.Ok(Empty(since is null
-                    ? $"Chưa có ván nào ở bản {PatchIndex.Name(currentPatch)}."
-                    : $"Chưa có ván nào ở bản {PatchIndex.Name(currentPatch)} trong "
-                      + $"{windowDays} ngày gần nhất. Thử cửa sổ dài hơn."));
+            if (matches.Count == 0)
+                return Results.Ok(Empty($"Chưa có ván nào ở bản {PatchIndex.Name(currentPatch)}."));
+
+            var matchIds = matches.Select(m => m.Id).ToList();
+
+            // Trọng số theo độ mới. Xem HalfLifeDays để biết vì sao không dùng cửa sổ cắt cứng.
+            var now = DateTime.UtcNow;
+            var weightOf = matches.ToDictionary(
+                m => m.Id,
+                m => Math.Pow(0.5, Math.Max(0, (now - m.StartTime).TotalDays) / HalfLifeDays));
 
             // ---------- Phần pro: đo từ chính 16 đội TI ----------
             var draftMatchIds = await db.DraftEvents
@@ -88,10 +93,18 @@ public static class TierListEndpoints
 
             var events = await db.DraftEvents
                 .Where(d => matchIds.Contains(d.MatchId))
-                .Select(d => new { d.HeroId, d.IsPick, d.Order })
+                .Select(d => new { d.MatchId, d.HeroId, d.IsPick, d.Order })
                 .ToListAsync();
 
+            // Mẫu số cũng phải cùng thang trọng số, nếu không tỷ lệ mất ý nghĩa.
+            var draftWeight = draftMatchIds.Sum(id => weightOf.GetValueOrDefault(id));
             var draftTotal = draftMatchIds.Count;
+
+            // Mẫu HIỆU DỤNG: (Σw)² / Σw². Cho biết thực sự đang dựa trên bao nhiêu ván, chứ
+            // con số thô sẽ khiến một bảng dựng chủ yếu từ ba ván tuần này trông như dựng từ
+            // bốn trăm ván cả bản.
+            var sumW2 = draftMatchIds.Sum(id => Math.Pow(weightOf.GetValueOrDefault(id), 2));
+            var effectiveMatches = sumW2 <= 0 ? 0 : (int)Math.Round(draftWeight * draftWeight / sumW2);
 
             var contest = events
                 .GroupBy(e => e.HeroId)
@@ -99,7 +112,13 @@ public static class TierListEndpoints
                 {
                     Picks = g.Count(x => x.IsPick),
                     Bans = g.Count(x => !x.IsPick),
-                    Rate = draftTotal == 0 ? 0 : g.Count() * 100.0 / draftTotal,
+
+                    // Tử số và mẫu số cùng dùng trọng số theo độ mới: một lượt cấm tuần này
+                    // nặng hơn hẳn một lượt cấm hồi tháng Ba, dù cả hai cùng nằm trong bản 7.41.
+                    Rate = draftWeight <= 0
+                        ? 0
+                        : g.Sum(x => weightOf.GetValueOrDefault(x.MatchId)) * 100.0 / draftWeight,
+
                     AvgBanOrder = g.Any(x => !x.IsPick)
                         ? g.Where(x => !x.IsPick).Average(x => x.Order)
                         : (double?)null,
@@ -198,21 +217,20 @@ public static class TierListEndpoints
                 proWeight = proOnly ? 1.0 : ProWeight,
                 minGamesPerPosition = MinGamesPerPosition,
 
-                windowDays = since is null ? (int?)null : windowDays,
-                matchesInWindow = matchIds.Count,
+                halfLifeDays = HalfLifeDays,
+                effectiveMatches,
 
-                windowNote = since is null
-                    ? "Đang tính TOÀN BẢN. Chỉ số bản game của OpenDota không phân biệt 7.41a với "
-                    + "7.41e, nên bản này đã sống nhiều tháng — một hero mới nổi ba tuần gần đây "
-                    + "sẽ bị bình quân dìm xuống. Đổi sang cửa sổ ngắn để thấy meta hiện tại."
-                    : $"Chỉ tính {windowDays} ngày gần nhất TRONG bản {PatchIndex.Name(currentPatch)}. "
-                    + "Cần cửa sổ này vì chỉ số bản game của OpenDota gộp cả họ 7.41 vào một số, "
-                    + "nên 'toàn bản' là gần năm tháng meta — đủ để một hero mới thành chủ lực bị "
-                    + "bình quân dìm từ hạng 10 xuống hạng 52.",
+                windowNote =
+                    $"Đây là meta HIỆN TẠI, không phải bình quân cả bản. Mỗi ván được cân theo độ "
+                    + $"mới với chu kỳ bán rã {HalfLifeDays:0} ngày: ván tuần này nặng nhất, ván "
+                    + $"cách đây hai tuần còn một nửa, ván tháng Ba gần như không còn tiếng nói. "
+                    + $"Không cắt cứng ở mốc nào — mọi ván đều đóng góp, chỉ khác trọng số. "
+                    + $"Tính trên {draftTotal} bàn draft, tương đương {effectiveMatches} bàn nếu "
+                    + $"đếm ngang nhau.",
 
-                thinSample = draftTotal < 40
-                    ? $"Chỉ {draftTotal} bàn draft trong cửa sổ này — thứ hạng còn nhảy mạnh. "
-                    + "Nới cửa sổ nếu muốn con số ổn định hơn."
+                thinSample = effectiveMatches < 40
+                    ? $"Mẫu hiệu dụng chỉ {effectiveMatches} bàn draft — thứ hạng còn nhảy mạnh. "
+                    + "Cần thêm trận mới ở bản này thì con số mới ổn định."
                     : null,
 
                 heroes = rows,

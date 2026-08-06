@@ -1526,29 +1526,13 @@ async function loadSchedule() {
  * tới tháng Sáu, rồi thành chủ lực mid từ tháng Bảy. Bình quân cả bản dìm cô từ hạng 10 xuống
  * hạng 52 — tức từ tier S/A xuống tier C.
  */
-const TL = { source: 'pro', position: null, days: 30 };
+const TL = { source: 'pro', position: null };
 
 function setupTierList() {
   const src = $('#tl-source');
   const pos = $('#tl-positions');
-  const win = $('#tl-window');
   if (!src || src.dataset.ready) return;
   src.dataset.ready = '1';
-
-  if (win) {
-    const windows = [[14, '14 ngày'], [30, '30 ngày'], [60, '60 ngày'], [0, 'Toàn bản']];
-    win.innerHTML = windows.map(([d, label]) =>
-      `<button class="pill" type="button" data-days="${d}" aria-pressed="${d === TL.days}">${label}</button>`
-    ).join('');
-
-    $$('button', win).forEach((btn) => {
-      btn.onclick = () => {
-        TL.days = Number(btn.dataset.days);
-        $$('button', win).forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
-        loadTierList();
-      };
-    });
-  }
 
   $$('button', src).forEach((btn) => {
     btn.onclick = () => {
@@ -1589,7 +1573,7 @@ async function loadTierList() {
   const body = $('#tl-body');
   body.innerHTML = '<div class="skeleton" style="height:280px"></div>';
 
-  const q = new URLSearchParams({ source: TL.source, days: TL.days });
+  const q = new URLSearchParams({ source: TL.source });
   if (TL.position) q.set('position', TL.position);
 
   try {
@@ -1636,7 +1620,7 @@ async function loadTierList() {
       <div class="note" style="margin-top:var(--s-4)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div><b>${esc(d.patch)}</b> · ${d.draftsAnalysed} bàn draft
-        · ${d.windowDays ? d.windowDays + ' ngày gần nhất' : 'toàn bản'} (${d.matchesInWindow} ván).
+        · mẫu hiệu dụng ${d.effectiveMatches} bàn.
         ${d.positionName ? `Vị trí <b>${esc(d.positionName)}</b> — ${esc(d.positionDesc || '')}.` : ''}
         <br><br>${esc(d.method || '')}
         <br><br>${esc(d.windowNote || '')}

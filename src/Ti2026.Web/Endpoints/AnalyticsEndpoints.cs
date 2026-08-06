@@ -84,6 +84,11 @@ public static class AnalyticsEndpoints
             // Phân phối cho kèo over/under — gộp trận của CẢ HAI đội, không chỉ đối đầu:
             // hai đội thường chỉ gặp nhau vài lần, quá ít để nói gì về tổng kills.
             var pool = await db.Matches
+                // Rào chắn BẮT BUỘC: ván có đối thủ ngoài 16 đội được lưu với một phe null, và
+                // chúng dùng được cho phân tích HERO chứ không dùng cho phân tích ĐỘI. Thiếu
+                // dòng này thì phân phối tổng kill của hai đội bị trộn thêm những trận gặp đối
+                // thủ yếu hơn hẳn, và cái kèo tài/xỉu suy ra từ đó lệch mà không ai thấy.
+                .Where(m => m.RadiantTeamId != null && m.DireTeamId != null)
                 .Where(m => m.RadiantTeamId == teamA.Id || m.DireTeamId == teamA.Id
                             || m.RadiantTeamId == teamB.Id || m.DireTeamId == teamB.Id)
                 .Select(m => new { m.RadiantScore, m.DireScore, m.DurationSeconds })

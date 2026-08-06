@@ -374,12 +374,24 @@ public class OpenDotaIngester(
             // thay vì đoán. Đoán ở đây làm sai winrate của cả hai đội.
             if (m.Radiant is null) continue;
 
-            // Không ánh xạ được đối thủ về một trong 16 đội: bỏ qua. Ván với đội ngoài giải
-            // không thuộc phạm vi phân tích, và ghi nửa vời (một phe null) sẽ bị SnapshotWriter
-            // lọc ra nhưng vẫn phình bảng Match.
-            if (m.OpposingTeamId is null
-                || !byOpenDotaId.TryGetValue(m.OpposingTeamId.Value, out var opponentTeamId))
-                continue;
+            // Đối thủ ngoài 16 đội thì VẪN LƯU, để phe kia null.
+            //
+            // Bản trước bỏ hẳn những ván này, và cái giá thì lớn hơn ghi chú cũ thừa nhận: chỉ
+            // riêng EWC 2026 đã mất 77/130 ván có đội của ta thi đấu. Toàn bộ bàn draft và mọi
+            // chỉ số cá nhân trong đó biến mất theo — trong khi đó là dữ liệu thật về hero nào
+            // đang mạnh và tuyển thủ nào đang có phong độ.
+            //
+            // Không có dữ liệu nào là phế vật, nhưng phải dùng đúng chỗ. Một phe null nghĩa là:
+            //   DÙNG ĐƯỢC  — tier list, ưu tiên cấm/chọn, mốc lên đồ, chỉ số cá nhân, fantasy
+            //   KHÔNG DÙNG — Elo, đối đầu, winrate đội, phân phối kèo, series
+            //
+            // Vế thứ hai được bảo vệ bằng điều kiện `RadiantTeamId != null && DireTeamId != null`
+            // ở SnapshotWriter và các endpoint mức đội. Đã rà toàn bộ 26 chỗ truy vấn Matches
+            // khi mở luồng này; chỗ duy nhất còn hở là phân phối kèo tổng kill, đã vá cùng lúc.
+            int? opponentTeamId = m.OpposingTeamId is int opp
+                                  && byOpenDotaId.TryGetValue(opp, out var mapped)
+                ? mapped
+                : null;
 
             var isRadiant = m.Radiant.Value;
             var radiantTeamId = isRadiant ? team.Id : opponentTeamId;

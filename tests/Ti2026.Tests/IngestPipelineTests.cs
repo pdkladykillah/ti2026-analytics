@@ -309,6 +309,53 @@ public class IngestPipelineTests : IDisposable
         second.Should().Be(first);
     }
 
+    /// <summary>
+    /// Ván có đối thủ NGOÀI 16 đội được lưu với một phe null, và phải bị loại khỏi mọi chỉ số
+    /// mức ĐỘI.
+    ///
+    /// Đây là luật "không có dữ liệu nào là phế vật, nhưng phải dùng đúng chỗ": những ván đó
+    /// dùng được cho phân tích hero (tier list, cấm/chọn, mốc lên đồ) và cho chỉ số cá nhân,
+    /// nhưng KHÔNG dùng cho Elo, winrate đội, đối đầu hay phân phối kèo — vì đối thủ ở đó
+    /// không cùng một mặt bằng, và trộn vào sẽ thổi phồng thành tích của đội một cách vô hình.
+    /// </summary>
+    [Fact]
+    public async Task Van_gap_doi_ngoai_16_doi_KHONG_duoc_tinh_vao_chi_so_doi()
+    {
+        using var db = NewDb();
+        var team = await SeedTeamsWithMatches(db);   // 4 ván hợp lệ, thắng 2
+
+        // Hai ván gặp đối thủ không thuộc 16 đội — thắng cả hai. Nếu bị đếm nhầm thì winrate
+        // nhảy từ 50% lên 67% và đội trông khoẻ hơn hẳn thực tế.
+        var now = DateTime.UtcNow;
+        for (var i = 0; i < 2; i++)
+        {
+            db.Matches.Add(new Match
+            {
+                Id = 2000 + i,
+                StartTime = now.AddDays(-i - 1),
+                DurationSeconds = 2400,
+                RadiantTeamId = team.Id,
+                DireTeamId = null,          // đối thủ ngoài 16 đội
+                RadiantWin = true,
+                RadiantScore = 40,
+                DireScore = 5,
+                IngestedAt = now,
+            });
+        }
+        await db.SaveChangesAsync();
+
+        await new SnapshotWriter(db).WriteAsync(
+            DateOnly.FromDateTime(DateTime.UtcNow), CancellationToken.None);
+
+        var snap = await db.TeamStatSnapshots
+            .FirstAsync(s => s.TeamId == team.Id && s.WindowDays == 30);
+
+        snap.Maps.Should().Be(4, "chỉ đếm ván giữa hai đội đều thuộc 16 đội");
+        snap.Wins.Should().Be(2);
+        snap.Winrate.Should().Be(50, "hai ván thắng đậm kia không được kéo winrate lên");
+        snap.AvgKills.Should().Be(25, "40 kill của ván ngoài phạm vi không được trộn vào");
+    }
+
     [Fact]
     public async Task Snapshot_ghi_cho_ca_ba_cua_so()
     {

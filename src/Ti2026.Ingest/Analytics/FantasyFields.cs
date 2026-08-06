@@ -75,6 +75,16 @@ public static class FantasyFields
         killed is null ? null : Get(killed, "npc_dota_miniboss");
 
     /// <summary>
+    /// CHẾT VÌ Tormentor — lấy từ <c>killed_by</c>, không phải <c>killed</c>.
+    ///
+    /// Cần cho suffix "the Tormented" (+23%), một trong hai suffix cao điểm nhất. Nhưng đó là
+    /// điều kiện BẤT LỢI: nó ăn khi có người trong đội hình chết vì Tormentor, nên biết xác
+    /// suất là để NÉ chứ không phải để nhắm.
+    /// </summary>
+    public static int? DeathsToTormentor(IReadOnlyDictionary<string, int>? killedBy) =>
+        killedBy is null ? null : Get(killedBy, "npc_dota_miniboss");
+
+    /// <summary>
     /// Roshan đếm từ <c>killed</c>, KHÔNG dùng trường <c>roshan_kills</c> có sẵn — trường đó
     /// đếm dư.
     ///

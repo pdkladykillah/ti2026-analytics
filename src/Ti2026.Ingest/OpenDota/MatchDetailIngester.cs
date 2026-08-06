@@ -36,8 +36,9 @@ public class MatchDetailIngester(
     ///     ba chiều với objectives trên hai ván). Nâng ở đây để mọi ván đã nạp được sửa lại.
     /// 7 = thêm hoa sen đếm theo MÓN, song song với cách quy về bông gốc — chưa ai biết Valve
     ///     đếm kiểu nào và hai cách chênh 6 lần, nên nạp sẵn cả hai.
+    /// 8 = thêm số lần CHẾT VÌ Tormentor (killed_by), cho suffix "the Tormented".
     /// </summary>
-    public const int SchemaVersion = 7;
+    public const int SchemaVersion = 8;
 
     /// <summary>
     /// Số lỗi LIÊN TIẾP thì dừng mẻ. Lỗi rải rác là chuyện thường (một ván OpenDota chưa parse
@@ -253,6 +254,7 @@ public class MatchDetailIngester(
             existing.Smokes = FantasyFields.Smokes(p.ItemUses);
             existing.MadstoneBundles = FantasyFields.MadstoneBundles(p.ItemUses);
             existing.TormentorKills = FantasyFields.TormentorKills(p.Killed);
+            existing.DeathsToTormentor = FantasyFields.DeathsToTormentor(p.KilledBy);
 
             // Roshan lấy từ killed chứ KHÔNG từ trường tổng hợp roshan_kills — trường đó đếm
             // dư, đã kiểm ba chiều với objectives trên hai ván (xem FantasyFields.RoshanKills).

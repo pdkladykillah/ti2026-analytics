@@ -1,0 +1,1048 @@
+{
+  "_nguon": "Chép từ data/titles.ts của dự án dota2-fantasy-optimizer-2026 — chủ dự án cho phép.",
+  "_yNghia": "pct = phần trăm số ván tuyển thủ đó chơi hero thuộc nhóm màu/chủ đề tương ứng. Prefix cộng THÊM phần trăm điểm khi điều kiện đúng, nên lợi kỳ vọng = bonus × pct/100.",
+  "_khoa": "Khoá là nick đã viết HOA — khớp với Player.NickKey.",
+  "_canBiet": "Đây là số ĐẾM TAY từ hero pool, không phải số ta tự đo được: OpenDota không phân loại màu/chủ đề hero. Nó sẽ cũ dần khi tuyển thủ đổi hero pool, và không có cách nào tự cập nhật.",
+  "players": {
+    "33": {
+      "nick": "33",
+      "pct": {
+        "crimson": 40,
+        "cerulean": 1,
+        "emerald": 30,
+        "royal": 15,
+        "golden": 36,
+        "elemental": 43,
+        "otherworldly": 18,
+        "heroic": 9
+      }
+    },
+    "YSR-04E": {
+      "nick": "YSR-04E",
+      "pct": {
+        "crimson": 0,
+        "cerulean": 15,
+        "emerald": 23,
+        "royal": 8,
+        "golden": 23,
+        "elemental": 0,
+        "otherworldly": 31,
+        "heroic": 23
+      }
+    },
+    "NIU": {
+      "nick": "niu",
+      "pct": {
+        "crimson": 31,
+        "cerulean": 0,
+        "emerald": 31,
+        "royal": 23,
+        "golden": 38,
+        "elemental": 38,
+        "otherworldly": 23,
+        "heroic": 23
+      }
+    },
+    "SATANIC": {
+      "nick": "Satanic",
+      "pct": {
+        "crimson": 12,
+        "cerulean": 14,
+        "emerald": 19,
+        "royal": 16,
+        "golden": 15,
+        "elemental": 10,
+        "otherworldly": 24,
+        "heroic": 24
+      }
+    },
+    "NOTICED": {
+      "nick": "Noticed",
+      "pct": {
+        "crimson": 37,
+        "cerulean": 3,
+        "emerald": 23,
+        "royal": 22,
+        "golden": 25,
+        "elemental": 39,
+        "otherworldly": 15,
+        "heroic": 4
+      }
+    },
+    "YUMA": {
+      "nick": "Yuma",
+      "pct": {
+        "crimson": 11,
+        "cerulean": 12,
+        "emerald": 22,
+        "royal": 23,
+        "golden": 25,
+        "elemental": 11,
+        "otherworldly": 26,
+        "heroic": 22
+      }
+    },
+    "WISPER": {
+      "nick": "Wisper",
+      "pct": {
+        "crimson": 44,
+        "cerulean": 4,
+        "emerald": 21,
+        "royal": 23,
+        "golden": 30,
+        "elemental": 31,
+        "otherworldly": 15,
+        "heroic": 14
+      }
+    },
+    "WATSON": {
+      "nick": "watson",
+      "pct": {
+        "crimson": 17,
+        "cerulean": 12,
+        "emerald": 13,
+        "royal": 28,
+        "golden": 14,
+        "elemental": 12,
+        "otherworldly": 21,
+        "heroic": 17
+      }
+    },
+    "DM": {
+      "nick": "DM",
+      "pct": {
+        "crimson": 37,
+        "cerulean": 8,
+        "emerald": 14,
+        "royal": 15,
+        "golden": 43,
+        "elemental": 33,
+        "otherworldly": 20,
+        "heroic": 5
+      }
+    },
+    "KIRITYCH": {
+      "nick": "Kiritych",
+      "pct": {
+        "crimson": 6,
+        "cerulean": 16,
+        "emerald": 23,
+        "royal": 21,
+        "golden": 20,
+        "elemental": 10,
+        "otherworldly": 24,
+        "heroic": 35
+      }
+    },
+    "MIERO": {
+      "nick": "MieRo",
+      "pct": {
+        "crimson": 31,
+        "cerulean": 6,
+        "emerald": 30,
+        "royal": 14,
+        "golden": 34,
+        "elemental": 26,
+        "otherworldly": 14,
+        "heroic": 7
+      }
+    },
+    "SKITER": {
+      "nick": "skiter",
+      "pct": {
+        "crimson": 14,
+        "cerulean": 7,
+        "emerald": 13,
+        "royal": 13,
+        "golden": 35,
+        "elemental": 14,
+        "otherworldly": 21,
+        "heroic": 25
+      }
+    },
+    "ATF": {
+      "nick": "ATF",
+      "pct": {
+        "crimson": 34,
+        "cerulean": 9,
+        "emerald": 24,
+        "royal": 16,
+        "golden": 17,
+        "elemental": 25,
+        "otherworldly": 20,
+        "heroic": 2
+      }
+    },
+    "AME": {
+      "nick": "Ame",
+      "pct": {
+        "crimson": 15,
+        "cerulean": 10,
+        "emerald": 12,
+        "royal": 24,
+        "golden": 21,
+        "elemental": 17,
+        "otherworldly": 24,
+        "heroic": 19
+      }
+    },
+    "XXS": {
+      "nick": "Xxs",
+      "pct": {
+        "crimson": 44,
+        "cerulean": 3,
+        "emerald": 13,
+        "royal": 21,
+        "golden": 33,
+        "elemental": 35,
+        "otherworldly": 10,
+        "heroic": 5
+      }
+    },
+    "NIGHTFALL": {
+      "nick": "Nightfall",
+      "pct": {
+        "crimson": 14,
+        "cerulean": 11,
+        "emerald": 24,
+        "royal": 25,
+        "golden": 19,
+        "elemental": 8,
+        "otherworldly": 14,
+        "heroic": 36
+      }
+    },
+    "WS": {
+      "nick": "Ws",
+      "pct": {
+        "crimson": 41,
+        "cerulean": 1,
+        "emerald": 24,
+        "royal": 18,
+        "golden": 37,
+        "elemental": 24,
+        "otherworldly": 10,
+        "heroic": 0
+      }
+    },
+    "PURE": {
+      "nick": "Pure",
+      "pct": {
+        "crimson": 19,
+        "cerulean": 18,
+        "emerald": 22,
+        "royal": 18,
+        "golden": 13,
+        "elemental": 16,
+        "otherworldly": 33,
+        "heroic": 36
+      }
+    },
+    "YATORO": {
+      "nick": "Yatoro",
+      "pct": {
+        "crimson": 15,
+        "cerulean": 11,
+        "emerald": 14,
+        "royal": 24,
+        "golden": 21,
+        "elemental": 17,
+        "otherworldly": 21,
+        "heroic": 24
+      }
+    },
+    "COLLAPSE": {
+      "nick": "Collapse",
+      "pct": {
+        "crimson": 50,
+        "cerulean": 1,
+        "emerald": 24,
+        "royal": 12,
+        "golden": 35,
+        "elemental": 32,
+        "otherworldly": 15,
+        "heroic": 9
+      }
+    },
+    "SHIRO": {
+      "nick": "shiro",
+      "pct": {
+        "crimson": 11,
+        "cerulean": 7,
+        "emerald": 28,
+        "royal": 20,
+        "golden": 23,
+        "elemental": 9,
+        "otherworldly": 24,
+        "heroic": 40
+      }
+    },
+    "BACH": {
+      "nick": "Bach",
+      "pct": {
+        "crimson": 49,
+        "cerulean": 4,
+        "emerald": 17,
+        "royal": 16,
+        "golden": 33,
+        "elemental": 21,
+        "otherworldly": 17,
+        "heroic": 7
+      }
+    },
+    "GHOST": {
+      "nick": "Ghost",
+      "pct": {
+        "crimson": 18,
+        "cerulean": 18,
+        "emerald": 31,
+        "royal": 18,
+        "golden": 23,
+        "elemental": 18,
+        "otherworldly": 42,
+        "heroic": 28
+      }
+    },
+    "FAYDE": {
+      "nick": "Fayde",
+      "pct": {
+        "crimson": 24,
+        "cerulean": 17,
+        "emerald": 22,
+        "royal": 24,
+        "golden": 29,
+        "elemental": 27,
+        "otherworldly": 18,
+        "heroic": 2
+      }
+    },
+    "MICKE": {
+      "nick": "miCKe",
+      "pct": {
+        "crimson": 18,
+        "cerulean": 13,
+        "emerald": 29,
+        "royal": 8,
+        "golden": 20,
+        "elemental": 12,
+        "otherworldly": 22,
+        "heroic": 38
+      }
+    },
+    "ACE": {
+      "nick": "Ace",
+      "pct": {
+        "crimson": 37,
+        "cerulean": 5,
+        "emerald": 27,
+        "royal": 8,
+        "golden": 34,
+        "elemental": 34,
+        "otherworldly": 19,
+        "heroic": 8
+      }
+    },
+    "SSNOVV1": {
+      "nick": "ssnovv1",
+      "pct": {
+        "crimson": 9,
+        "cerulean": 21,
+        "emerald": 20,
+        "royal": 21,
+        "golden": 11,
+        "elemental": 5,
+        "otherworldly": 31,
+        "heroic": 31
+      }
+    },
+    "CORRUPTED": {
+      "nick": "Corrupted",
+      "pct": {
+        "crimson": 29,
+        "cerulean": 3,
+        "emerald": 36,
+        "royal": 13,
+        "golden": 31,
+        "elemental": 35,
+        "otherworldly": 21,
+        "heroic": 5
+      }
+    },
+    "NATSUMI": {
+      "nick": "Natsumi",
+      "pct": {
+        "crimson": 13,
+        "cerulean": 16,
+        "emerald": 18,
+        "royal": 18,
+        "golden": 22,
+        "elemental": 19,
+        "otherworldly": 30,
+        "heroic": 28
+      }
+    },
+    "RAVEN": {
+      "nick": "Raven",
+      "pct": {
+        "crimson": 50,
+        "cerulean": 0,
+        "emerald": 30,
+        "royal": 10,
+        "golden": 20,
+        "elemental": 20,
+        "otherworldly": 30,
+        "heroic": 0
+      }
+    },
+    "SUMAIL": {
+      "nick": "SumaiL",
+      "pct": {
+        "crimson": 25,
+        "cerulean": 17,
+        "emerald": 12,
+        "royal": 20,
+        "golden": 19,
+        "elemental": 27,
+        "otherworldly": 56,
+        "heroic": 12
+      }
+    },
+    "DAVAI": {
+      "nick": "Davai",
+      "pct": {
+        "crimson": 32,
+        "cerulean": 0,
+        "emerald": 37,
+        "royal": 14,
+        "golden": 24,
+        "elemental": 32,
+        "otherworldly": 22,
+        "heroic": 2
+      }
+    },
+    "NISHA": {
+      "nick": "Nisha",
+      "pct": {
+        "crimson": 28,
+        "cerulean": 31,
+        "emerald": 6,
+        "royal": 16,
+        "golden": 6,
+        "elemental": 29,
+        "otherworldly": 53,
+        "heroic": 9
+      }
+    },
+    "MALR1NE": {
+      "nick": "Malr1ne",
+      "pct": {
+        "crimson": 50,
+        "cerulean": 9,
+        "emerald": 10,
+        "royal": 7,
+        "golden": 34,
+        "elemental": 20,
+        "otherworldly": 21,
+        "heroic": 12
+      }
+    },
+    "GPK": {
+      "nick": "gpk",
+      "pct": {
+        "crimson": 34,
+        "cerulean": 27,
+        "emerald": 7,
+        "royal": 16,
+        "golden": 2,
+        "elemental": 32,
+        "otherworldly": 45,
+        "heroic": 6
+      }
+    },
+    "LORENOF": {
+      "nick": "lorenof",
+      "pct": {
+        "crimson": 36,
+        "cerulean": 34,
+        "emerald": 19,
+        "royal": 2,
+        "golden": 1,
+        "elemental": 29,
+        "otherworldly": 55,
+        "heroic": 5
+      }
+    },
+    "ECHOZZ": {
+      "nick": "Echozz",
+      "pct": {
+        "crimson": 38,
+        "cerulean": 15,
+        "emerald": 0,
+        "royal": 15,
+        "golden": 15,
+        "elemental": 23,
+        "otherworldly": 31,
+        "heroic": 0
+      }
+    },
+    "MIKOTO": {
+      "nick": "Mikoto",
+      "pct": {
+        "crimson": 25,
+        "cerulean": 40,
+        "emerald": 11,
+        "royal": 9,
+        "golden": 0,
+        "elemental": 17,
+        "otherworldly": 52,
+        "heroic": 12
+      }
+    },
+    "BZM": {
+      "nick": "bzm",
+      "pct": {
+        "crimson": 32,
+        "cerulean": 15,
+        "emerald": 4,
+        "royal": 12,
+        "golden": 19,
+        "elemental": 29,
+        "otherworldly": 38,
+        "heroic": 19
+      }
+    },
+    "NO[O]NE": {
+      "nick": "No[o]ne",
+      "pct": {
+        "crimson": 37,
+        "cerulean": 21,
+        "emerald": 8,
+        "royal": 10,
+        "golden": 8,
+        "elemental": 27,
+        "otherworldly": 37,
+        "heroic": 14
+      }
+    },
+    "XM": {
+      "nick": "Xm",
+      "pct": {
+        "crimson": 28,
+        "cerulean": 34,
+        "emerald": 12,
+        "royal": 6,
+        "golden": 9,
+        "elemental": 20,
+        "otherworldly": 44,
+        "heroic": 6
+      }
+    },
+    "TAILUNG": {
+      "nick": "Tailung",
+      "pct": {
+        "crimson": 26,
+        "cerulean": 25,
+        "emerald": 19,
+        "royal": 7,
+        "golden": 18,
+        "elemental": 16,
+        "otherworldly": 25,
+        "heroic": 5
+      }
+    },
+    "LARL": {
+      "nick": "Larl",
+      "pct": {
+        "crimson": 27,
+        "cerulean": 28,
+        "emerald": 6,
+        "royal": 9,
+        "golden": 13,
+        "elemental": 21,
+        "otherworldly": 36,
+        "heroic": 14
+      }
+    },
+    "CHIRA_JUNIOR": {
+      "nick": "CHIRA_JUNIOR",
+      "pct": {
+        "crimson": 16,
+        "cerulean": 20,
+        "emerald": 12,
+        "royal": 23,
+        "golden": 6,
+        "elemental": 40,
+        "otherworldly": 33,
+        "heroic": 21
+      }
+    },
+    "RCY": {
+      "nick": "RCY",
+      "pct": {
+        "crimson": 24,
+        "cerulean": 25,
+        "emerald": 12,
+        "royal": 5,
+        "golden": 7,
+        "elemental": 21,
+        "otherworldly": 51,
+        "heroic": 10
+      }
+    },
+    "NOTHINGTOSAY": {
+      "nick": "NothingToSay",
+      "pct": {
+        "crimson": 31,
+        "cerulean": 31,
+        "emerald": 4,
+        "royal": 4,
+        "golden": 28,
+        "elemental": 11,
+        "otherworldly": 33,
+        "heroic": 10
+      }
+    },
+    "MIRAGE`": {
+      "nick": "Mirage`",
+      "pct": {
+        "crimson": 37,
+        "cerulean": 20,
+        "emerald": 8,
+        "royal": 12,
+        "golden": 8,
+        "elemental": 40,
+        "otherworldly": 53,
+        "heroic": 7
+      }
+    },
+    "YOPAJ": {
+      "nick": "Yopaj",
+      "pct": {
+        "crimson": 29,
+        "cerulean": 28,
+        "emerald": 10,
+        "royal": 13,
+        "golden": 13,
+        "elemental": 15,
+        "otherworldly": 39,
+        "heroic": 6
+      }
+    },
+    "THIOLICOR": {
+      "nick": "Thiolicor",
+      "pct": {
+        "crimson": 18,
+        "cerulean": 14,
+        "emerald": 35,
+        "royal": 5,
+        "golden": 26,
+        "elemental": 24,
+        "otherworldly": 15,
+        "heroic": 41
+      }
+    },
+    "KJ": {
+      "nick": "KJ",
+      "pct": {
+        "crimson": 30,
+        "cerulean": 17,
+        "emerald": 24,
+        "royal": 17,
+        "golden": 26,
+        "elemental": 21,
+        "otherworldly": 8,
+        "heroic": 34
+      }
+    },
+    "SAKSA": {
+      "nick": "Saksa",
+      "pct": {
+        "crimson": 17,
+        "cerulean": 5,
+        "emerald": 30,
+        "royal": 3,
+        "golden": 44,
+        "elemental": 12,
+        "otherworldly": 16,
+        "heroic": 48
+      }
+    },
+    "MALADY": {
+      "nick": "Malady",
+      "pct": {
+        "crimson": 44,
+        "cerulean": 31,
+        "emerald": 16,
+        "royal": 9,
+        "golden": 26,
+        "elemental": 43,
+        "otherworldly": 9,
+        "heroic": 21
+      }
+    },
+    "TIMS": {
+      "nick": "Tims",
+      "pct": {
+        "crimson": 23,
+        "cerulean": 9,
+        "emerald": 25,
+        "royal": 15,
+        "golden": 25,
+        "elemental": 13,
+        "otherworldly": 15,
+        "heroic": 43
+      }
+    },
+    "SKEM": {
+      "nick": "skem",
+      "pct": {
+        "crimson": 25,
+        "cerulean": 16,
+        "emerald": 13,
+        "royal": 14,
+        "golden": 32,
+        "elemental": 23,
+        "otherworldly": 4,
+        "heroic": 16
+      }
+    },
+    "CR1T-": {
+      "nick": "Cr1t-",
+      "pct": {
+        "crimson": 28,
+        "cerulean": 7,
+        "emerald": 39,
+        "royal": 12,
+        "golden": 33,
+        "elemental": 5,
+        "otherworldly": 29,
+        "heroic": 59
+      }
+    },
+    "SNEYKING": {
+      "nick": "Sneyking",
+      "pct": {
+        "crimson": 33,
+        "cerulean": 25,
+        "emerald": 16,
+        "royal": 9,
+        "golden": 42,
+        "elemental": 42,
+        "otherworldly": 16,
+        "heroic": 18
+      }
+    },
+    "FY": {
+      "nick": "fy",
+      "pct": {
+        "crimson": 15,
+        "cerulean": 6,
+        "emerald": 40,
+        "royal": 11,
+        "golden": 39,
+        "elemental": 17,
+        "otherworldly": 16,
+        "heroic": 41
+      }
+    },
+    "XNOVA": {
+      "nick": "xNova",
+      "pct": {
+        "crimson": 45,
+        "cerulean": 22,
+        "emerald": 15,
+        "royal": 10,
+        "golden": 37,
+        "elemental": 43,
+        "otherworldly": 10,
+        "heroic": 16
+      }
+    },
+    "ARI": {
+      "nick": "Ari",
+      "pct": {
+        "crimson": 8,
+        "cerulean": 1,
+        "emerald": 29,
+        "royal": 10,
+        "golden": 49,
+        "elemental": 11,
+        "otherworldly": 9,
+        "heroic": 48
+      }
+    },
+    "WHITEMON": {
+      "nick": "Whitemon",
+      "pct": {
+        "crimson": 44,
+        "cerulean": 21,
+        "emerald": 11,
+        "royal": 13,
+        "golden": 41,
+        "elemental": 52,
+        "otherworldly": 12,
+        "heroic": 15
+      }
+    },
+    "MIRA": {
+      "nick": "Mira",
+      "pct": {
+        "crimson": 12,
+        "cerulean": 1,
+        "emerald": 40,
+        "royal": 29,
+        "golden": 23,
+        "elemental": 7,
+        "otherworldly": 24,
+        "heroic": 43
+      }
+    },
+    "KAORI": {
+      "nick": "kaori",
+      "pct": {
+        "crimson": 76,
+        "cerulean": 27,
+        "emerald": 13,
+        "royal": 4,
+        "golden": 29,
+        "elemental": 53,
+        "otherworldly": 9,
+        "heroic": 33
+      }
+    },
+    "OMAR": {
+      "nick": "OmaR",
+      "pct": {
+        "crimson": 14,
+        "cerulean": 4,
+        "emerald": 42,
+        "royal": 3,
+        "golden": 38,
+        "elemental": 13,
+        "otherworldly": 1,
+        "heroic": 42
+      }
+    },
+    "GH": {
+      "nick": "GH",
+      "pct": {
+        "crimson": 25,
+        "cerulean": 27,
+        "emerald": 6,
+        "royal": 23,
+        "golden": 37,
+        "elemental": 37,
+        "otherworldly": 3,
+        "heroic": 7
+      }
+    },
+    "BOXI": {
+      "nick": "Boxi",
+      "pct": {
+        "crimson": 18,
+        "cerulean": 5,
+        "emerald": 29,
+        "royal": 5,
+        "golden": 29,
+        "elemental": 26,
+        "otherworldly": 17,
+        "heroic": 32
+      }
+    },
+    "TOFU": {
+      "nick": "tofu",
+      "pct": {
+        "crimson": 38,
+        "cerulean": 20,
+        "emerald": 22,
+        "royal": 12,
+        "golden": 29,
+        "elemental": 27,
+        "otherworldly": 11,
+        "heroic": 35
+      }
+    },
+    "RUE": {
+      "nick": "rue",
+      "pct": {
+        "crimson": 13,
+        "cerulean": 8,
+        "emerald": 34,
+        "royal": 14,
+        "golden": 36,
+        "elemental": 20,
+        "otherworldly": 19,
+        "heroic": 35
+      }
+    },
+    "NOT ME": {
+      "nick": "not me",
+      "pct": {
+        "crimson": 24,
+        "cerulean": 5,
+        "emerald": 43,
+        "royal": 9,
+        "golden": 37,
+        "elemental": 23,
+        "otherworldly": 11,
+        "heroic": 50
+      }
+    },
+    "XINQ": {
+      "nick": "XinQ",
+      "pct": {
+        "crimson": 13,
+        "cerulean": 16,
+        "emerald": 48,
+        "royal": 5,
+        "golden": 37,
+        "elemental": 8,
+        "otherworldly": 11,
+        "heroic": 52
+      }
+    },
+    "Y`": {
+      "nick": "y`",
+      "pct": {
+        "crimson": 34,
+        "cerulean": 34,
+        "emerald": 27,
+        "royal": 10,
+        "golden": 22,
+        "elemental": 45,
+        "otherworldly": 17,
+        "heroic": 15
+      }
+    },
+    "9CLASS": {
+      "nick": "9Class",
+      "pct": {
+        "crimson": 7,
+        "cerulean": 10,
+        "emerald": 36,
+        "royal": 10,
+        "golden": 45,
+        "elemental": 8,
+        "otherworldly": 13,
+        "heroic": 37
+      }
+    },
+    "DUKALIS": {
+      "nick": "Dukalis",
+      "pct": {
+        "crimson": 35,
+        "cerulean": 24,
+        "emerald": 14,
+        "royal": 10,
+        "golden": 30,
+        "elemental": 37,
+        "otherworldly": 11,
+        "heroic": 17
+      }
+    },
+    "PLANET": {
+      "nick": "planet",
+      "pct": {
+        "crimson": 9,
+        "cerulean": 9,
+        "emerald": 47,
+        "royal": 22,
+        "golden": 38,
+        "elemental": 9,
+        "otherworldly": 16,
+        "heroic": 31
+      }
+    },
+    "ZZQ": {
+      "nick": "zzq",
+      "pct": {
+        "crimson": 23,
+        "cerulean": 46,
+        "emerald": 8,
+        "royal": 23,
+        "golden": 23,
+        "elemental": 54,
+        "otherworldly": 0,
+        "heroic": 8
+      }
+    },
+    "SAVE-": {
+      "nick": "Save-",
+      "pct": {
+        "crimson": 15,
+        "cerulean": 6,
+        "emerald": 42,
+        "royal": 12,
+        "golden": 42,
+        "elemental": 6,
+        "otherworldly": 20,
+        "heroic": 51
+      }
+    },
+    "KATAOMI": {
+      "nick": "Kataomi",
+      "pct": {
+        "crimson": 32,
+        "cerulean": 38,
+        "emerald": 10,
+        "royal": 17,
+        "golden": 11,
+        "elemental": 50,
+        "otherworldly": 9,
+        "heroic": 17
+      }
+    },
+    "BIGNUM": {
+      "nick": "Bignum",
+      "pct": {
+        "crimson": 20,
+        "cerulean": 6,
+        "emerald": 40,
+        "royal": 20,
+        "golden": 31,
+        "elemental": 21,
+        "otherworldly": 15,
+        "heroic": 35
+      }
+    },
+    "SPEEED": {
+      "nick": "Speeed",
+      "pct": {
+        "crimson": 49,
+        "cerulean": 15,
+        "emerald": 21,
+        "royal": 5,
+        "golden": 38,
+        "elemental": 42,
+        "otherworldly": 9,
+        "heroic": 33
+      }
+    },
+    "SAYUW": {
+      "nick": "sayuw",
+      "pct": {
+        "crimson": 16,
+        "cerulean": 4,
+        "emerald": 62,
+        "royal": 10,
+        "golden": 34,
+        "elemental": 12,
+        "otherworldly": 14,
+        "heroic": 40
+      }
+    },
+    "RESPECT": {
+      "nick": "RESPECT",
+      "pct": {
+        "crimson": 32,
+        "cerulean": 8,
+        "emerald": 34,
+        "royal": 11,
+        "golden": 46,
+        "elemental": 32,
+        "otherworldly": 12,
+        "heroic": 20
+      }
+    }
+  }
+}

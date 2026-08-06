@@ -759,3 +759,7 @@ thead th[data-sort-ready]:hover { color: var(--accent-ink); background: var(--su
 }
 .calc-slot select { width: 100%; }
 .calc-slot-n { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
+
+/* Suffix nhóm "nên né": xác suất CAO ở đây là tin xấu, nên nó phải trông khác hẳn nhóm
+   "ổn định" — cùng một màu chữ là mời người đọc hiểu ngược. */
+.chip.warn { border-color: var(--warn); color: var(--warn); }

@@ -113,4 +113,10 @@ public class MatchPlayer
     public int? MadstoneBundles { get; set; }
 
     public int? TormentorKills { get; set; }
+
+    /// <summary>
+    /// Số lần CHẾT VÌ Tormentor. Cần cho suffix "the Tormented" (+23%) — một điều kiện BẤT LỢI,
+    /// nên con số này để NÉ chứ không phải để nhắm.
+    /// </summary>
+    public int? DeathsToTormentor { get; set; }
 }

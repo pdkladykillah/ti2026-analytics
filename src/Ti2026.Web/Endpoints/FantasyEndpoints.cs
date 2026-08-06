@@ -161,6 +161,174 @@ public static class FantasyEndpoints
 
         MapOptimize(api);
         MapBannerScore(api);
+        MapTitles(api);
+    }
+
+    /// <summary>
+    /// Danh hiệu: một prefix + một suffix cho TOÀN BỘ đội hình.
+    ///
+    /// Hai nửa của endpoint này có chất lượng bằng chứng KHÁC HẲN NHAU, nên phải nói rõ:
+    ///
+    ///   suffix — ta ĐO được từ ván thật, 7/8 điều kiện tính được từ dữ liệu đang có
+    ///   prefix — số ĐẾM TAY từ hero pool, chép về, không tự cập nhật được
+    ///
+    /// Trộn hai thứ đó vào một bảng mà không phân biệt là mời người đọc tin cả hai như nhau.
+    /// </summary>
+    private static void MapTitles(RouteGroupBuilder api)
+    {
+        api.MapGet("/titles", async (Ti2026DbContext db, Ti2026Paths paths, int days = 120) =>
+        {
+            var config = LoadConfig(paths, out var error);
+            if (config is null || !config.Ready)
+                return Results.Ok(new { ready = false, note = error ?? "Bảng hệ số chưa điền đủ." });
+
+            var since = DateTime.UtcNow.AddDays(-Math.Clamp(days, 7, 400));
+
+            var rows = await db.MatchPlayers
+                .Where(mp => mp.PlayerId != null && mp.Match!.StartTime >= since)
+                .Select(mp => new
+                {
+                    mp.Match!.DurationSeconds,
+                    mp.Match.FirstBloodTimeSeconds,
+                    mp.Match.RadiantWin,
+                    mp.Match.SeriesId,
+                    mp.MatchId,
+                    mp.IsRadiant,
+                    mp.DeathsToTormentor,
+                })
+                .ToListAsync();
+
+            // "Ván cuối cùng CÓ THỂ CÓ của một trận" — không phải ván cuối đã diễn ra. Xấp xỉ
+            // bằng ván có số thứ tự lớn nhất trong series: một Bo3 đi tới ván 3 thì ván 3 đúng
+            // là ván cuối cùng có thể có. Bo3 kết thúc 2-0 thì ván 2 KHÔNG phải, và cách xấp xỉ
+            // này đếm nhầm nó — nên con số hơi cao hơn thực tế, và phải nói ra.
+            var lastGameOfSeries = rows
+                .Where(r => r.SeriesId is long s && s > 0)
+                .GroupBy(r => r.SeriesId!.Value)
+                .ToDictionary(g => g.Key, g => g.Max(x => x.MatchId));
+
+            var games = rows.Select(r => new SuffixGame(
+                r.DurationSeconds,
+                r.FirstBloodTimeSeconds,
+                PlayerTeamWon: r.IsRadiant == r.RadiantWin,
+                AnyDeathToTormentor: r.DeathsToTormentor is > 0,
+                IsLastPossibleGameOfSeries: r.SeriesId is long s2 && s2 > 0
+                                            && lastGameOfSeries.GetValueOrDefault(s2) == r.MatchId
+            )).ToList();
+
+            var suffixMeta = LoadTitleTable(paths, "suffixes");
+            var odds = FantasySuffix.Compute(
+                games, suffixMeta.ToDictionary(kv => kv.Key, kv => kv.Value.Bonus));
+
+            var prefixMeta = LoadTitleTable(paths, "prefixes");
+            var prefixPct = LoadPrefixPercentages(paths);
+
+            return Results.Ok(new
+            {
+                ready = true,
+                days,
+                sampleGames = games.Count,
+
+                suffixes = odds
+                    .Select(o => new
+                    {
+                        key = o.Key,
+                        label = suffixMeta.GetValueOrDefault(o.Key).Label ?? o.Key,
+                        bonusPercent = suffixMeta.GetValueOrDefault(o.Key).Bonus,
+                        group = suffixMeta.GetValueOrDefault(o.Key).Group,
+                        condition = suffixMeta.GetValueOrDefault(o.Key).Condition,
+                        measurable = o.Measurable,
+                        hits = o.Hits,
+                        sample = o.Sample,
+                        probability = o.Probability,
+                        expectedBonusPercent = o.ExpectedBonusPercent,
+                    })
+                    .OrderByDescending(x => x.expectedBonusPercent ?? -1)
+                    .ToList(),
+
+                prefixes = prefixMeta.Select(kv => new
+                {
+                    key = kv.Key,
+                    label = kv.Value.Label,
+                    bonusPercent = kv.Value.Bonus,
+                    condition = kv.Value.Condition,
+                }),
+
+                prefixPlayers = prefixPct.Count,
+
+                suffixNote =
+                    "Xác suất đo từ ván thật trong cửa sổ đang xét, KHÔNG phải nhãn định tính. "
+                    + "Lợi kỳ vọng = thưởng × xác suất, và đó mới là con số so được với nhau: "
+                    + "một suffix +24% hiếm khi xảy ra thua một suffix +6% xảy ra gần một nửa số ván. "
+                    + "5/8 suffix là điều kiện BẤT LỢI — xác suất cao ở đó không phải tin vui. "
+                    + "'the Clutch' đang xấp xỉ bằng ván cuối trong series nên hơi cao hơn thực tế, "
+                    + "và 'the Cruel' thì OpenDota không lộ nơi chết nên không đo được.",
+
+                prefixNote =
+                    "Prefix là số ĐẾM TAY từ hero pool, chép từ dự án gốc — KHÁC hẳn suffix về "
+                    + "chất lượng bằng chứng. OpenDota không phân loại màu/chủ đề hero nên ta "
+                    + "không tự đo và cũng không tự cập nhật được; số sẽ cũ dần khi tuyển thủ "
+                    + "đổi hero pool.",
+            });
+        });
+    }
+
+    private readonly record struct TitleMeta(string Label, double Bonus, string? Group, string? Condition);
+
+    private static Dictionary<string, TitleMeta> LoadTitleTable(Ti2026Paths paths, string which)
+    {
+        var result = new Dictionary<string, TitleMeta>();
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(paths.EditorialFile("fantasy.json")));
+            if (!doc.RootElement.TryGetProperty("titles", out var t)
+                || !t.TryGetProperty(which, out var table)) return result;
+
+            foreach (var p in table.EnumerateObject())
+            {
+                if (p.Name.StartsWith('_')) continue;
+
+                result[p.Name] = new TitleMeta(
+                    p.Value.TryGetProperty("label", out var l) ? l.GetString() ?? p.Name : p.Name,
+                    p.Value.TryGetProperty("bonus", out var b) ? b.GetDouble() : 0,
+                    p.Value.TryGetProperty("nhom", out var g) ? g.GetString() : null,
+                    p.Value.TryGetProperty("dieuKien", out var c) ? c.GetString() : null);
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or IOException) { }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Tỷ lệ hero theo nhóm màu của từng tuyển thủ, khoá theo nick viết HOA.
+    /// Thiếu tệp thì trả rỗng — endpoint vẫn chạy, chỉ là phần prefix trống.
+    /// </summary>
+    private static Dictionary<string, Dictionary<string, double>> LoadPrefixPercentages(Ti2026Paths paths)
+    {
+        var result = new Dictionary<string, Dictionary<string, double>>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            var path = paths.EditorialFile("fantasy-prefix.json");
+            if (!File.Exists(path)) return result;
+
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            if (!doc.RootElement.TryGetProperty("players", out var players)) return result;
+
+            foreach (var p in players.EnumerateObject())
+            {
+                if (!p.Value.TryGetProperty("pct", out var pct)) continue;
+
+                result[p.Name] = pct.EnumerateObject()
+                    .Where(x => x.Value.ValueKind == JsonValueKind.Number)
+                    .ToDictionary(x => x.Name, x => x.Value.GetDouble());
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or IOException) { }
+
+        return result;
     }
 
     /// <summary>

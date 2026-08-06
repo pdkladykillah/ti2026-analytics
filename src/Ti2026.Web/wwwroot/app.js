@@ -1861,6 +1861,7 @@ async function loadFantasy() {
   loadFantasyRoster();
   loadFantasyPlayers();
   loadFantasyCalc();
+  loadFantasyTitles();
 }
 
 /**
@@ -1869,6 +1870,71 @@ async function loadFantasy() {
  * Nó tồn tại để trả lời đúng một câu: trang này đang tính hay đang chờ? Không có nó thì ba
  * thẻ trống bên dưới trông như lỗi, chứ không phải như "chưa tới lúc".
  */
+/* ------------------------------- Danh hiệu ------------------------------- */
+
+async function loadFantasyTitles() {
+  const body = $('#fantasy-titles');
+  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+
+  try {
+    const d = await getJson('api/fantasy/titles');
+    if (!d.ready) { body.innerHTML = `<div class="empty">${esc(d.note || '')}</div>`; return; }
+
+    // Nhóm quyết định cách đọc con số: 'né ra' nghĩa là xác suất CAO là tin xấu, nên nó phải
+    // trông khác hẳn nhóm 'ổn định' chứ không cùng một màu chữ.
+    const groupLabel = {
+      'on-dinh': '<span class="chip">ổn định</span>',
+      'ne-ra': '<span class="chip warn">nên né</span>',
+      'hen-xui': '<span class="chip">hên xui</span>',
+    };
+
+    const pct = (x) => x === null || x === undefined ? '<span class="na">—</span>' : (x * 100).toFixed(1) + '%';
+
+    const rows = d.suffixes.map((s) => `<tr>
+      <td>${esc(s.label)}</td>
+      <td>${groupLabel[s.group] || ''}</td>
+      <td class="num">+${s.bonusPercent}%</td>
+      <td class="num">${pct(s.probability)}</td>
+      <td class="num"><b>${s.expectedBonusPercent === null || s.expectedBonusPercent === undefined
+        ? '<span class="na">không đo được</span>' : '+' + s.expectedBonusPercent + '%'}</b></td>
+      <td class="num">${s.sample ? s.hits + '/' + s.sample : '<span class="na">—</span>'}</td>
+      <td>${esc(s.condition || '')}</td>
+    </tr>`).join('');
+
+    body.innerHTML = `
+      <div class="table-scroll"><table>
+        <caption class="sr-only">Xác suất và lợi kỳ vọng của từng suffix</caption>
+        <thead><tr>
+          <th scope="col">Suffix</th><th scope="col">Nhóm</th><th scope="col">Thưởng</th>
+          <th scope="col">Xác suất</th><th scope="col">Lợi kỳ vọng</th>
+          <th scope="col">Số ván</th><th scope="col">Điều kiện</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>Đo trên <b>${d.sampleGames}</b> ván. ${esc(d.suffixNote || '')}</div>
+      </div>
+
+      <h3 style="margin-top:var(--s-6)">Prefix</h3>
+      <div class="table-scroll"><table>
+        <thead><tr><th scope="col">Prefix</th><th scope="col">Thưởng</th><th scope="col">Điều kiện</th></tr></thead>
+        <tbody>${d.prefixes.map((p) => `<tr>
+          <td>${esc(p.label)}</td><td class="num">+${p.bonusPercent}%</td><td>${esc(p.condition || '')}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+
+      <div class="note warn" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+        <div><b>Prefix và suffix KHÔNG cùng chất lượng bằng chứng.</b><br>${esc(d.prefixNote || '')}
+        Đang có dữ liệu hero pool của <b>${d.prefixPlayers}</b> tuyển thủ.</div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
+  }
+}
+
 /* ---------------------------- Máy tính emblem ---------------------------- */
 
 /**

@@ -118,6 +118,7 @@ public class OpenDotaMatchPlayer
     [JsonPropertyName("item_uses")] public Dictionary<string, int>? ItemUses { get; set; }
     [JsonPropertyName("ability_uses")] public Dictionary<string, int>? AbilityUses { get; set; }
     [JsonPropertyName("killed")] public Dictionary<string, int>? Killed { get; set; }
+    [JsonPropertyName("killed_by")] public Dictionary<string, int>? KilledBy { get; set; }
 
     public bool OnRadiant => IsRadiant ?? PlayerSlot < 128;
 }

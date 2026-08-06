@@ -35,10 +35,15 @@ public class Ti2026Options
     public bool IngestEnabled { get; set; }
 
     /// <summary>
-    /// Trần số ván nạp match detail mỗi vòng. Mỗi ván một request; ở 1 req/giây thì 200 ván
-    /// mất khoảng 3,5 phút. Đặt cao hơn sẽ nạp bù lịch sử nhanh hơn nhưng mỗi vòng chạy lâu hơn.
+    /// Trần số ván nạp match detail mỗi vòng. Mỗi ván một request; ở 0,8 req/giây thì 300 ván
+    /// mất khoảng 6 phút.
+    ///
+    /// Trần này bị chặn trên bởi HẠN MỨC NGÀY của OpenDota là 2000 request. Scheduler chạy 4
+    /// vòng mỗi ngày, nên 300 × 4 = 1200 request cho riêng match detail, cộng khoảng 100 cho
+    /// đội/giải/hero/tuyển thủ là ~1300 — còn dư an toàn. Đặt 500 sẽ thành 2000+ và vòng cuối
+    /// trong ngày luôn chết vì 429.
     /// </summary>
-    public int MaxMatchDetailsPerRun { get; set; } = 200;
+    public int MaxMatchDetailsPerRun { get; set; } = 300;
 
     /// <summary>Bắt buộc ở Production — bảo vệ POST api/ingest/run.</summary>
     public string? IngestToken { get; set; }

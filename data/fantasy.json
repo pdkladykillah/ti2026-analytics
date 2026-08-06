@@ -64,10 +64,17 @@
   },
 
   "bannerSlotColors": {
-    "_note": "Màu ba ô emblem của từng banner. Emblem chỉ gắn được chỉ số cùng màu với ô.",
+    "_note": "Màu các ô emblem của từng banner. Emblem CHỈ gắn được chỉ số cùng màu với ô — nghĩa là mỗi người chỉ ăn điểm ở đúng số ô này, không phải cả 18 chỉ số. Vòng bảng 3 ô, play-off 5 ô.",
     "core": ["red", "green", "red"],
     "mid": ["red", "blue", "green"],
     "support": ["blue", "green", "blue"]
+  },
+
+  "bannerSlotColorsPlayoff": {
+    "_note": "Play-off nới banner lên 5 ô, giữ nguyên luật màu.",
+    "core": ["red", "green", "red", "green", "red"],
+    "mid": ["red", "blue", "green", "red", "green"],
+    "support": ["blue", "green", "blue", "green", "blue"]
   },
 
   "traits": {

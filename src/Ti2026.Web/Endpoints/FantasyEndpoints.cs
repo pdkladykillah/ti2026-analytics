@@ -17,6 +17,18 @@ public static class FantasyEndpoints
     /// <summary>Dưới mức này thì trung bình mỗi trận dao động quá mạnh để xếp hạng.</summary>
     private const int MinMatchesForRanking = 5;
 
+    /// <summary>
+    /// Vì sao có hai con số điểm, và vì sao con số cũ không phải điểm fantasy.
+    /// </summary>
+    private const string BannerNote =
+        "Điểm banner là điểm luật THẬT trả: mỗi vị trí chỉ có ba ô emblem, mỗi ô một màu cố "
+        + "định, và người chơi chỉ ăn điểm ở những chỉ số đặt được lên ô của mình — ba chỉ số, "
+        + "không phải mười tám. Cột 'tổng 18 chỉ số' giữ lại để thấy mức chơi toàn diện, nhưng "
+        + "KHÔNG phải điểm fantasy: nó luôn cao hơn nhiều và xếp hạng theo nó sẽ ưu ái người "
+        + "giỏi đều thay vì người có ba chỉ số đúng màu cao nhất. "
+        + "Tier là thứ quay trúng chứ không phải thứ chọn được, nên tier hiện thành khoảng "
+        + "từ sàn (tier I, +10%) tới trần (tier V, +150%) thay vì gộp vào một con số.";
+
     /// <summary>Giải TI2025 trên OpenDota. Là kỳ TI DUY NHẤT dùng được làm mốc — xem TiBaselineNote.</summary>
     private const long Ti2025LeagueId = 18324;
 
@@ -68,7 +80,8 @@ public static class FantasyEndpoints
         });
 
         // ---------- Điểm từng tuyển thủ ----------
-        api.MapGet("/players", async (Ti2026DbContext db, Ti2026Paths paths, int days = 120) =>
+        api.MapGet("/players", async (
+            Ti2026DbContext db, Ti2026Paths paths, int days = 120, bool playoff = false) =>
         {
             var config = LoadConfig(paths, out var error);
             if (config is null)
@@ -83,16 +96,27 @@ public static class FantasyEndpoints
             var scored = await ScorePlayersAsync(db, config, days);
             if (scored.Count == 0) return Results.Ok(Blocked("Chưa có ván nào trong cửa sổ này."));
 
+            var colors = LoadBannerColors(paths, playoff);
+            var banners = scored.ToDictionary(p => p.PlayerId, p => BannerOf(p, config, colors));
+
+            // Xếp theo ĐIỂM BANNER, vì đó mới là điểm luật trả. Ai chưa suy được vị trí thì
+            // chưa biết banner nào, xếp xuống cuối thay vì trộn lẫn với người đã tính được.
+            var ordered = scored
+                .OrderByDescending(p => banners[p.PlayerId]?.BasePoints ?? double.MinValue)
+                .ToList();
+
             return Results.Ok(new
             {
                 ready = true,
                 days,
+                playoff,
                 countBestGames = config.CountBestGames,
                 minMatches = MinMatchesForRanking,
                 source = config.Source,
                 bias = BiasWarning(config),
+                bannerNote = BannerNote,
 
-                players = scored.Select(p => new
+                players = ordered.Select(p => new
                 {
                     playerId = p.PlayerId,
                     nick = p.Nick,
@@ -101,7 +125,13 @@ public static class FantasyEndpoints
                     group = p.Position is int g ? GroupOf(g) : null,
                     games = p.Games,
                     matches = p.Matches,
-                    avgPerMatch = p.Average,
+
+                    // Điểm luật THẬT trả: chỉ những chỉ số đặt được lên emblem của vị trí này.
+                    banner = BannerJson(banners[p.PlayerId]),
+
+                    // Tổng cả 18 chỉ số. KHÔNG phải điểm fantasy — giữ lại làm thước đo "chơi
+                    // toàn diện đến đâu", và để thấy rõ banner cắt đi bao nhiêu.
+                    allStatsTotal = p.Average,
 
                     // Phân rã: người đọc phải thấy điểm đến từ đâu, nếu không thì đây chỉ là
                     // một con số phải tin
@@ -129,7 +159,8 @@ public static class FantasyEndpoints
     /// </summary>
     private static void MapOptimize(RouteGroupBuilder api)
     {
-        api.MapGet("/optimize", async (Ti2026DbContext db, Ti2026Paths paths, int days = 120) =>
+        api.MapGet("/optimize", async (
+            Ti2026DbContext db, Ti2026Paths paths, int days = 120, bool playoff = false) =>
         {
             var config = LoadConfig(paths, out var error);
             if (config is null || !config.Ready)
@@ -145,11 +176,12 @@ public static class FantasyEndpoints
 
             var slots = LoadSlots(paths);
 
+            var colors = LoadBannerColors(paths, playoff);
             var scoredNow = await ScorePlayersAsync(db, config, days);
             var scoredTi = await ScorePlayersAsync(db, config, days, Ti2025LeagueId);
 
-            var now = BuildLineup(scoredNow);
-            var ti2025 = BuildLineup(scoredTi);
+            var now = BuildLineup(scoredNow, config, colors);
+            var ti2025 = BuildLineup(scoredTi, config, colors);
 
             // Hai cửa sổ có thể đang ở hai mức schema khác nhau. Khi đó cộng hai tổng ra để
             // cạnh nhau là mời người đọc kết luận sai, nên phải tự kiểm trước khi bày ra.
@@ -354,10 +386,15 @@ public static class FantasyEndpoints
     /// không phải ở đây — tầng HTTP chỉ định dạng, không giữ luật chơi.
     /// </summary>
     private static (List<object> Picked, double Total, IReadOnlyList<string> Shortfall) BuildLineup(
-        List<ScoredPlayer> scored)
+        List<ScoredPlayer> scored, FantasyConfig config, Dictionary<string, List<string>> colors)
     {
+        // Xếp đội hình theo ĐIỂM BANNER, không phải tổng 18 chỉ số. Hai bảng xếp hạng này khác
+        // nhau thật sự: tổng 18 ưu ái người giỏi đều, còn luật chỉ trả cho ba ô đúng màu.
+        var banners = scored.ToDictionary(p => p.PlayerId, p => BannerOf(p, config, colors));
+
         var result = FantasyLineup.Build(scored.Select(p => new LineupCandidate(
-            p.PlayerId, p.Nick, p.Position, p.TeamId, p.TeamName, p.Average, p.Matches)));
+            p.PlayerId, p.Nick, p.Position, p.TeamId, p.TeamName,
+            banners[p.PlayerId]?.BasePoints, p.Matches)));
 
         var picked = result.Picks.Select(x => (object)new
         {
@@ -370,6 +407,7 @@ public static class FantasyEndpoints
             positionName = x.Player.Position is int pos ? PositionInference.Name(pos) : null,
             avgPerMatch = x.Player.Average,
             matches = x.Player.Matches,
+            banner = BannerJson(banners.GetValueOrDefault(x.Player.PlayerId)),
         }).ToList();
 
         return (picked, result.Total, result.Shortfall);
@@ -479,6 +517,72 @@ public static class FantasyEndpoints
         ready = false,
         players = Array.Empty<object>(),
         note,
+    };
+
+    /// <summary>
+    /// Màu các ô emblem theo nhóm vị trí. <paramref name="playoff"/> đổi sang banner 5 ô.
+    /// Thiếu cấu hình thì dùng đúng bố cục đã đối chiếu với luật công bố.
+    /// </summary>
+    private static Dictionary<string, List<string>> LoadBannerColors(Ti2026Paths paths, bool playoff)
+    {
+        var key = playoff ? "bannerSlotColorsPlayoff" : "bannerSlotColors";
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(paths.EditorialFile("fantasy.json")));
+            if (doc.RootElement.TryGetProperty(key, out var b))
+            {
+                var map = b.EnumerateObject()
+                    .Where(p => !p.Name.StartsWith('_') && p.Value.ValueKind == JsonValueKind.Array)
+                    .ToDictionary(
+                        p => p.Name,
+                        p => p.Value.EnumerateArray().Select(x => x.GetString() ?? "").ToList());
+
+                if (map.Count > 0) return map;
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or IOException) { }
+
+        return playoff
+            ? new Dictionary<string, List<string>>
+            {
+                ["core"] = ["red", "green", "red", "green", "red"],
+                ["mid"] = ["red", "blue", "green", "red", "green"],
+                ["support"] = ["blue", "green", "blue", "green", "blue"],
+            }
+            : new Dictionary<string, List<string>>
+            {
+                ["core"] = ["red", "green", "red"],
+                ["mid"] = ["red", "blue", "green"],
+                ["support"] = ["blue", "green", "blue"],
+            };
+    }
+
+    /// <summary>
+    /// Điểm banner của một người: chỉ cộng những chỉ số đặt được lên emblem của vị trí đó.
+    /// Trả null khi chưa suy được vị trí — không có vị trí thì không biết banner nào.
+    /// </summary>
+    private static BannerResult? BannerOf(
+        ScoredPlayer p, FantasyConfig config, Dictionary<string, List<string>> colors)
+    {
+        var group = FantasyBanner.GroupOf(p.Position);
+        if (group is null || !colors.TryGetValue(group, out var slots)) return null;
+
+        var points = config.Stats.ToDictionary(s => s.Key, s => AvgPart(p.Games_, s.Key));
+        return FantasyBanner.Build(slots, points, config.Stats);
+    }
+
+    private static object? BannerJson(BannerResult? b) => b is null ? null : new
+    {
+        basePoints = b.BasePoints,
+        tierIPoints = b.TierIPoints,
+        tierVPoints = b.TierVPoints,
+        emptySlots = b.EmptySlots,
+        slots = b.Picks.Select(x => new
+        {
+            slot = x.Slot, color = x.Color, statKey = x.StatKey,
+            statLabel = x.StatLabel, points = x.BasePoints,
+        }),
     };
 
     private static Dictionary<string, int> LoadSlots(Ti2026Paths paths)

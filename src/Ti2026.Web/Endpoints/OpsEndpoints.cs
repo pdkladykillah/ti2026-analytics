@@ -57,7 +57,8 @@ public static class OpsEndpoints
 
         // ---------- Trạng thái scheduler ----------
         app.MapGet("/api/ingest/status", async (
-            Ti2026DbContext db, IngestGate gate, IngestStatusTracker status) =>
+            Ti2026DbContext db, IngestGate gate, IngestStatusTracker status,
+            IngestSchedule schedule) =>
         {
             var raw = await db.IngestRuns
                 .OrderByDescending(r => r.StartedAt)
@@ -118,7 +119,14 @@ public static class OpsEndpoints
                     total,
                     donePercent = total == 0 ? 100 : Math.Round((total - pending) * 100.0 / total, 1),
                     schemaVersion = MatchDetailIngester.SchemaVersion,
-                    perRun = 200,
+
+                    // Đọc từ cấu hình thật chứ không viết cứng. Con số viết cứng ở đây từng
+                    // là 200 trong khi trần thật đọc từ options — đổi cấu hình thì trang trạng
+                    // thái vẫn báo 200, và mọi ước lượng "còn bao lâu xong" đều sai theo.
+                    perRun = schedule.MaxMatchDetailsPerRun,
+                    estimatedRunsLeft = schedule.MaxMatchDetailsPerRun <= 0
+                        ? (int?)null
+                        : (int)Math.Ceiling((double)pending / schedule.MaxMatchDetailsPerRun),
                 },
 
                 runs,

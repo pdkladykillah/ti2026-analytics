@@ -20,10 +20,20 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
 {
     private static long _nextId = 900_000_000;
 
+    /// <summary>Điểm cố định theo ĐỘI, không theo bên thắng.</summary>
+    /// <remarks>
+    /// RadiantScore/DireScore là SỐ MẠNG HẠ, không quyết định thắng thua — ván thật
+    /// 2026-02-14 giữa OG và Liquid kết thúc 36–32 nghiêng về OG mà Liquid thắng. Nếu cho điểm
+    /// chạy theo bên thắng thì bài kiểm sẽ ghim một quy luật KHÔNG có thật, và nó vẫn xanh.
+    /// </remarks>
+    private const int ScoreOfA = 41;
+    private const int ScoreOfB = 17;
+
     /// <param name="keptRad">Bao nhiêu người của đội hình HIỆN TẠI bên Radiant cho ra sân.</param>
     private static void AddMatch(
         Ti2026DbContext db, Team rad, Team dire, DateTime when, bool radiantWin,
-        IReadOnlyList<int> radRoster, IReadOnlyList<int> direRoster, int keptRad, int keptDire)
+        IReadOnlyList<int> radRoster, IReadOnlyList<int> direRoster, int keptRad, int keptDire,
+        bool radiantIsA)
     {
         var id = _nextId++;
 
@@ -37,8 +47,8 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
             RadiantTeamId = rad.Id,
             DireTeamId = dire.Id,
             RadiantWin = radiantWin,
-            RadiantScore = radiantWin ? 30 : 20,
-            DireScore = radiantWin ? 20 : 30,
+            RadiantScore = radiantIsA ? ScoreOfA : ScoreOfB,
+            DireScore = radiantIsA ? ScoreOfB : ScoreOfA,
             IngestedAt = when,
         });
 
@@ -82,13 +92,15 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
 
         var t0 = new DateTime(2026, 5, 1, 12, 0, 0, DateTimeKind.Utc);
 
-        // 2 ván ĐÚNG đội hình cả hai bên; a thắng cả hai
-        AddMatch(db, a, b, t0, radiantWin: true, ra, rb, 5, 5);
-        AddMatch(db, b, a, t0.AddDays(1), radiantWin: false, rb, ra, 5, 5);
+        // 2 ván ĐÚNG đội hình cả hai bên; a thắng cả hai — một ván ở bên Radiant, một ván ở bên
+        // Dire, để bài kiểm bắt được lỗi xoay nhầm góc nhìn.
+        AddMatch(db, a, b, t0, radiantWin: true, ra, rb, 5, 5, radiantIsA: true);
+        AddMatch(db, b, a, t0.AddDays(1), radiantWin: false, rb, ra, 5, 5, radiantIsA: false);
 
         // 3 ván mà bên b chỉ còn 2 người — dưới ngưỡng, phải bị loại hẳn
         for (var i = 0; i < 3; i++)
-            AddMatch(db, a, b, t0.AddDays(-100 - i), radiantWin: false, ra, rb, 5, 2);
+            AddMatch(db, a, b, t0.AddDays(-100 - i), radiantWin: false, ra, rb, 5, 2,
+                radiantIsA: true);
 
         await db.SaveChangesAsync();
 
@@ -147,14 +159,17 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
         pl.GetProperty("winsA").GetInt32().Should().Be(2);
         pl.GetProperty("winsB").GetInt32().Should().Be(0);
 
-        // Tỷ số phải xoay về góc nhìn A–B, không phải Radiant–Dire
+        // Tỷ số phải xoay về góc nhìn A–B, không phải Radiant–Dire.
+        //
+        // Ghim bằng ĐIỂM RIÊNG của mỗi đội chứ không bằng "ai nhiều điểm hơn thì thắng" — số
+        // trong tỷ số là số mạng hạ, và ván thật 2026-02-14 giữa OG và Liquid kết thúc 36–32
+        // nghiêng về OG mà Liquid mới là bên thắng. Ghim theo bên thắng là ghim một quy luật
+        // không có thật, và bài kiểm vẫn xanh nên không ai phát hiện.
+        //
+        // a nằm ở bên Radiant trong 4 ván và bên Dire trong 1 ván, nên nếu quên xoay thì đúng
+        // ván đó sẽ ra "17-41".
         foreach (var m in ph.GetProperty("recent").EnumerateArray())
-        {
-            var parts = m.GetProperty("score").GetString()!.Split('-');
-            var aWon = m.GetProperty("aWon").GetBoolean();
-
-            (int.Parse(parts[0]) > int.Parse(parts[1])).Should().Be(aWon,
-                "bên ghi nhiều điểm hơn trong chuỗi tỷ số phải đúng là bên thắng");
-        }
+            m.GetProperty("score").GetString()
+                .Should().Be($"{ScoreOfA}-{ScoreOfB}", "điểm của a luôn đứng trước");
     }
 }

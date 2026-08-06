@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
+using Ti2026.Data.Entities;
 using Ti2026.Ingest.Analytics;
 
 namespace Ti2026.Web.Endpoints;
@@ -482,6 +483,10 @@ public static class FantasyEndpoints
                 roster = now.Picked,
                 bias = BiasWarning(config),
                 partial = PartialWarning(config, Coverage(scoredNow)),
+
+                // Danh hiệu áp cho CẢ đội hình, nên chỉ chọn được sau khi đã có đội hình
+                prefix = PrefixForLineup(
+                    now.Roster, LoadPrefixPercentages(paths), LoadTitleTable(paths, "prefixes")),
                 projectedTotal = now.Total,
                 shortfall = now.Shortfall,
 
@@ -672,7 +677,55 @@ public static class FantasyEndpoints
     /// Gói kết quả xếp đội hình thành JSON. Luật xếp nằm ở <see cref="FantasyLineup"/> chứ
     /// không phải ở đây — tầng HTTP chỉ định dạng, không giữ luật chơi.
     /// </summary>
-    private static (List<object> Picked, double Total, IReadOnlyList<string> Shortfall) BuildLineup(
+    /// <summary>
+    /// Prefix tốt nhất cho một đội hình cụ thể. Trả null khi chưa ai trong đội hình có dữ liệu
+    /// hero pool — không có dữ liệu thì không xếp hạng, chứ không xếp hạng toàn số 0.
+    /// </summary>
+    private static object? PrefixForLineup(
+        IReadOnlyList<(string Nick, double Points)> roster,
+        Dictionary<string, Dictionary<string, double>> pctByNick,
+        Dictionary<string, TitleMeta> prefixMeta)
+    {
+        if (roster.Count == 0 || prefixMeta.Count == 0) return null;
+
+        var players = roster
+            .Select(r => new PrefixPlayer(
+                r.Nick, r.Points, pctByNick.GetValueOrDefault(Player.MakeNickKey(r.Nick))))
+            .ToList();
+
+        if (players.All(p => p.PercentByPrefix is null)) return null;
+
+        var ranked = FantasyPrefix.Rank(
+            players, prefixMeta.ToDictionary(kv => kv.Key, kv => kv.Value.Bonus));
+
+        return new
+        {
+            best = ranked[0].Key,
+            bestLabel = prefixMeta.GetValueOrDefault(ranked[0].Key).Label,
+            options = ranked.Select(o => new
+            {
+                key = o.Key,
+                label = prefixMeta.GetValueOrDefault(o.Key).Label,
+                bonusPercent = o.BonusPercent,
+                condition = prefixMeta.GetValueOrDefault(o.Key).Condition,
+                expectedPoints = o.ExpectedPoints,
+                expectedPercentOfTotal = o.ExpectedPercentOfTotal,
+            }),
+            playersCovered = ranked[0].PlayersCovered,
+            playersTotal = ranked[0].PlayersTotal,
+
+            note = "Cộng theo ĐIỂM chứ không lấy trung bình tỷ lệ: cùng một prefix, hợp với "
+                 + "người ghi nhiều điểm thì đáng hơn hẳn. Tỷ lệ hero là số ĐẾM TAY chép từ dự "
+                 + "án gốc — OpenDota không phân loại màu hero nên phần này không tự cập nhật "
+                 + "được khi tuyển thủ đổi hero pool.",
+        };
+    }
+
+    private sealed record LineupJson(
+        List<object> Picked, double Total, IReadOnlyList<string> Shortfall,
+        List<(string Nick, double Points)> Roster);
+
+    private static LineupJson BuildLineup(
         List<ScoredPlayer> scored, FantasyConfig config, Dictionary<string, List<string>> colors)
     {
         // Xếp đội hình theo ĐIỂM BANNER, không phải tổng 18 chỉ số. Hai bảng xếp hạng này khác
@@ -703,7 +756,9 @@ public static class FantasyEndpoints
             banner = BannerJson(banners.GetValueOrDefault(x.Player.PlayerId)),
         }).ToList();
 
-        return (picked, result.Total, result.Shortfall);
+        return new LineupJson(
+            picked, result.Total, result.Shortfall,
+            result.Picks.Select(x => (x.Player.Nick, x.Player.Average ?? 0)).ToList());
     }
 
     private static double? AvgPart(List<FantasyGameScore> games, string key)

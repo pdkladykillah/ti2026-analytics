@@ -114,7 +114,9 @@
 
   "_cauHoiConBoNgo": {
     "lotusDemTheoMonHayTheoBongGoc": "Điều chưa chắc chắn LỚN NHẤT của cả mô hình, và giờ đã có thêm bằng chứng: dự án gốc — nơi bảng hệ số này lấy về — đếm theo MÓN, và số trung bình họ công bố cho người hỗ trợ là 380 điểm, trong khi cách quy về bông gốc của ta ra khoảng 1250. Chênh đúng cỡ hệ số ghép (3 và 6). Ta vẫn để mặc định là bông gốc vì luật ghi 'Lotuses Collected' mà nhặt thì nhặt từng bông, nhưng ĐÃ NẠP SẴN CẢ HAI cột: đổi 'field' của lotuses từ 'Lotuses' sang 'LotusItems' là xong, không phải nạp lại 1798 ván. Kiểm dứt điểm bằng cách đối chiếu điểm fantasy thật của một tuyển thủ trong ván đầu TI với điểm ta tính.",
-    "roshanDemDu": "Ván mẫu 8926048199 có đúng 2 Roshan chết, nhưng tổng trường roshan_kills của 10 người là 3, còn tổng killed[npc_dota_roshan] là 2. Mới một ván nên chưa đổi hẳn; bên nạp đang ghi log mỗi lần hai nguồn lệch để còn biết chuyện này phổ biến đến đâu."
+    "_daGiaiQuyet_roshanDemDu": "XONG. Đã kiểm ba chiều với objectives trên hai ván (8926048199: 2·2·3 và 8784047386: 4·4·5) và 19/30 ván nạp gần nhất đều lệch cùng một chiều. Trường roshan_kills đếm dư; đã chuyển hẳn sang killed[npc_dota_roshan] ở schema v6.",
+
+    "_daGiaiQuyet_firstBloodKhongQua9Phut": "XONG — KHÔNG phải lỗi. Nghi ngờ ban đầu: trong 1798 ván không ván nào có first blood sau phút 10, lớn nhất là 9:32. Kiểm bằng cách nhìn ĐUÔI phân bố: nếu bị chặn cứng thì phải dồn cục ở biên, nhưng thực tế đuôi giảm dần rồi hết tự nhiên (27·6·12·6·7·0·1·1 mỗi khoảng 30 giây từ phút 6). Chỉ 9/1594 ván (0,56%) có first blood từ phút 8 trở đi, nên kỳ vọng số ván quá phút 10 là dưới 1 — thấy 0 là hoàn toàn bình thường. Hệ quả thật: suffix 'the Patient' (+23%) gần như không bao giờ ăn trong Dota chuyên nghiệp."
   },
 
   "_khongMoHinhHoaDuoc": [

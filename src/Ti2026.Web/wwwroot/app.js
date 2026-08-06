@@ -2179,6 +2179,8 @@ async function loadFantasyRoster() {
         <div>${esc(b.note || '')}</div>
       </div>` : ''}
 
+      ${prefixNote(d.prefix)}
+
       ${partialNote(d.partial)}
 
       ${(d.shortfall || []).length ? `<div class="note warn" style="margin-top:var(--s-3)">
@@ -2203,6 +2205,38 @@ async function loadFantasyRoster() {
  * TRỐNG (chưa đo được chỉ số nào của màu đó) phải trông khác hẳn ô có số — nếu không thì một
  * banner mới nạp được một phần sẽ trông y hệt một banner đầy đủ nhưng điểm thấp.
  */
+/**
+ * Prefix tốt nhất cho đúng đội hình đang gợi ý.
+ *
+ * Hiện cả bảng chứ không chỉ cái tốt nhất: khoảng cách giữa hạng nhất và hạng nhì mới cho biết
+ * lựa chọn này có chắc hay không. Chênh 2 điểm thì chọn cái nào cũng như nhau.
+ */
+function prefixNote(p) {
+  if (!p) return '';
+  const thieu = p.playersCovered < p.playersTotal;
+
+  const rows = p.options.map((o, i) => `<tr${i === 0 ? ' style="font-weight:600"' : ''}>
+    <td>${esc(o.label || o.key)}</td>
+    <td class="num">+${o.bonusPercent}%</td>
+    <td class="num">${o.expectedPoints}</td>
+    <td class="num">${o.expectedPercentOfTotal}%</td>
+    <td>${esc(o.condition || '')}</td>
+  </tr>`).join('');
+
+  return `<h3 style="margin-top:var(--s-6)">Prefix hợp nhất với đội hình này</h3>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">Prefix</th><th scope="col">Thưởng</th>
+        <th scope="col">Điểm kỳ vọng</th><th scope="col">% tổng</th><th scope="col">Điều kiện</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="note${thieu ? ' warn' : ''}" style="margin-top:var(--s-3)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+      <div>${thieu ? `<b>Mới có dữ liệu hero pool của ${p.playersCovered}/${p.playersTotal} người trong đội hình</b> — con số dưới đây tính thiếu.<br>` : ''}${esc(p.note || '')}</div>
+    </div>`;
+}
+
 /** Cảnh báo xếp hạng chưa ổn định trong lúc nạp bù — xem PartialWarning phía máy chủ. */
 function partialNote(p) {
   if (!p || !p.count) return '';

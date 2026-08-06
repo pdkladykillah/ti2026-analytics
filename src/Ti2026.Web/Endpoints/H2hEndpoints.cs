@@ -32,37 +32,12 @@ public static class H2hEndpoints
             var slugs = await db.Teams.ToDictionaryAsync(t => t.Id, t => t.Slug);
             var names = await db.Teams.ToDictionaryAsync(t => t.Id, t => t.Name);
 
-            // Đội hình ĐANG hiệu lực, bỏ HLV vì HLV không ra sân nên không bao giờ xuất hiện
-            // trong MatchPlayers — tính vào mẫu số thì mọi đội mãi mãi chỉ đạt 5/6.
-            var roster = (await db.RosterEntries
-                    .Where(r => r.ValidTo == null && r.Role != "COACH")
-                    .Select(r => new { r.TeamId, r.PlayerId })
-                    .ToListAsync())
-                .GroupBy(r => r.TeamId)
-                .ToDictionary(g => g.Key, g => g.Select(x => x.PlayerId).ToHashSet());
-
             var matches = await db.Matches
                 .Where(m => m.RadiantTeamId != null && m.DireTeamId != null)
                 .OrderByDescending(m => m.StartTime)
                 .ToListAsync();
 
-            // Chỉ lấy hàng đã khớp được về Player của ta: 13.6k thay vì 26k hàng, và hàng không
-            // khớp thì chắc chắn không thuộc đội hình nào đang theo dõi.
-            var playerRows = await (
-                from p in db.MatchPlayers
-                join m in db.Matches on p.MatchId equals m.Id
-                where p.PlayerId != null && m.RadiantTeamId != null && m.DireTeamId != null
-                select new { p.MatchId, PlayerId = p.PlayerId!.Value, p.IsRadiant })
-                .ToListAsync();
-
-            var byMatch = playerRows
-                .GroupBy(p => p.MatchId)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            int Kept(long matchId, int teamId, bool radiantSide) =>
-                !byMatch.TryGetValue(matchId, out var rows) || !roster.TryGetValue(teamId, out var five)
-                    ? 0
-                    : rows.Count(p => p.IsRadiant == radiantSide && five.Contains(p.PlayerId));
+            var lineups = await LineupLookup.LoadAsync(db);
 
             // Từ ngày nào mỗi đội mới ra sân với đủ 5 người của TI2026, và đá cùng nhau bao nhiêu
             // ván. Đây là con số nói thẳng vì sao lịch sử lại ngắn đến thế: 12/16 đội mãi tới
@@ -73,7 +48,8 @@ public static class H2hEndpoints
                 foreach (var (teamId, radiantSide) in
                          new[] { (m.RadiantTeamId!.Value, true), (m.DireTeamId!.Value, false) })
                 {
-                    if (Kept(m.Id, teamId, radiantSide) < 5 || !slugs.TryGetValue(teamId, out var s))
+                    if (lineups.Kept(m.Id, teamId, radiantSide) < 5
+                        || !slugs.TryGetValue(teamId, out var s))
                         continue;
 
                     var d = m.StartTime.ToString("yyyy-MM-dd");
@@ -106,8 +82,8 @@ public static class H2hEndpoints
                 {
                     var m = x.Match;
                     var radSlug = slugs[m.RadiantTeamId!.Value];
-                    var radKept = Kept(m.Id, m.RadiantTeamId.Value, true);
-                    var direKept = Kept(m.Id, m.DireTeamId!.Value, false);
+                    var radKept = lineups.Kept(m.Id, m.RadiantTeamId.Value, true);
+                    var direKept = lineups.Kept(m.Id, m.DireTeamId!.Value, false);
 
                     return (
                         Match: m,

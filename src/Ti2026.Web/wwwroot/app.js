@@ -1250,16 +1250,26 @@ function renderPredict(p) {
        <div>${esc(p.confidence.note)} Chỉ dựa trên ${p.confidence.matchesConsidered} trận.</div></div>`
     : '';
 
+  // Con số LỚN phải là con số đáng dùng — tức là tính trên tập ván mà cả hai bên vẫn là đội
+  // hình TI2026. Để nguyên tổng cả lịch sử ở vị trí này là đem thành tích của một đội khác mang
+  // cùng tên ra làm căn cứ dự đoán.
+  const lv = p.headToHead.lineup;
   const h2h = p.headToHead.played > 0
     ? `<div class="pred-block">
          <h3>Đối đầu trực tiếp</h3>
-         <p class="pred-h2h num"><b>${p.headToHead.aWins}</b> – <b>${p.headToHead.bWins}</b>
-            <span class="mu">sau ${p.headToHead.played} ván</span></p>
-         ${p.headToHead.recent.map((m) => `<div class="pred-hist">
-             <span>${esc(m.date)}</span>
+         ${lv && lv.games > 0
+           ? `<p class="pred-h2h num"><b>${lv.winsA}</b> – <b>${lv.winsB}</b>
+                <span class="mu">sau ${lv.games} ván đúng đội hình</span></p>`
+           : `<p class="pred-h2h num mu">chưa có ván nào đúng đội hình</p>`}
+         ${lv ? `<p class="desc" style="margin:0 0 var(--s-3)">${esc(lv.text)}</p>` : ''}
+         ${p.headToHead.recent.map((m) => {
+           const off = m.keptA !== undefined && Math.min(m.keptA, m.keptB) < 5;
+           return `<div class="pred-hist${off ? ' off-lineup' : ''}">
+             <span>${esc(m.date)}${off ? ` <span class="kept swap">${m.keptA}/${m.keptB}</span>` : ''}</span>
              <span class="${m.aWon ? 'pos' : 'neg'}">${m.aWon ? esc(p.teamA.name) : esc(p.teamB.name)} thắng</span>
              <span class="num">${esc(m.score)}</span>
-           </div>`).join('')}
+           </div>`;
+         }).join('')}
        </div>`
     : '<div class="pred-block"><h3>Đối đầu trực tiếp</h3><p class="desc">Hai đội chưa từng gặp nhau trong dữ liệu.</p></div>';
 

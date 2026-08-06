@@ -443,7 +443,7 @@ select, input[type="search"], input[type="text"] {
 
 /* Ván không đúng đội hình vẫn hiện, nhưng mờ đi: giấu hẳn thì con số tổng không kiểm lại được,
    còn để ngang hàng thì lại quay về đúng cái lỗi đang sửa. */
-tr.off-lineup td { opacity: .5; }
+tr.off-lineup td, .pred-hist.off-lineup { opacity: .5; }
 .kept { font-variant-numeric: tabular-nums; font-size: 12px; }
 .kept.full { color: var(--pos); font-weight: 600; }
 .kept.swap { color: var(--warn); }

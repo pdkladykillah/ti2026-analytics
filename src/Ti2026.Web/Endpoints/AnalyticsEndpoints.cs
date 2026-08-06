@@ -81,6 +81,25 @@ public static class AnalyticsEndpoints
 
             var aWins = h2h.Count(m => (m.RadiantTeamId == teamA.Id) == m.RadiantWin);
 
+            // Lọc theo ĐỘI HÌNH. Không có bước này thì trang dự đoán lấy thành tích của những đội
+            // khác mang cùng tên: Falcons–Liquid có 71 ván nhưng 51 ván trong đó Liquid chỉ còn
+            // 3/5 người của hôm nay. Và vì trang H2H đã lọc, để nguyên ở đây thì hai trang nói
+            // hai con số khác nhau cho cùng một câu hỏi.
+            var lineups = await LineupLookup.LoadAsync(db, h2h.Select(m => m.Id).ToList());
+
+            var lineupVerdict = LineupContinuity.Read(
+                h2h.Select(m =>
+                {
+                    var aIsRadiant = m.RadiantTeamId == teamA.Id;
+                    return new H2hGame(
+                        m.StartTime.ToString("yyyy-MM-dd"),
+                        m.LeagueName ?? "",
+                        WinnerSlug: aIsRadiant == m.RadiantWin ? teamA.Slug : teamB.Slug,
+                        KeptA: lineups.Kept(m.Id, teamA.Id, aIsRadiant),
+                        KeptB: lineups.Kept(m.Id, teamB.Id, !aIsRadiant));
+                }).ToList(),
+                teamA.Name, teamB.Name, teamA.Slug);
+
             // Phân phối cho kèo over/under — gộp trận của CẢ HAI đội, không chỉ đối đầu:
             // hai đội thường chỉ gặp nhau vài lần, quá ít để nói gì về tổng kills.
             var pool = await db.Matches
@@ -123,12 +142,28 @@ public static class AnalyticsEndpoints
                     played = h2h.Count,
                     aWins,
                     bWins = h2h.Count - aWins,
-                    recent = h2h.Take(6).Select(m => new
+
+                    // Con số ĐÁNG DÙNG, tính trên tập ván mà cả hai bên vẫn là đội hình TI2026
+                    lineup = lineupVerdict,
+
+                    recent = h2h.Take(6).Select(m =>
                     {
-                        date = m.StartTime.ToString("yyyy-MM-dd"),
-                        league = m.LeagueName,
-                        aWon = (m.RadiantTeamId == teamA.Id) == m.RadiantWin,
-                        score = $"{m.RadiantScore}-{m.DireScore}",
+                        var aIsRadiant = m.RadiantTeamId == teamA.Id;
+                        return new
+                        {
+                            date = m.StartTime.ToString("yyyy-MM-dd"),
+                            league = m.LeagueName,
+                            aWon = aIsRadiant == m.RadiantWin,
+
+                            // Xoay về góc nhìn A–B. Trước đây in thẳng radiantScore-direScore mà
+                            // không nói bên nào là radiant, nên "12-8" không cho biết ai được 12.
+                            score = aIsRadiant
+                                ? $"{m.RadiantScore}-{m.DireScore}"
+                                : $"{m.DireScore}-{m.RadiantScore}",
+
+                            keptA = lineups.Kept(m.Id, teamA.Id, aIsRadiant),
+                            keptB = lineups.Kept(m.Id, teamB.Id, !aIsRadiant),
+                        };
                     }),
                 },
 

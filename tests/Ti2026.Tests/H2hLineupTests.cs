@@ -128,5 +128,33 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
             .Should().Be(5, "a ra sân đủ 5 người ở cả 5 ván");
         pair.GetProperty("lineup").GetProperty(b.Slug).GetProperty("games").GetInt32()
             .Should().Be(2, "b chỉ đủ 5 người ở 2 ván");
+
+        // --- Trang dự đoán phải nói CÙNG một con số ---
+        //
+        // Hai endpoint trả lời cùng một câu hỏi. Lọc một chỗ mà quên chỗ kia thì trang H2H nói
+        // 2 ván còn trang dự đoán nói 5 ván, và người đọc không có cách nào biết bên nào đúng.
+        using var pred = JsonDocument.Parse(
+            await client.GetStringAsync($"/api/predict?a={a.Slug}&b={b.Slug}"));
+
+        var ph = pred.RootElement.GetProperty("headToHead");
+        ph.GetProperty("played").GetInt32().Should().Be(5, "tổng thô vẫn giữ nguyên");
+
+        var pl = ph.GetProperty("lineup");
+        pl.GetProperty("games").GetInt32().Should().Be(2);
+        pl.GetProperty("ignored").GetInt32().Should().Be(3);
+
+        // a là teamA ở đây bất kể thứ tự alphabet — đúng chỗ dễ xoay nhầm góc nhìn nhất
+        pl.GetProperty("winsA").GetInt32().Should().Be(2);
+        pl.GetProperty("winsB").GetInt32().Should().Be(0);
+
+        // Tỷ số phải xoay về góc nhìn A–B, không phải Radiant–Dire
+        foreach (var m in ph.GetProperty("recent").EnumerateArray())
+        {
+            var parts = m.GetProperty("score").GetString()!.Split('-');
+            var aWon = m.GetProperty("aWon").GetBoolean();
+
+            (int.Parse(parts[0]) > int.Parse(parts[1])).Should().Be(aWon,
+                "bên ghi nhiều điểm hơn trong chuỗi tỷ số phải đúng là bên thắng");
+        }
     }
 }

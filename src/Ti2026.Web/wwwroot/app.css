@@ -280,7 +280,34 @@ nav button[aria-selected="true"] {
 
 /* ============================ Bảng ============================ */
 
-.table-scroll { overflow-x: auto; margin: 0 calc(var(--s-5) * -1) calc(var(--s-5) * -1); padding: 0 var(--s-5) var(--s-5); }
+/* Cuộn CẢ HAI CHIỀU trong một vùng có chiều cao thật.
+
+   Bản trước chỉ có overflow-x và không đặt chiều cao. Hậu quả: `position: sticky; top: 0` của
+   thead không có vùng cuộn nào để dính vào — vùng cha có overflow khác visible nên nó cũng
+   không dính được vào trang. Bảng dài 80 dòng thì cuộn ngang là mất luôn tiêu đề, không còn
+   biết cột nào là cột gì.
+
+   Cũng bỏ mẹo `margin-bottom` âm + `padding-bottom`: nó đẩy thanh cuộn ngang xuống nằm trong
+   vùng padding, chồng lên khối ghi chú bên dưới. */
+.table-scroll {
+  overflow: auto;
+  max-height: min(70vh, 620px);
+  margin: 0 calc(var(--s-5) * -1);
+  padding: 0 var(--s-5);
+  overscroll-behavior: contain;
+}
+
+/* Thanh cuộn mảnh và có màu theo theme — thanh mặc định của Windows trong một vùng cuộn lồng
+   nhau trông như một lỗi hiển thị. */
+.table-scroll { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.table-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.table-scroll::-webkit-scrollbar-track { background: transparent; }
+.table-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong); border-radius: 999px;
+  border: 2px solid var(--surface);
+}
+.table-scroll::-webkit-scrollbar-thumb:hover { background: var(--ink-2); }
+.table-scroll::-webkit-scrollbar-corner { background: var(--surface); }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 

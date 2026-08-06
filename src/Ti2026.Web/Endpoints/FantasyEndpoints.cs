@@ -576,11 +576,17 @@ public static class FantasyEndpoints
                 },
 
                 method = "Duyệt hết các đội để tìm cặp core (carry + offlane) cùng đội và cặp hỗ "
-                       + "trợ (số 4 + số 5) cùng đội cho tổng điểm cao nhất, cộng một mid tự do. "
-                       + "Chỉ khoảng 16 đội nên duyệt hết là ra đáp án tối ưu THẬT, không heuristic.",
-                limitation = "Chưa mô hình hoá tầng emblem/tier/trait và cặp prefix–suffix. Đó là "
-                           + "nơi phần lớn tối ưu hoá thật sự nằm, nên đây là đội hình tốt nhất "
-                           + "theo điểm gốc, chưa phải theo điểm cuối cùng.",
+                       + "trợ (số 4 + số 5) cùng đội cho tổng điểm cao nhất, cộng một mid tự do — "
+                       + "và với MỖI tổ hợp thì chọn luôn prefix, suffix tốt nhất cho chính tổ hợp "
+                       + "đó. Chỉ khoảng 16 đội nên duyệt hết là ra đáp án tối ưu THẬT, không "
+                       + "heuristic. Điểm gốc đã là điểm BANNER, tức chỉ ba ô emblem đúng màu của "
+                       + "vị trí đó, không phải tổng 18 chỉ số.",
+
+                limitation = "Tier và trait cố tình KHÔNG tham gia phép chọn: chúng là thứ quay "
+                           + "trúng chứ không phải thứ chọn được, và nhân vào mọi ứng viên như "
+                           + "nhau nên không đổi được NÊN CHỌN AI. Muốn tính điểm cho đúng bộ "
+                           + "emblem bạn vừa quay ra — kèm bảng lựa chọn thay thế khi không ra "
+                           + "được thứ tốt nhất — thì xem mục 'Máy tính emblem'.",
             });
         });
     }

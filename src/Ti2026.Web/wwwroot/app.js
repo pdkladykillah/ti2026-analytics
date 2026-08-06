@@ -2393,7 +2393,8 @@ async function loadFantasyRoster() {
 
       <div class="note" style="margin-top:var(--s-4)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
-        <div>${esc(d.method || '')}<br><br><b>${esc(d.limitation || '')}</b></div>
+        <div>${esc(d.method || '')}<br><br><b>${esc(d.limitation || '')}</b>
+        <br><br><button class="pill" type="button" data-goto-sec="Máy tính emblem">Mở máy tính emblem →</button></div>
       </div>
       ${biasNote(d.bias)}`;
   } catch (err) {
@@ -2706,6 +2707,18 @@ function setupSubTabs() {
     });
 
     view.prepend(nav);
+  });
+
+  // Cho phép nhảy sang một mục con bằng data-goto-sec. Cần vì có những chỗ nội dung phải chỉ
+  // sang mục khác — ví dụ trang gợi ý đội hình nói "muốn tính bộ emblem vừa quay thì xem máy
+  // tính emblem". Bảo người đọc tự đi tìm cái tab đó là đúng thứ ta vẫn đang tránh.
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest?.('[data-goto-sec]');
+    if (!target) return;
+
+    const name = target.dataset.gotoSec;
+    const btn = [...document.querySelectorAll('.subpill')].find((b) => b.textContent === name);
+    if (btn) btn.click();
   });
 }
 

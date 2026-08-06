@@ -209,9 +209,17 @@ public static class FantasyEndpoints
 
             var games = rows.Select(r => new SuffixGame(
                 r.DurationSeconds,
-                r.FirstBloodTimeSeconds,
+
+                // OpenDota trả 0 cho ván nó không có số liệu first blood, và "first blood ở
+                // giây thứ 0" không phải sự kiện có thật — 204/1798 ván của ta đang là 0 chẵn.
+                // Quy về null, nếu không chúng đếm thành "first blood rất sớm" và dìm xác suất
+                // của "the Patient" xuống bằng một cách hoàn toàn vô hình.
+                FirstBloodSeconds: r.FirstBloodTimeSeconds is 0 ? null : r.FirstBloodTimeSeconds,
+
                 PlayerTeamWon: r.IsRadiant == r.RadiantWin,
-                AnyDeathToTormentor: r.DeathsToTormentor is > 0,
+
+                // null = ván chưa nạp cột này, KHÔNG phải "không ai chết vì Tormentor"
+                AnyDeathToTormentor: r.DeathsToTormentor is null ? null : r.DeathsToTormentor > 0,
                 IsLastPossibleGameOfSeries: r.SeriesId is long s2 && s2 > 0
                                             && lastGameOfSeries.GetValueOrDefault(s2) == r.MatchId
             )).ToList();

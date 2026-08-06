@@ -17,7 +17,7 @@ public class FantasySuffixTests
     };
 
     private static SuffixGame G(int dur, int? fb = 300, bool won = true,
-        bool torm = false, bool last = false) => new(dur, fb, won, torm, last);
+        bool? torm = false, bool last = false) => new(dur, fb, won, torm, last);
 
     private static SuffixOdds Get(List<SuffixOdds> rows, string key) => rows.First(r => r.Key == key);
 
@@ -105,6 +105,39 @@ public class FantasySuffixTests
 
         cruel.Measurable.Should().BeFalse();
         cruel.Probability.Should().BeNull("không đo được thì để trống, không điền 0");
+    }
+
+    /// <summary>
+    /// Cột chưa nạp thì phải trả về TRỐNG, không phải 0,0%.
+    ///
+    /// Đây đúng là chuyện đã xảy ra thật: "the Tormented" hiện 0,0% trên 3369 ván, trông y hệt
+    /// một kết quả đã đo, trong khi thật ra cột đó chưa được nạp lần nào.
+    /// </summary>
+    [Fact]
+    public void Cot_chua_nap_thi_de_trong_chu_khong_bao_0_phan_tram()
+    {
+        var rows = FantasySuffix.Compute(
+            [G(2400, torm: null), G(2400, torm: null)], Bonus);
+
+        var t = Get(rows, "tormented");
+        t.Sample.Should().Be(0);
+        t.Probability.Should().BeNull("chưa nạp thì không được kết luận là không bao giờ xảy ra");
+    }
+
+    /// <summary>
+    /// OpenDota trả 0 cho ván không có số liệu first blood, mà "first blood ở giây thứ 0" không
+    /// phải sự kiện có thật. Bên gọi quy 0 về null; test này ghim hệ quả: những ván đó bị LOẠI
+    /// khỏi mẫu chứ không đếm thành "first blood rất sớm".
+    /// </summary>
+    [Fact]
+    public void Van_khong_ro_first_blood_khong_duoc_dem_thanh_rat_som()
+    {
+        var rows = FantasySuffix.Compute(
+            [G(2400, fb: 700), G(2400, fb: null), G(2400, fb: null), G(2400, fb: null)], Bonus);
+
+        var patient = Get(rows, "patient");
+        patient.Sample.Should().Be(1);
+        patient.Probability.Should().Be(1.0, "không phải 0,25 — ba ván kia là chưa rõ");
     }
 
     [Fact]

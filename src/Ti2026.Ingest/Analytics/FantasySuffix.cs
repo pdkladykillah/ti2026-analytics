@@ -1,11 +1,24 @@
 namespace Ti2026.Ingest.Analytics;
 
 /// <summary>Một ván, rút gọn về đúng những gì cần để xét điều kiện suffix.</summary>
+/// <summary>
+/// Một ván, rút gọn về đúng những gì cần để xét điều kiện suffix.
+///
+/// Hai trường là null-able CÓ CHỦ ĐÍCH, và đó là phần quan trọng nhất của kiểu này:
+///
+/// <see cref="FirstBloodSeconds"/> null = không rõ. OpenDota trả 0 cho những ván nó không có
+/// số liệu, mà "first blood ở giây thứ 0" không phải một sự kiện có thật — bên gọi phải quy 0
+/// về null trước khi đưa vào đây, nếu không 204 ván không rõ sẽ lặng lẽ đếm thành "có first
+/// blood rất sớm" và dìm xác suất của "the Patient" xuống.
+///
+/// <see cref="AnyDeathToTormentor"/> null = chưa nạp cột đó. Coi là false thì suffix
+/// "the Tormented" hiện ra 0,0% trông y hệt một kết quả đã đo.
+/// </summary>
 public readonly record struct SuffixGame(
     int DurationSeconds,
     int? FirstBloodSeconds,
     bool PlayerTeamWon,
-    bool AnyDeathToTormentor,
+    bool? AnyDeathToTormentor,
     bool IsLastPossibleGameOfSeries);
 
 public readonly record struct SuffixOdds(
@@ -67,9 +80,13 @@ public static class FantasySuffix
                 key, hits, size, Math.Round(p, 4), Math.Round(p * bonus, 2), Measurable: true);
         }
 
-        // first_blood_time âm nghĩa là first blood xảy ra TRƯỚC tiếng còi khai cuộc — không
-        // phải dữ liệu hỏng. Ván chưa parse thì không có mốc này và bị loại khỏi mẫu.
+        // first_blood_time âm nghĩa là first blood xảy ra TRƯỚC tiếng còi — dữ liệu thật, không
+        // phải hỏng. Ván không rõ mốc này bị LOẠI khỏi mẫu chứ không tính thành "rất sớm".
         var withFirstBlood = games.Count(g => g.FirstBloodSeconds is not null);
+
+        // Chưa nạp cột chết-vì-Tormentor thì mẫu bằng 0, và Row() trả xác suất null thay vì
+        // 0,0% — một ô trống buộc người đọc dừng lại, còn 0,0% thì họ tin ngay.
+        var withTormentor = games.Count(g => g.AnyDeathToTormentor is not null);
 
         return
         [
@@ -78,7 +95,7 @@ public static class FantasySuffix
             Row("lucky", g => LuckyBySecond(g.DurationSeconds)),
             Row("luckyTheoPhut", g => LuckyByMinute(g.DurationSeconds)),
             Row("clutch", g => g.IsLastPossibleGameOfSeries),
-            Row("tormented", g => g.AnyDeathToTormentor),
+            Row("tormented", g => g.AnyDeathToTormentor is true, withTormentor),
             Row("patient",
                 g => g.FirstBloodSeconds is int fb && fb >= PatientFirstBloodSeconds,
                 withFirstBlood),

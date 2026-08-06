@@ -1860,6 +1860,7 @@ async function loadFantasy() {
   loadFantasyConfig();
   loadFantasyRoster();
   loadFantasyPlayers();
+  loadFantasyBaseline();
   loadFantasyCalc();
   loadFantasyTitles();
 }
@@ -1877,7 +1878,9 @@ async function loadFantasyTitles() {
   body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
 
   try {
-    const d = await getJson('api/fantasy/titles');
+    // Prefix nằm ở /optimize vì nó phụ thuộc đội hình; suffix ở /titles vì nó không. Nhưng
+    // với người đọc thì cả hai đều là "danh hiệu", nên phải hiện cùng một chỗ.
+    const [d, opt] = await Promise.all([getJson('api/fantasy/titles'), getOptimize()]);
     if (!d.ready) { body.innerHTML = `<div class="empty">${esc(d.note || '')}</div>`; return; }
 
     // Nhóm quyết định cách đọc con số: 'né ra' nghĩa là xác suất CAO là tin xấu, nên nó phải
@@ -1917,13 +1920,7 @@ async function loadFantasyTitles() {
         <div>Đo trên <b>${d.sampleGames}</b> ván. ${esc(d.suffixNote || '')}</div>
       </div>
 
-      <h3 style="margin-top:var(--s-6)">Prefix</h3>
-      <div class="table-scroll"><table>
-        <thead><tr><th scope="col">Prefix</th><th scope="col">Thưởng</th><th scope="col">Điều kiện</th></tr></thead>
-        <tbody>${d.prefixes.map((p) => `<tr>
-          <td>${esc(p.label)}</td><td class="num">+${p.bonusPercent}%</td><td>${esc(p.condition || '')}</td>
-        </tr>`).join('')}</tbody>
-      </table></div>
+      ${prefixNote(opt?.prefix)}
 
       <div class="note warn" style="margin-top:var(--s-3)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
@@ -2126,31 +2123,69 @@ async function loadFantasyConfig() {
   }
 }
 
+/**
+ * /optimize dùng chung cho ba mục con (đội hình, đối chiếu TI2025, danh hiệu). Gọi ba lần thì
+ * máy chủ chấm điểm lại ba lượt cho cùng một câu trả lời, nên nhớ lại kết quả trong phiên.
+ */
+let optimizeOnce = null;
+const getOptimize = () => (optimizeOnce ??= getJson('api/fantasy/optimize'));
+
+/** Thẻ một tuyển thủ trong đội hình. Tên ĐỘI phải hiện, vì luật ràng buộc CẶP CÙNG ĐỘI. */
+function rosterCard(p) {
+  return `<article class="kpi p3">
+    <div class="kpi-label">${esc(p.positionName || p.slot)}</div>
+    <div class="kpi-value">${esc(p.nick)}</div>
+    <div class="kpi-note">${esc(p.teamName || '—')}<br>${p.bannerPoints} điểm banner · ${p.matches} trận
+      ${p.banner ? `<br><span style="font-size:.9em">${bannerSlots(p.banner)}</span>` : ''}</div>
+  </article>`;
+}
+
+async function loadFantasyBaseline() {
+  const body = $('#fantasy-baseline');
+  body.innerHTML = '<div class="skeleton" style="height:160px"></div>';
+
+  try {
+    const d = await getOptimize();
+    const b = d.baseline;
+    if (!d.ready || !b) { body.innerHTML = '<div class="empty">Chưa có mốc đối chiếu.</div>'; return; }
+
+    body.innerHTML = `
+      <div class="bento">${b.roster.map(rosterCard).join('')}</div>
+
+      ${b.comparable ? `<div class="bento" style="margin-top:var(--s-4)">
+        <article class="kpi p2">
+          <div class="kpi-label">Tổng điểm ${esc(b.label)}</div>
+          <div class="kpi-value">${b.projectedTotal}</div>
+          <div class="kpi-note">cùng thang đo với đội hình hiện tại</div>
+        </article>
+      </div>` : `<div class="note warn" style="margin-top:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+        <div><b>Chưa hiện tổng điểm — cố ý.</b><br>${esc(b.incomparableNote || '')}</div>
+      </div>`}
+
+      <div class="note" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(b.note || '')}</div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
+  }
+}
+
 async function loadFantasyRoster() {
   const body = $('#fantasy-roster');
   body.innerHTML = '<div class="skeleton" style="height:160px"></div>';
 
   try {
-    const d = await getJson('api/fantasy/optimize');
+    const d = await getOptimize();
 
     if (!d.ready) {
       body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa xếp được đội hình.')}</div>`;
       return;
     }
 
-    // Tên đội phải hiện, vì ràng buộc của luật là CẶP CÙNG ĐỘI — không thấy đội thì không
-    // có cách nào tự kiểm đội hình có hợp lệ hay không.
-    const card = (p) => `<article class="kpi p3">
-      <div class="kpi-label">${esc(p.positionName || p.slot)}</div>
-      <div class="kpi-value">${esc(p.nick)}</div>
-      <div class="kpi-note">${esc(p.teamName || '—')}<br>${p.bannerPoints} điểm banner · ${p.matches} trận
-        ${p.banner ? `<br><span style="font-size:.9em">${bannerSlots(p.banner)}</span>` : ''}</div>
-    </article>`;
-
-    const b = d.baseline;
-
     body.innerHTML = `
-      <div class="bento">${d.roster.map(card).join('')}</div>
+      <div class="bento">${d.roster.map(rosterCard).join('')}</div>
 
       <div class="bento" style="margin-top:var(--s-4)">
         <article class="kpi p2">
@@ -2159,27 +2194,6 @@ async function loadFantasyRoster() {
           <div class="kpi-note">mỗi trận, cộng cả đội hình</div>
         </article>
       </div>
-
-      ${b ? `<h3 style="margin-top:var(--s-6)">Đối chiếu: ${esc(b.label)}</h3>
-      <div class="bento">${b.roster.map(card).join('')}</div>
-
-      ${b.comparable ? `<div class="bento" style="margin-top:var(--s-4)">
-        <article class="kpi p2">
-          <div class="kpi-label">Tổng điểm ${esc(b.label)}</div>
-          <div class="kpi-value">${b.projectedTotal}</div>
-          <div class="kpi-note">cùng thang đo với con số phía trên</div>
-        </article>
-      </div>` : `<div class="note warn" style="margin-top:var(--s-4)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
-        <div><b>Chưa hiện tổng điểm ${esc(b.label)} — cố ý.</b><br>${esc(b.incomparableNote || '')}</div>
-      </div>`}
-
-      <div class="note" style="margin-top:var(--s-3)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
-        <div>${esc(b.note || '')}</div>
-      </div>` : ''}
-
-      ${prefixNote(d.prefix)}
 
       ${partialNote(d.partial)}
 

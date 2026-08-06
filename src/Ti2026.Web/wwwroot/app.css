@@ -769,3 +769,13 @@ thead th[data-sort-ready]:hover { color: var(--accent-ink); background: var(--su
 .trend { font-weight: 600; }
 .trend.up { color: var(--pos); }
 .trend.down { color: var(--neg); }
+
+/* Bảng thay thế emblem: gập lại theo mặc định vì mỗi banner có ba ô, mở hết cùng lúc thì
+   quay lại đúng vấn đề lăn chuột. */
+details > summary {
+  cursor: pointer; padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface-2); font-size: 14px;
+}
+details > summary:hover { border-color: var(--border-strong); }
+details[open] > summary { margin-bottom: var(--s-1); }

@@ -131,4 +131,59 @@ public static class FantasyTraits
     public static double Total(
         IReadOnlyList<Emblem> emblems, IReadOnlyDictionary<string, double?> statPoints) =>
         Math.Round(Score(emblems, statPoints).Sum(x => x.Points), 2);
+
+    /// <summary>
+    /// Mọi tổ hợp (tier × trait) cho MỘT ô, giữ nguyên các ô khác, xếp theo tổng điểm banner.
+    ///
+    /// VÌ SAO CẦN. Tier và trait là thứ quay trúng, nên "bộ tốt nhất" không phải một lựa chọn
+    /// có thật. Cái người chơi thật sự cần lúc mở bảng quay là: nếu không ra được thứ tốt nhất
+    /// thì thứ nào thay thế được, và thay thế thì mất bao nhiêu.
+    ///
+    /// Phải tính theo TỔNG BANNER chứ không phải điểm riêng ô đó: benevolent và vampiric tác
+    /// động sang ô kề bên, còn fractal, unique và friendly thì phụ thuộc vào tier hoặc trait
+    /// của các ô khác. Xếp hạng theo điểm riêng một ô sẽ nói sai về chính những trait đó.
+    ///
+    /// Trả về cả những tổ hợp KÉM HƠN hiện tại, vì đó chính là thông tin cần khi bản quay chỉ
+    /// còn lựa chọn tệ: biết mất bao nhiêu để quyết định có nên quay lại hay không.
+    /// </summary>
+    public static List<EmblemAlternative> Alternatives(
+        IReadOnlyList<Emblem> emblems,
+        int slot,
+        IReadOnlyDictionary<string, double?> statPoints,
+        IReadOnlyList<string>? traits = null)
+    {
+        if (slot < 0 || slot >= emblems.Count) return [];
+
+        var traitList = traits ?? DefaultTraits;
+        var current = Total(emblems, statPoints);
+        var result = new List<EmblemAlternative>();
+
+        foreach (var tier in TierBonusPercent.Keys)
+        foreach (var trait in traitList)
+        {
+            var swapped = emblems.ToArray();
+            swapped[slot] = swapped[slot] with { Tier = tier, Trait = trait };
+
+            var total = Total(swapped, statPoints);
+            var isCurrent = string.Equals(NormalizeTier(emblems[slot].Tier), tier,
+                                StringComparison.OrdinalIgnoreCase)
+                            && Is(emblems[slot].Trait, trait);
+
+            result.Add(new EmblemAlternative(
+                tier, trait, total, Math.Round(total - current, 2), isCurrent));
+        }
+
+        return result.OrderByDescending(x => x.Total).ToList();
+    }
+
+    /// <summary>Bộ trait của TI2026, theo đúng thứ tự trong bảng luật.</summary>
+    public static readonly string[] DefaultTraits =
+        ["none", "fractal", "benevolent", "vampiric", "unique", "friendly"];
 }
+
+/// <summary>
+/// Một lựa chọn thay thế cho một ô emblem. <see cref="Delta"/> âm nghĩa là kém hơn thứ đang
+/// có — vẫn phải trả về, vì "kém bao nhiêu" mới là con số quyết định có quay lại hay không.
+/// </summary>
+public readonly record struct EmblemAlternative(
+    string Tier, string Trait, double Total, double Delta, bool IsCurrent);

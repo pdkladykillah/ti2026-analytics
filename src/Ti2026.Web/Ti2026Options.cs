@@ -101,6 +101,24 @@ public class OpenDotaOptions
 
     public string BaseUrl { get; set; } = "https://api.opendota.com/api/";
 
+    /// <summary>
+    /// Giá mỗi request ở bậc trả tiền của OpenDota: $0,01 cho 100 lần gọi.
+    /// Chỉ dùng để ƯỚC TÍNH và hiển thị — không phải hoá đơn thật.
+    /// </summary>
+    public double UsdPerCall { get; set; } = 0.0001;
+
+    /// <summary>
+    /// Trên mức này thì một đợt nạp phải được người vận hành duyệt trước.
+    ///
+    /// Con số là quyết định của chủ dự án, không phải kết quả đo: vận hành thường ngày chỉ
+    /// khoảng 250 request (~2,5 xu) nên xin duyệt từng lần chỉ làm chậm việc, còn nâng schema
+    /// thì nạp lại toàn bộ và mới là chỗ cần dừng lại hỏi.
+    ///
+    /// Để ở đây thay vì chỉ nằm trong đầu người làm: một ngưỡng không hiện ra ở đâu là một
+    /// ngưỡng sẽ bị quên đúng lúc nó quan trọng nhất.
+    /// </summary>
+    public double ApprovalThresholdUsd { get; set; } = 1.0;
+
     public bool HasKey => !string.IsNullOrWhiteSpace(ApiKey);
 
     /// <summary>Nhịp thực tế: có key thì nhanh, không thì giữ mức tôn trọng bậc miễn phí.</summary>

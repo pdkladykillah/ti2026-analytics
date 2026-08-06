@@ -150,6 +150,81 @@ public class FantasyTraitsTests
         f[1].Should().BeApproximately(1.44, 1e-9, "1,2 × 1,2");
     }
 
+    /// <summary>
+    /// TIER QUAN TRỌNG HƠN TRAIT, và đây là con số chứng minh.
+    ///
+    /// Khoảng của tier là 1,10 → 2,50, tức rộng 2,27 lần. Khoảng của trait chỉ là 1,0 → 1,6.
+    /// Nên "trait tốt nhất mà tier thấp" gần như luôn kém "trait tầm tầm mà tier cao" — đúng
+    /// câu hỏi mà người chơi phải quyết mỗi lần quay ra một bộ không như ý.
+    /// </summary>
+    [Fact]
+    public void Tier_cao_voi_trait_thuong_an_trait_tot_nhat_voi_tier_thap()
+    {
+        // fractal ×1,6 — trait mạnh nhất cho chính ô đó — nhưng ở tier I
+        var traitTotTierThap = FantasyTraits.Total(
+            [E("a", "I", "fractal"), E("b", "II", "none"), E("c", "III", "none")], Points);
+
+        // không trait gì cả, nhưng tier V
+        var khongTraitTierCao = FantasyTraits.Total(
+            [E("a", "V", "none"), E("b", "II", "none"), E("c", "III", "none")], Points);
+
+        khongTraitTierCao.Should().BeGreaterThan(traitTotTierThap,
+            "tier V trơn (×2,5) ăn tier I + fractal (×1,76)");
+    }
+
+    /// <summary>
+    /// Xếp hạng lựa chọn THAY THẾ cho một ô, giữ nguyên các ô khác.
+    ///
+    /// Tier và trait là thứ quay trúng, nên "bộ tốt nhất" không phải lựa chọn có thật. Cái cần
+    /// là: không ra được thứ tốt nhất thì thứ nào thay được, và thay thì mất bao nhiêu.
+    /// </summary>
+    [Fact]
+    public void Xep_hang_lua_chon_thay_the_cho_mot_o()
+    {
+        // Lấy một bộ ở GIỮA thang làm hiện tại, để có cả lựa chọn tốt hơn và kém hơn.
+        // Lấy tier I + none thì không có gì kém hơn được, và test sẽ không kiểm được gì.
+        var current = new[] { E("a", "IV", "fractal"), E("b", "II", "none"), E("c", "III", "none") };
+        var alts = FantasyTraits.Alternatives(current, 0, Points);
+
+        alts.Should().HaveCount(30, "5 tier × 6 trait");
+        alts[0].Total.Should().BeGreaterThan(alts[^1].Total, "phải xếp giảm dần");
+
+        // Đúng một dòng là thứ đang có, và nó có delta bằng 0
+        var mine = alts.Single(x => x.IsCurrent);
+        mine.Tier.Should().Be("IV");
+        mine.Trait.Should().Be("fractal");
+        mine.Delta.Should().Be(0);
+
+        // Có cả tốt hơn và kém hơn. Vế "kém hơn" mới là thông tin cần khi bản quay chỉ còn
+        // lựa chọn tệ: biết mất bao nhiêu để quyết định có nên quay lại hay không.
+        alts.Should().Contain(x => x.Delta > 0);
+        alts.Should().Contain(x => x.Delta < 0);
+    }
+
+    /// <summary>
+    /// Xếp hạng phải tính theo TỔNG BANNER, không phải điểm riêng ô đó — vì benevolent chỉ
+    /// cộng cho hàng xóm. Tính riêng ô thì benevolent trông như vô dụng.
+    /// </summary>
+    [Fact]
+    public void Benevolent_chi_co_nghia_khi_tinh_theo_tong_banner()
+    {
+        var current = new[] { E("a", "I", "none"), E("b", "II", "none"), E("c", "III", "none") };
+        var alts = FantasyTraits.Alternatives(current, 0, Points);
+
+        var benevolent = alts.First(x => x.Trait == "benevolent" && x.Tier == "I");
+        var none = alts.First(x => x.Trait == "none" && x.Tier == "I");
+
+        benevolent.Total.Should().BeGreaterThan(none.Total,
+            "nó không cộng cho chính ô đó nhưng vẫn kéo tổng banner lên qua ô kề bên");
+    }
+
+    [Fact]
+    public void O_khong_ton_tai_thi_tra_rong_chu_khong_no()
+    {
+        FantasyTraits.Alternatives([E("a", "I", "none")], 5, Points).Should().BeEmpty();
+        FantasyTraits.Alternatives([E("a", "I", "none")], -1, Points).Should().BeEmpty();
+    }
+
     /// <summary>Chỉ số chưa đo được thì ô vẫn hiện ra, chỉ là 0 điểm — không được giấu đi.</summary>
     [Fact]
     public void Chi_so_chua_do_duoc_van_hien_o_nhung_0_diem()

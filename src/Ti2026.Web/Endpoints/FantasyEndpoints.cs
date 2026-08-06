@@ -432,7 +432,36 @@ public static class FantasyEndpoints
                     traitFactor = x.TraitFactor,
                     factor = x.Factor,
                     points = x.Points,
+
+                    // Lựa chọn THAY THẾ cho đúng ô này, giữ nguyên các ô khác.
+                    //
+                    // Tier và trait là thứ quay trúng, nên "bộ tốt nhất" không phải một lựa
+                    // chọn có thật. Cái người chơi cần lúc mở bảng quay là: không ra được thứ
+                    // tốt nhất thì thứ nào thay được, và thay thì mất bao nhiêu điểm.
+                    //
+                    // Giữ cả những lựa chọn KÉM hơn hiện tại — đó mới là con số quyết định có
+                    // nên tiêu một lượt quay lại hay không.
+                    alternatives = FantasyTraits
+                        .Alternatives(parsed, x.Slot, statPoints)
+                        .Select(a => new
+                        {
+                            a.Tier, a.Trait, a.Total, a.Delta, a.IsCurrent,
+                            tierBonusPercent = FantasyTraits.TierBonusPercent[a.Tier],
+                        }),
                 }),
+
+                // Đo, không phải phỏng đoán: khoảng của tier rộng hơn khoảng của trait, nên
+                // đây là câu trả lời cho "trait ngon tier thấp hay trait nhì tier cao?".
+                tierVsTrait = new
+                {
+                    tierRange = $"×{FantasyTraits.TierBonusPercent["I"] / 100 + 1:0.00} → "
+                              + $"×{FantasyTraits.TierBonusPercent["V"] / 100 + 1:0.00}",
+                    traitRange = $"×1,00 → ×{FantasyTraits.FractalFactor:0.00}",
+                    verdict = "Khoảng của TIER rộng hơn khoảng của TRAIT (2,27 lần so với 1,6 "
+                            + "lần), nên tier cao với trait tầm tầm thường ăn tier thấp với "
+                            + "trait tốt nhất. Bảng thay thế ở mỗi ô cho con số chính xác thay "
+                            + "vì phải nhẩm.",
+                },
 
                 note = "Trait nhân SAU tier. Benevolent và vampiric tác động sang ô KỀ BÊN, nên "
                      + "thứ tự đặt emblem có ảnh hưởng thật — vampiric ở đầu banner chỉ rút của "

@@ -137,6 +137,20 @@ public static class OpsEndpoints
                     estimatedRunsLeft = schedule.MaxMatchDetailsPerRun <= 0
                         ? (int?)null
                         : (int)Math.Ceiling((double)pending / schedule.MaxMatchDetailsPerRun),
+
+                    // Chi phí ước tính của phần CÒN LẠI, kèm phán quyết có cần duyệt hay không.
+                    // Mỗi ván tốn đúng một request matches/{id}, nên đây là phép nhân thẳng.
+                    //
+                    // Để con số này lộ ra ở đây vì ngưỡng duyệt chỉ có ích khi nhìn thấy được:
+                    // một quy tắc "trên $1 thì hỏi" mà phải tự nhẩm trong đầu là quy tắc sẽ bị
+                    // quên đúng lúc đợt nạp phình to nhất.
+                    estimatedCostUsd = cfg.Value.OpenDota.HasKey
+                        ? Math.Round(pending * cfg.Value.OpenDota.UsdPerCall, 4)
+                        : 0,
+                    approvalThresholdUsd = cfg.Value.OpenDota.ApprovalThresholdUsd,
+                    needsApproval = cfg.Value.OpenDota.HasKey
+                        && pending * cfg.Value.OpenDota.UsdPerCall
+                           > cfg.Value.OpenDota.ApprovalThresholdUsd,
                 },
 
                 runs,

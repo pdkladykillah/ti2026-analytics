@@ -1546,7 +1546,15 @@ async function loadSchedule() {
       </div>
       <p class="desc" style="margin:var(--s-2) 0 var(--s-4)">Còn <b>${bf.pending.toLocaleString('vi-VN')}</b> ván
       cần nạp lại ở phiên bản dữ liệu ${bf.schemaVersion}, tối đa ${bf.perRun} ván mỗi vòng —
-      khoảng <b>${Math.ceil(bf.pending / bf.perRun)}</b> vòng nữa.</p>` : ''}
+      khoảng <b>${Math.ceil(bf.pending / bf.perRun)}</b> vòng nữa${bf.estimatedCostUsd
+        ? `, chi phí ước tính <b>$${bf.estimatedCostUsd.toFixed(2)}</b>` : ''}.</p>
+
+      ${bf.needsApproval ? `<div class="note warn" style="margin-bottom:var(--s-4)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+        <div><b>Đợt nạp này vượt ngưỡng $${bf.approvalThresholdUsd} — cần duyệt trước.</b><br>
+        Ước tính $${bf.estimatedCostUsd.toFixed(2)} cho ${bf.pending.toLocaleString('vi-VN')} ván.
+        Ngưỡng nằm ở <code>Ti2026__OpenDota__ApprovalThresholdUsd</code>.</div>
+      </div>` : ''}` : ''}
 
       ${d.note ? `<div class="note warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg><div>${esc(d.note)}</div></div>` : ''}
 
@@ -2202,6 +2210,14 @@ async function runCalc() {
         </tr>`).join('')}</tbody>
       </table></div>
 
+      ${d.tierVsTrait ? `<div class="note" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div><b>Tier ${esc(d.tierVsTrait.tierRange)} · Trait ${esc(d.tierVsTrait.traitRange)}</b><br>
+        ${esc(d.tierVsTrait.verdict)}</div>
+      </div>` : ''}
+
+      ${d.slots.map((s) => altTable(s)).join('')}
+
       <div class="note" style="margin-top:var(--s-3)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.note || '')}</div>
@@ -2209,6 +2225,41 @@ async function runCalc() {
   } catch (err) {
     out.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
   }
+}
+
+/**
+ * Bảng thay thế cho một ô: nếu không quay ra được thứ tốt nhất thì thứ nào thay được.
+ *
+ * Chỉ hiện 6 dòng quanh lựa chọn hiện tại thay vì cả 30 — mục đích là trả lời "thay bằng gì",
+ * không phải bày ra toàn bộ không gian rồi để người đọc tự lọc. Dòng đang dùng luôn nằm trong
+ * danh sách để thấy mình đang ở đâu.
+ */
+function altTable(s) {
+  const alts = s.alternatives || [];
+  if (!alts.length) return '';
+
+  const at = alts.findIndex((a) => a.isCurrent);
+  const best = alts[0];
+  const from = Math.max(0, Math.min(at - 2, alts.length - 6));
+  const window = alts.slice(from, from + 6);
+
+  return `<details style="margin-top:var(--s-3)">
+    <summary><b>Ô ${s.slot + 1} · ${esc(s.statLabel)}</b> — đang là tier ${esc(s.tier)} / ${esc(s.trait)},
+      xếp thứ <b>${at + 1}</b>/${alts.length}${at === 0 ? ' (tốt nhất)' : ` · kém nhất bảng ${Math.round((best.total - alts[at].total) * 100) / 100} điểm`}</summary>
+    <div class="table-scroll" style="margin-top:var(--s-2)"><table>
+      <thead><tr>
+        <th scope="col">Tier</th><th scope="col">Trait</th>
+        <th scope="col">Tổng banner</th><th scope="col">So với hiện tại</th>
+      </tr></thead>
+      <tbody>${window.map((a) => `<tr${a.isCurrent ? ' style="font-weight:600"' : ''}>
+        <td>${esc(a.tier)} <span class="na">(+${a.tierBonusPercent}%)</span></td>
+        <td>${esc(a.trait)}</td>
+        <td class="num">${a.total}</td>
+        <td class="num">${a.isCurrent ? '— đang dùng'
+          : (a.delta > 0 ? '+' : '') + a.delta}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </details>`;
 }
 
 async function loadFantasyConfig() {

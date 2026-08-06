@@ -32,8 +32,10 @@ public class MatchDetailIngester(
     /// 4 = thêm chỉ số fantasy: phá trụ, hạ Roshan/courier/mắt, và first blood theo người
     /// 5 = thêm hoa sen, watcher, smoke, túi madstone, Tormentor — năm chỉ số từng bị kết
     ///     luận nhầm là "OpenDota không có". Chúng nằm trong item_uses/ability_uses/killed.
+    /// 6 = Roshan đếm lại từ killed[npc_dota_roshan] vì trường roshan_kills đếm dư (đã kiểm
+    ///     ba chiều với objectives trên hai ván). Nâng ở đây để mọi ván đã nạp được sửa lại.
     /// </summary>
-    public const int SchemaVersion = 5;
+    public const int SchemaVersion = 6;
 
     /// <summary>
     /// Số lỗi LIÊN TIẾP thì dừng mẻ. Lỗi rải rác là chuyện thường (một ván OpenDota chưa parse
@@ -234,7 +236,6 @@ public class MatchDetailIngester(
             existing.StunSeconds = p.StunSeconds;
             existing.TeamfightParticipation = p.TeamfightParticipation;
             existing.TowerKills = p.TowerKills;
-            existing.RoshanKills = p.RoshanKills;
             existing.CourierKills = p.CourierKills;
             existing.ObserverKills = p.ObserverKills;
             existing.SentryKills = p.SentryKills;
@@ -250,15 +251,17 @@ public class MatchDetailIngester(
             existing.MadstoneBundles = FantasyFields.MadstoneBundles(p.ItemUses);
             existing.TormentorKills = FantasyFields.TormentorKills(p.Killed);
 
-            // Hai nguồn Roshan lệch nhau trong ván mẫu: trường tổng hợp roshan_kills đếm dư,
-            // còn killed[npc_dota_roshan] khớp với objectives. Mới có MỘT ván làm bằng chứng
-            // nên chưa đổi hẳn sang killed — ghi log để còn biết chuyện này phổ biến đến đâu
-            // sau đợt nạp bù, thay vì lặng lẽ chọn một bên rồi quên mất là đã chọn.
+            // Roshan lấy từ killed chứ KHÔNG từ trường tổng hợp roshan_kills — trường đó đếm
+            // dư, đã kiểm ba chiều với objectives trên hai ván (xem FantasyFields.RoshanKills).
+            // Ván chưa parse thì không có killed, khi đó đành dùng trường tổng hợp: một con số
+            // hơi dư vẫn hơn là không có gì, nhưng chỉ ở đúng trường hợp không còn lựa chọn.
             var roshanFromKilled = FantasyFields.RoshanKills(p.Killed);
+            existing.RoshanKills = roshanFromKilled ?? p.RoshanKills;
+
             if (roshanFromKilled is int rk && p.RoshanKills is int rf && rk != rf)
             {
                 logger.LogInformation(
-                    "Ván {MatchId} hero {HeroId}: roshan_kills={Field} nhưng killed[npc_dota_roshan]={Killed}",
+                    "Ván {MatchId} hero {HeroId}: roshan_kills={Field} đếm dư, dùng killed={Killed}",
                     matchId, p.HeroId, rf, rk);
             }
         }

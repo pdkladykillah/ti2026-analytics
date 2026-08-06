@@ -89,9 +89,14 @@ public class FantasyFieldsTests
     }
 
     /// <summary>
-    /// Ván thật 8926048199 có ĐÚNG hai Roshan chết theo objectives, nhưng tổng trường
-    /// roshan_kills của mười người là BA. Tổng killed[npc_dota_roshan] là hai — khớp.
-    /// Test này ghim lại lý do bên nạp phải ghi log khi hai nguồn lệch nhau.
+    /// Trường tổng hợp roshan_kills của OpenDota ĐẾM DƯ. Kiểm ba chiều với objectives làm
+    /// trọng tài trên hai ván thật:
+    ///
+    ///   8926048199 — objectives 2 · killed 2 · roshan_kills 3
+    ///   8784047386 — objectives 4 · killed 4 · roshan_kills 5
+    ///
+    /// Và 19/30 ván nạp gần nhất có hai nguồn lệch, tất cả cùng một chiều. Roshan là 1172
+    /// điểm nên mỗi con Roshan ma cộng thẳng 1172 điểm cho người không hề kết liễu nó.
     /// </summary>
     [Fact]
     public void Roshan_dem_tu_killed_chu_khong_phai_truong_tong_hop()
@@ -101,5 +106,9 @@ public class FantasyFieldsTests
 
         FantasyFields.RoshanKills(new Dictionary<string, int> { ["npc_dota_miniboss"] = 1 })
             .Should().Be(0, "Tormentor không phải Roshan");
+
+        // Ván 8784047386, hero 9: trường nói 2, killed nói 1. Sự thật theo objectives là 1.
+        FantasyFields.RoshanKills(new Dictionary<string, int> { ["npc_dota_roshan"] = 1 })
+            .Should().Be(1, "lấy theo killed, không lấy theo trường tổng hợp");
     }
 }

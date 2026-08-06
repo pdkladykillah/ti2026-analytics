@@ -57,14 +57,19 @@ public static class FantasyFields
         killed is null ? null : Get(killed, "npc_dota_miniboss");
 
     /// <summary>
-    /// Roshan đếm từ <c>killed</c> thay vì trường <c>roshan_kills</c> có sẵn.
+    /// Roshan đếm từ <c>killed</c>, KHÔNG dùng trường <c>roshan_kills</c> có sẵn — trường đó
+    /// đếm dư.
     ///
-    /// Lý do: trong ván mẫu 8926048199 chỉ có ĐÚNG HAI Roshan chết (theo objectives), nhưng
-    /// tổng <c>roshan_kills</c> của mười người là BA, còn tổng <c>killed[npc_dota_roshan]</c>
-    /// là hai — khớp. Trường tổng hợp đếm dư, từ điển <c>killed</c> thì không.
+    /// Đã kiểm ba chiều trên hai ván thật, lấy objectives làm trọng tài:
     ///
-    /// Chỉ có một ván làm bằng chứng nên chưa đủ để kết luận chắc; vì thế bên nạp còn ghi log
-    /// khi hai nguồn lệch nhau, thay vì lặng lẽ chọn một bên.
+    ///   ván 8926048199 — objectives 2 Roshan · killed 2 · roshan_kills 3
+    ///   ván 8784047386 — objectives 4 Roshan · killed 4 · roshan_kills 5
+    ///
+    /// Và trong 30 ván nạp gần nhất, 19 ván có hai nguồn lệch nhau — TẤT CẢ đều lệch cùng một
+    /// chiều, trường tổng hợp cao hơn, phần lớn là kiểu "roshan_kills=1 nhưng killed=0".
+    ///
+    /// Đây không phải chuyện nhỏ: Roshan là 1172 điểm, nên mỗi con Roshan ma cộng thẳng 1172
+    /// điểm vào một ván cho người không hề kết liễu nó.
     /// </summary>
     public static int? RoshanKills(IReadOnlyDictionary<string, int>? killed) =>
         killed is null ? null : Get(killed, "npc_dota_roshan");

@@ -225,8 +225,14 @@ public static class FantasyEndpoints
             )).ToList();
 
             var suffixMeta = LoadTitleTable(paths, "suffixes");
-            var odds = FantasySuffix.Compute(
-                games, suffixMeta.ToDictionary(kv => kv.Key, kv => kv.Value.Bonus));
+            var bonuses = suffixMeta.ToDictionary(kv => kv.Key, kv => kv.Value.Bonus);
+
+            // Cách đọc thứ hai của "the Lucky" phải dùng CÙNG hệ số thì hai con số mới so được.
+            // Không có hệ số thì lợi kỳ vọng ra 0 và cả dòng thành vô nghĩa.
+            if (bonuses.TryGetValue("lucky", out var luckyBonus))
+                bonuses["luckyTheoPhut"] = luckyBonus;
+
+            var odds = FantasySuffix.Compute(games, bonuses);
 
             var prefixMeta = LoadTitleTable(paths, "prefixes");
             var prefixPct = LoadPrefixPercentages(paths);
@@ -241,8 +247,10 @@ public static class FantasyEndpoints
                     .Select(o => new
                     {
                         key = o.Key,
-                        label = suffixMeta.GetValueOrDefault(o.Key).Label ?? o.Key,
-                        bonusPercent = suffixMeta.GetValueOrDefault(o.Key).Bonus,
+                        label = o.Key == "luckyTheoPhut"
+                            ? "the Lucky — đọc theo PHÚT"
+                            : suffixMeta.GetValueOrDefault(o.Key).Label ?? o.Key,
+                        bonusPercent = bonuses.GetValueOrDefault(o.Key),
                         group = suffixMeta.GetValueOrDefault(o.Key).Group,
                         condition = suffixMeta.GetValueOrDefault(o.Key).Condition,
                         measurable = o.Measurable,

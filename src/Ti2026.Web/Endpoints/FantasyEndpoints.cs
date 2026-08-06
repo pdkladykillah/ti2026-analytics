@@ -114,6 +114,7 @@ public static class FantasyEndpoints
                 minMatches = MinMatchesForRanking,
                 source = config.Source,
                 bias = BiasWarning(config),
+                partial = PartialWarning(config, Coverage(scored)),
                 bannerNote = BannerNote,
 
                 players = ordered.Select(p => new
@@ -195,6 +196,7 @@ public static class FantasyEndpoints
                 slotsConfirmed = SlotsConfirmed(paths),
                 roster = now.Picked,
                 bias = BiasWarning(config),
+                partial = PartialWarning(config, Coverage(scoredNow)),
                 projectedTotal = now.Total,
                 shortfall = now.Shortfall,
 
@@ -391,6 +393,7 @@ public static class FantasyEndpoints
         // Xếp đội hình theo ĐIỂM BANNER, không phải tổng 18 chỉ số. Hai bảng xếp hạng này khác
         // nhau thật sự: tổng 18 ưu ái người giỏi đều, còn luật chỉ trả cho ba ô đúng màu.
         var banners = scored.ToDictionary(p => p.PlayerId, p => BannerOf(p, config, colors));
+        var allStats = scored.ToDictionary(p => p.PlayerId, p => p.Average);
 
         var result = FantasyLineup.Build(scored.Select(p => new LineupCandidate(
             p.PlayerId, p.Nick, p.Position, p.TeamId, p.TeamName,
@@ -405,7 +408,12 @@ public static class FantasyEndpoints
             teamName = x.Player.TeamName,
             position = x.Player.Position,
             positionName = x.Player.Position is int pos ? PositionInference.Name(pos) : null,
-            avgPerMatch = x.Player.Average,
+
+            // LineupCandidate.Average GIỜ là điểm banner, vì đó là thứ được tối ưu. Gọi nó là
+            // "avgPerMatch" như cũ sẽ khiến hai cột khác nhau hiện ra hai con số giống hệt.
+            bannerPoints = x.Player.Average,
+            allStatsTotal = allStats.GetValueOrDefault(x.Player.PlayerId),
+
             matches = x.Player.Matches,
             banner = BannerJson(banners.GetValueOrDefault(x.Player.PlayerId)),
         }).ToList();
@@ -466,6 +474,38 @@ public static class FantasyEndpoints
     /// gợi ý sẽ nghiêng về core mà người đọc không thấy vì sao. Nhiễu thì trung bình sẽ bù,
     /// thiên lệch thì không bao giờ.
     /// </summary>
+    /// <summary>
+    /// Chỉ số MỚI ĐO ĐƯỢC MỘT PHẦN — loại thiên lệch thứ ba, và là loại chỉ tồn tại trong lúc
+    /// nạp bù.
+    ///
+    /// Nạp bù chạy theo mẻ, ván mới nhất trước. Giữa chừng sẽ có người đã có watcher/lotus và
+    /// người chưa, hoàn toàn do thứ tự nạp chứ không do họ chơi khác nhau. Người đã nạp được
+    /// tự nhiên xếp trên — và không có gì trên màn hình cho thấy đó là lý do.
+    ///
+    /// Ngưỡng 0.9: dưới mức đó thì chênh lệch đủ lớn để làm đổi thứ hạng.
+    /// </summary>
+    private static object? PartialWarning(FantasyConfig config, Dictionary<string, double> cover)
+    {
+        var partial = config.Stats
+            .Where(s => !string.IsNullOrEmpty(s.Field))
+            .Select(s => (s.Label, Pct: cover.GetValueOrDefault(s.Key)))
+            .Where(x => x.Pct < 0.9)
+            .OrderBy(x => x.Pct)
+            .ToList();
+
+        if (partial.Count == 0) return null;
+
+        return new
+        {
+            count = partial.Count,
+            stats = partial.Select(x => new { label = x.Label, percent = Math.Round(x.Pct * 100, 1) }),
+            message = "Những chỉ số này mới đo được một phần vì đợt nạp bù chưa xong. Giữa chừng, "
+                    + "ai có ván đã nạp lại sẽ được cộng thêm còn ai chưa thì không — chênh lệch "
+                    + "đó đến từ THỨ TỰ NẠP chứ không phải từ lối chơi. Xếp hạng lúc này chưa "
+                    + "ổn định; đợi nạp bù xong rồi hãy tin thứ tự.",
+        };
+    }
+
     private static object? BiasWarning(FantasyConfig config)
     {
         var missing = config.UnsourcedStats;

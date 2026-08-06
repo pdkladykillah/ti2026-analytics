@@ -1933,7 +1933,7 @@ async function loadFantasyRoster() {
     const card = (p) => `<article class="kpi p3">
       <div class="kpi-label">${esc(p.positionName || p.slot)}</div>
       <div class="kpi-value">${esc(p.nick)}</div>
-      <div class="kpi-note">${esc(p.teamName || '—')}<br>${p.avgPerMatch} điểm/trận · ${p.matches} trận
+      <div class="kpi-note">${esc(p.teamName || '—')}<br>${p.bannerPoints} điểm banner · ${p.matches} trận
         ${p.banner ? `<br><span style="font-size:.9em">${bannerSlots(p.banner)}</span>` : ''}</div>
     </article>`;
 
@@ -1969,6 +1969,8 @@ async function loadFantasyRoster() {
         <div>${esc(b.note || '')}</div>
       </div>` : ''}
 
+      ${partialNote(d.partial)}
+
       ${(d.shortfall || []).length ? `<div class="note warn" style="margin-top:var(--s-3)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
         <div>Chưa đủ người cho vài suất: ${d.shortfall.map((s) => esc(s)).join(' · ')}</div>
@@ -1991,6 +1993,17 @@ async function loadFantasyRoster() {
  * TRỐNG (chưa đo được chỉ số nào của màu đó) phải trông khác hẳn ô có số — nếu không thì một
  * banner mới nạp được một phần sẽ trông y hệt một banner đầy đủ nhưng điểm thấp.
  */
+/** Cảnh báo xếp hạng chưa ổn định trong lúc nạp bù — xem PartialWarning phía máy chủ. */
+function partialNote(p) {
+  if (!p || !p.count) return '';
+  const list = p.stats.map((s) => `${esc(s.label)} <b>${s.percent}%</b>`).join(' · ');
+
+  return `<div class="note warn" style="margin-top:var(--s-4)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+    <div><b>Đang nạp bù — thứ hạng chưa ổn định.</b><br>${list}<br><br>${esc(p.message)}</div>
+  </div>`;
+}
+
 function bannerSlots(b) {
   if (!b) return '<span class="na">—</span>';
 
@@ -2048,6 +2061,8 @@ async function loadFantasyPlayers() {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
+
+      ${partialNote(d.partial)}
 
       <div class="note warn" style="margin-top:var(--s-4)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>

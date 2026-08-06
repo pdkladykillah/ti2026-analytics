@@ -58,7 +58,8 @@ public static class FantasyEndpoints
     private sealed record ScoredPlayer(
         int PlayerId, string Nick, int? Position, int Games, int Matches,
         double? Average, List<FantasyGameScore> Games_,
-        int? TeamId = null, string? TeamName = null);
+        int? TeamId = null, string? TeamName = null,
+        IReadOnlyDictionary<string, double>? SuffixRate = null);
 
     public static void MapFantasyEndpoints(this IEndpointRouteBuilder app)
     {
@@ -485,8 +486,12 @@ public static class FantasyEndpoints
             var scoredNow = await ScorePlayersAsync(db, config, days);
             var scoredTi = await ScorePlayersAsync(db, config, days, Ti2025LeagueId);
 
-            var now = BuildLineup(scoredNow, config, colors);
-            var ti2025 = BuildLineup(scoredTi, config, colors);
+            var prefixPct = LoadPrefixPercentages(paths);
+            var prefixMeta = LoadTitleTable(paths, "prefixes");
+            var suffixMeta = LoadTitleTable(paths, "suffixes");
+
+            var now = BuildLineup(scoredNow, config, colors, prefixPct, prefixMeta, suffixMeta);
+            var ti2025 = BuildLineup(scoredTi, config, colors, prefixPct, prefixMeta, suffixMeta);
 
             // Hai cửa sổ có thể đang ở hai mức schema khác nhau. Khi đó cộng hai tổng ra để
             // cạnh nhau là mời người đọc kết luận sai, nên phải tự kiểm trước khi bày ra.
@@ -502,10 +507,17 @@ public static class FantasyEndpoints
                 bias = BiasWarning(config),
                 partial = PartialWarning(config, Coverage(scoredNow)),
 
-                // Danh hiệu áp cho CẢ đội hình, nên chỉ chọn được sau khi đã có đội hình
-                prefix = PrefixForLineup(
-                    now.Roster, LoadPrefixPercentages(paths), LoadTitleTable(paths, "prefixes")),
+                // Danh hiệu ĐÃ tham gia phép chọn ở trên, không phải tính sau
+                prefix = now.Prefix,
+                suffix = now.Suffix,
+                basePoints = now.BasePoints,
                 projectedTotal = now.Total,
+
+                titleNote = "Prefix và suffix được chọn CÙNG LÚC với đội hình, không phải sau: "
+                    + "một danh hiệu áp cho cả năm người nên giá trị của nó phụ thuộc vào việc "
+                    + "chọn ai. Tier và trait cố tình KHÔNG tham gia — chúng là thứ quay trúng "
+                    + "chứ không phải thứ chọn được, và nhân vào mọi ứng viên như nhau nên không "
+                    + "đổi được nên chọn ai.",
                 shortfall = now.Shortfall,
 
                 // Mốc đối chiếu: đội hình cao nhất CỦA CHÍNH TI2025, chấm bằng hệ số TI2026.
@@ -583,6 +595,14 @@ public static class FantasyEndpoints
                 mp.StunSeconds, mp.TeamfightParticipation,
                 mp.TowerKills, mp.RoshanKills, mp.CourierKills, mp.FirstBloodClaimed,
                 mp.Lotuses, mp.Watchers, mp.Smokes, mp.MadstoneBundles, mp.TormentorKills,
+
+                // Điều kiện suffix, đo THEO TỪNG NGƯỜI: chúng phụ thuộc đội, nên tỷ lệ chung
+                // của cả giải không dùng để chọn đội hình được. Đội hay thua thì "the Underdog"
+                // ăn nhiều hơn; đội kết thúc nhanh thì "the Decisive" ăn nhiều hơn.
+                Lost = mp.IsRadiant != mp.Match.RadiantWin,
+                mp.Match.DurationSeconds,
+                mp.Match.FirstBloodTimeSeconds,
+                mp.DeathsToTormentor,
             })
             .ToListAsync();
 
@@ -617,6 +637,33 @@ public static class FantasyEndpoints
                     .OrderByDescending(x => x.Count())
                     .FirstOrDefault();
 
+                // Tỷ lệ thoả từng điều kiện suffix, tính trên chính các ván của người này.
+                // Ván không rõ mốc first blood (OpenDota trả 0) bị loại khỏi mẫu của hai điều
+                // kiện liên quan, chứ không đếm thành "first blood rất sớm".
+                var n = g.Count();
+                var fbKnown = g.Count(r => r.FirstBloodTimeSeconds is not null and not 0);
+                var tormKnown = g.Count(r => r.DeathsToTormentor is not null);
+
+                var suffixRate = new Dictionary<string, double>
+                {
+                    ["underdog"] = 100.0 * g.Count(r => r.Lost) / n,
+                    ["decisive"] = 100.0 * g.Count(r => r.DurationSeconds < FantasySuffix.DecisiveMaxSeconds) / n,
+                    ["lucky"] = 100.0 * g.Count(r => FantasySuffix.LuckyBySecond(r.DurationSeconds)) / n,
+                };
+
+                if (fbKnown > 0)
+                {
+                    suffixRate["patient"] = 100.0 * g.Count(r =>
+                        r.FirstBloodTimeSeconds is int fb and not 0
+                        && fb >= FantasySuffix.PatientFirstBloodSeconds) / fbKnown;
+
+                    suffixRate["flayedTwins"] = 100.0 * g.Count(r =>
+                        r.FirstBloodTimeSeconds is int fb2 && fb2 < 0) / fbKnown;
+                }
+
+                if (tormKnown > 0)
+                    suffixRate["tormented"] = 100.0 * g.Count(r => r.DeathsToTormentor is > 0) / tormKnown;
+
                 return new ScoredPlayer(
                     g.Key.PlayerId, g.Key.Nick,
                     top?.Key,
@@ -625,7 +672,8 @@ public static class FantasyEndpoints
                     FantasyScorer.AverageMatchScore(games, config.CountBestGames),
                     games,
                     team?.Key,
-                    team is null ? null : teamNames.GetValueOrDefault(team.Key));
+                    team is null ? null : teamNames.GetValueOrDefault(team.Key),
+                    suffixRate);
             })
             .Where(p => p.Matches >= (leagueId is null ? MinMatchesForRanking : MinMatchesForTiBaseline)
                         && p.Average != null)
@@ -699,65 +747,32 @@ public static class FantasyEndpoints
     /// Gói kết quả xếp đội hình thành JSON. Luật xếp nằm ở <see cref="FantasyLineup"/> chứ
     /// không phải ở đây — tầng HTTP chỉ định dạng, không giữ luật chơi.
     /// </summary>
-    /// <summary>
-    /// Prefix tốt nhất cho một đội hình cụ thể. Trả null khi chưa ai trong đội hình có dữ liệu
-    /// hero pool — không có dữ liệu thì không xếp hạng, chứ không xếp hạng toàn số 0.
-    /// </summary>
-    private static object? PrefixForLineup(
-        IReadOnlyList<(string Nick, double Points)> roster,
-        Dictionary<string, Dictionary<string, double>> pctByNick,
-        Dictionary<string, TitleMeta> prefixMeta)
-    {
-        if (roster.Count == 0 || prefixMeta.Count == 0) return null;
-
-        var players = roster
-            .Select(r => new PrefixPlayer(
-                r.Nick, r.Points, pctByNick.GetValueOrDefault(Player.MakeNickKey(r.Nick))))
-            .ToList();
-
-        if (players.All(p => p.PercentByPrefix is null)) return null;
-
-        var ranked = FantasyPrefix.Rank(
-            players, prefixMeta.ToDictionary(kv => kv.Key, kv => kv.Value.Bonus));
-
-        return new
-        {
-            best = ranked[0].Key,
-            bestLabel = prefixMeta.GetValueOrDefault(ranked[0].Key).Label,
-            options = ranked.Select(o => new
-            {
-                key = o.Key,
-                label = prefixMeta.GetValueOrDefault(o.Key).Label,
-                bonusPercent = o.BonusPercent,
-                condition = prefixMeta.GetValueOrDefault(o.Key).Condition,
-                expectedPoints = o.ExpectedPoints,
-                expectedPercentOfTotal = o.ExpectedPercentOfTotal,
-            }),
-            playersCovered = ranked[0].PlayersCovered,
-            playersTotal = ranked[0].PlayersTotal,
-
-            note = "Cộng theo ĐIỂM chứ không lấy trung bình tỷ lệ: cùng một prefix, hợp với "
-                 + "người ghi nhiều điểm thì đáng hơn hẳn. Tỷ lệ hero là số ĐẾM TAY chép từ dự "
-                 + "án gốc — OpenDota không phân loại màu hero nên phần này không tự cập nhật "
-                 + "được khi tuyển thủ đổi hero pool.",
-        };
-    }
-
     private sealed record LineupJson(
-        List<object> Picked, double Total, IReadOnlyList<string> Shortfall,
+        List<object> Picked, double BasePoints, double Total, IReadOnlyList<string> Shortfall,
+        object? Prefix, object? Suffix,
         List<(string Nick, double Points)> Roster);
 
     private static LineupJson BuildLineup(
-        List<ScoredPlayer> scored, FantasyConfig config, Dictionary<string, List<string>> colors)
+        List<ScoredPlayer> scored, FantasyConfig config, Dictionary<string, List<string>> colors,
+        Dictionary<string, Dictionary<string, double>> prefixPct,
+        Dictionary<string, TitleMeta> prefixMeta,
+        Dictionary<string, TitleMeta> suffixMeta)
     {
         // Xếp đội hình theo ĐIỂM BANNER, không phải tổng 18 chỉ số. Hai bảng xếp hạng này khác
         // nhau thật sự: tổng 18 ưu ái người giỏi đều, còn luật chỉ trả cho ba ô đúng màu.
         var banners = scored.ToDictionary(p => p.PlayerId, p => BannerOf(p, config, colors));
         var allStats = scored.ToDictionary(p => p.PlayerId, p => p.Average);
 
-        var result = FantasyLineup.Build(scored.Select(p => new LineupCandidate(
-            p.PlayerId, p.Nick, p.Position, p.TeamId, p.TeamName,
-            banners[p.PlayerId]?.BasePoints, p.Matches)));
+        // Danh hiệu tham gia CHÍNH phép chọn, không tính sau: một prefix áp cho cả năm người
+        // nên giá trị của nó phụ thuộc vào việc chọn ai.
+        var result = FantasyLineup.Build(
+            scored.Select(p => new LineupCandidate(
+                p.PlayerId, p.Nick, p.Position, p.TeamId, p.TeamName,
+                banners[p.PlayerId]?.BasePoints, p.Matches,
+                prefixPct.GetValueOrDefault(Player.MakeNickKey(p.Nick)),
+                p.SuffixRate)),
+            prefixMeta.ToDictionary(kv => kv.Key, kv => kv.Value.Bonus),
+            suffixMeta.ToDictionary(kv => kv.Key, kv => kv.Value.Bonus));
 
         var picked = result.Picks.Select(x => (object)new
         {
@@ -778,8 +793,18 @@ public static class FantasyEndpoints
             banner = BannerJson(banners.GetValueOrDefault(x.Player.PlayerId)),
         }).ToList();
 
+        object? Title(TitleChoice? t, Dictionary<string, TitleMeta> meta) => t is null ? null : new
+        {
+            key = t.Value.Key,
+            label = meta.GetValueOrDefault(t.Value.Key).Label ?? t.Value.Key,
+            bonusPercent = t.Value.BonusPercent,
+            condition = meta.GetValueOrDefault(t.Value.Key).Condition,
+            expectedPoints = t.Value.ExpectedPoints,
+        };
+
         return new LineupJson(
-            picked, result.Total, result.Shortfall,
+            picked, result.BasePoints, result.Total, result.Shortfall,
+            Title(result.Prefix, prefixMeta), Title(result.Suffix, suffixMeta),
             result.Picks.Select(x => (x.Player.Nick, x.Player.Average ?? 0)).ToList());
     }
 

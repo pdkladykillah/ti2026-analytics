@@ -2014,7 +2014,7 @@ async function loadFantasyTitles() {
         <div>Đo trên <b>${d.sampleGames}</b> ván. ${esc(d.suffixNote || '')}</div>
       </div>
 
-      ${prefixNote(opt?.prefix)}
+      ${opt ? titleNote(opt) : ''}
 
       <div class="note warn" style="margin-top:var(--s-3)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
@@ -2285,9 +2285,11 @@ async function loadFantasyRoster() {
         <article class="kpi p2">
           <div class="kpi-label">Tổng điểm dự kiến</div>
           <div class="kpi-value">${d.projectedTotal}</div>
-          <div class="kpi-note">mỗi trận, cộng cả đội hình</div>
+          <div class="kpi-note">điểm gốc ${d.basePoints} + danh hiệu ${Math.round((d.projectedTotal - d.basePoints) * 100) / 100}</div>
         </article>
       </div>
+
+      ${titleNote(d)}
 
       ${partialNote(d.partial)}
 
@@ -2319,29 +2321,29 @@ async function loadFantasyRoster() {
  * Hiện cả bảng chứ không chỉ cái tốt nhất: khoảng cách giữa hạng nhất và hạng nhì mới cho biết
  * lựa chọn này có chắc hay không. Chênh 2 điểm thì chọn cái nào cũng như nhau.
  */
-function prefixNote(p) {
-  if (!p) return '';
-  const thieu = p.playersCovered < p.playersTotal;
+/**
+ * Danh hiệu đã được chọn CÙNG LÚC với đội hình, nên hiện nó cạnh đội hình chứ không phải như
+ * một bảng tra cứu rời. Người đọc cần thấy ngay: đội hình này đi với danh hiệu nào, và danh
+ * hiệu đó đóng góp bao nhiêu điểm.
+ */
+function titleNote(d) {
+  const cell = (t, kind) => t ? `<article class="kpi p3">
+      <div class="kpi-label">${kind}</div>
+      <div class="kpi-value">${esc(t.label || t.key)}</div>
+      <div class="kpi-note">+${t.bonusPercent}% khi ${esc(t.condition || 'thoả điều kiện')}<br>
+        <b>+${t.expectedPoints}</b> điểm kỳ vọng cho đội hình này</div>
+    </article>` : `<article class="kpi p3">
+      <div class="kpi-label">${kind}</div>
+      <div class="kpi-value"><span class="na">chưa đủ dữ liệu</span></div>
+    </article>`;
 
-  const rows = p.options.map((o, i) => `<tr${i === 0 ? ' style="font-weight:600"' : ''}>
-    <td>${esc(o.label || o.key)}</td>
-    <td class="num">+${o.bonusPercent}%</td>
-    <td class="num">${o.expectedPoints}</td>
-    <td class="num">${o.expectedPercentOfTotal}%</td>
-    <td>${esc(o.condition || '')}</td>
-  </tr>`).join('');
+  if (!d.prefix && !d.suffix) return '';
 
-  return `<h3 style="margin-top:var(--s-6)">Prefix hợp nhất với đội hình này</h3>
-    <div class="table-scroll"><table>
-      <thead><tr>
-        <th scope="col">Prefix</th><th scope="col">Thưởng</th>
-        <th scope="col">Điểm kỳ vọng</th><th scope="col">% tổng</th><th scope="col">Điều kiện</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    <div class="note${thieu ? ' warn' : ''}" style="margin-top:var(--s-3)">
+  return `<h3 style="margin-top:var(--s-6)">Danh hiệu đi kèm đội hình này</h3>
+    <div class="bento">${cell(d.prefix, 'Prefix')}${cell(d.suffix, 'Suffix')}</div>
+    <div class="note" style="margin-top:var(--s-3)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
-      <div>${thieu ? `<b>Mới có dữ liệu hero pool của ${p.playersCovered}/${p.playersTotal} người trong đội hình</b> — con số dưới đây tính thiếu.<br>` : ''}${esc(p.note || '')}</div>
+      <div>${esc(d.titleNote || '')}</div>
     </div>`;
 }
 

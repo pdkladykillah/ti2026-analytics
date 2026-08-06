@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
+using Ti2026.Ingest.Analytics;
 
 namespace Ti2026.Web.Endpoints;
 
@@ -64,7 +65,41 @@ public static class TrendEndpoints
 
             // Ngày không có snapshot thì KHUYẾT DÒNG, không trả 0. Một số 0 giả sẽ vẽ thành
             // cú sụt phong độ không hề tồn tại — phía client phải ngắt đường ở chỗ khuyết.
-            return Results.Ok(rows);
+            //
+            // Kèm NHẬN ĐỊNH cho từng đội thay vì chỉ trả dữ liệu vẽ. Một biểu đồ đường bắt
+            // người xem tự nhìn dốc rồi tự kết luận, và hai người nhìn cùng một đường có thể
+            // nói hai điều khác nhau — trả lời là việc của hệ thống.
+            var verdicts = rows
+                .GroupBy(r => new { r.teamSlug, r.teamName })
+                .Select(g =>
+                {
+                    var elo = g.Where(x => x.elo is not null).Select(x => x.elo!.Value).ToList();
+                    var wr = g.Select(x => x.winrate).ToList();
+
+                    var eloRead = TrendVerdict.Read(elo, "Elo");
+                    var wrRead = TrendVerdict.Read(wr, "Winrate");
+
+                    return new
+                    {
+                        teamSlug = g.Key.teamSlug,
+                        teamName = g.Key.teamName,
+                        elo = new { eloRead.Direction, eloRead.Change, eloRead.Ratio, eloRead.Text },
+                        winrate = new { wrRead.Direction, wrRead.Change, wrRead.Ratio, wrRead.Text },
+                    };
+                })
+                // Chuyển biến rõ nhất lên đầu: đó là thứ người đọc cần thấy trước
+                .OrderByDescending(v => v.elo.Ratio)
+                .ToList();
+
+            return Results.Ok(new
+            {
+                points = rows,
+                verdicts,
+                method = "Nhận định bằng cách khớp đường thẳng rồi so TỔNG THAY ĐỔI với chính "
+                       + "độ nhiễu của chuỗi, không phải với một ngưỡng cố định. Một chỉ số dao "
+                       + "động mạnh cần dốc lớn hơn hẳn mới đáng gọi là xu hướng; chỉ số vốn êm "
+                       + "thì thay đổi nhỏ đã có nghĩa.",
+            });
         });
     }
 }

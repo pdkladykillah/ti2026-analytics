@@ -650,15 +650,8 @@ const SERIES_COLORS = [
 ];
 
 function setupForm() {
-  $$('#form-controls .pill').forEach((btn) => {
-    btn.onclick = () => {
-      state.formWindow = Number(btn.dataset.window);
-      $$('#form-controls .pill').forEach((b) =>
-        b.setAttribute('aria-pressed', String(b === btn)));
-      loadForm();
-    };
-  });
-
+  // Không còn nút 30/90/180 ngày. "Phong độ" nghĩa là phong độ HIỆN TẠI, nên cửa sổ 30 ngày
+  // là câu trả lời — bày ba nút là bắt người đọc tự so ba biểu đồ rồi tự kết luận.
   $('#form-metric').onchange = (e) => {
     state.formMetric = e.target.value;
     loadForm();
@@ -672,15 +665,15 @@ async function loadForm() {
   body.innerHTML = '<div class="skeleton" style="height:280px"></div>';
 
   try {
-    const rows = await getJson(`api/trend?window=${state.formWindow}`);
-    renderForm(rows);
+    const d = await getJson(`api/trend?window=${state.formWindow}`);
+    renderForm(d.points || [], d);
   } catch (err) {
     body.className = '';
     body.innerHTML = `<div class="error">Không tải được <code>api/trend</code>.<br><small>${esc(err.message)}</small></div>`;
   }
 }
 
-function renderForm(rows) {
+function renderForm(rows, meta) {
   const body = $('#form-body');
   const metric = state.formMetric;
 
@@ -786,16 +779,65 @@ function renderForm(rows) {
       `<button type="button" data-slug="${esc(s.slug)}" aria-pressed="${!state.formHidden.has(s.slug)}">
          <span class="swatch" style="background:${s.color}"></span>${esc(s.name)}
        </button>`).join('')}</div>
-    <p class="desc" style="margin-top:var(--s-3)">Bấm vào tên đội để ẩn/hiện đường của đội đó.</p>`;
+    <p class="desc" style="margin-top:var(--s-3)">Bấm vào tên đội để ẩn/hiện đường của đội đó.</p>
+    ${verdictTable(meta)}`;
 
   $$('#form-body .legend button').forEach((btn) => {
     btn.onclick = () => {
       const slug = btn.dataset.slug;
       if (state.formHidden.has(slug)) state.formHidden.delete(slug);
       else state.formHidden.add(slug);
-      renderForm(rows);
+      renderForm(rows, meta);
     };
   });
+}
+
+/**
+ * Nhận định của hệ thống, đặt NGAY DƯỚI biểu đồ.
+ *
+ * Biểu đồ bày dữ liệu; bảng này trả lời. Hai người nhìn cùng một đường có thể kết luận khác
+ * nhau, nên việc đọc dốc là việc của máy — và máy nói rõ nó dựa vào đâu: tổng thay đổi so với
+ * chính độ nhiễu của chuỗi.
+ */
+function verdictTable(meta) {
+  const v = meta && meta.verdicts;
+  if (!v || !v.length) return '';
+
+  const chip = (x) => {
+    const cls = x.direction === 'đang lên' ? 'up' : x.direction === 'đang xuống' ? 'down' : '';
+    return `<span class="trend ${cls}">${esc(x.direction)}</span>`;
+  };
+
+  // Chỉ nêu đội THẬT SỰ có chuyển biến. Liệt kê cả 16 đội với 13 dòng "đi ngang" là quay lại
+  // đúng vấn đề cũ: bắt người đọc tự lọc.
+  const moving = v.filter((x) => x.elo.direction === 'đang lên' || x.elo.direction === 'đang xuống');
+
+  if (!moving.length) {
+    return `<div class="note" style="margin-top:var(--s-4)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+      <div><b>Không đội nào có xu hướng tách được khỏi nhiễu.</b><br>${esc(meta.method || '')}</div>
+    </div>`;
+  }
+
+  return `<h3 style="margin-top:var(--s-5)">Hệ thống nhận định</h3>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">Đội</th><th scope="col">Elo</th>
+        <th scope="col">Thay đổi</th><th scope="col">So với nhiễu</th><th scope="col">Winrate</th>
+      </tr></thead>
+      <tbody>${moving.map((x) => `<tr>
+        <td>${esc(x.teamName)}</td>
+        <td>${chip(x.elo)}</td>
+        <td class="num">${x.elo.change > 0 ? '+' : ''}${x.elo.change}</td>
+        <td class="num">${x.elo.ratio}×</td>
+        <td>${chip(x.winrate)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <div class="note" style="margin-top:var(--s-3)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+      <div>Chỉ nêu đội có xu hướng tách được khỏi nhiễu — ${v.length - moving.length}/${v.length}
+      đội còn lại đang đi ngang.<br><br>${esc(meta.method || '')}</div>
+    </div>`;
 }
 
 /* ============================ Dự đoán ============================ */

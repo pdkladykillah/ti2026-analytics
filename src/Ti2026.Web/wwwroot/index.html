@@ -247,8 +247,45 @@
       <div class="card">
         <header>
           <h2>Biến động phong độ theo thời gian</h2>
-          <p class="desc">Dữ liệu tích luỹ từ các lần cập nhật. Ngày không có dữ liệu thì đường bị ngắt — không nối thẳng qua.</p>
+          <p class="desc">Dữ liệu tích luỹ từ các lần cập nhật. Ngày không có dữ liệu thì đường bị ngắt — không nối thẳng qua. Bên dưới biểu đồ là <b>nhận định của hệ thống</b>: đội nào thật sự đang lên hay đang xuống, chứ không bắt bạn tự nhìn dốc.</p>
         </header>
+        <div class="controls">
+          <label class="sr-only" for="form-metric">Chỉ số</label>
+          <select id="form-metric">
+            <option value="winrate">Winrate (%)</option>
+            <option value="killDiff">Chênh lệch K–D</option>
+            <option value="kills">Kills trung bình</option>
+            <option value="deaths">Deaths trung bình</option>
+            <option value="totalKills">Tổng kills mỗi trận</option>
+            <option value="duration">Thời lượng (phút)</option>
+            <option value="elo">Elo (sức mạnh)</option>
+          </select>
+        </div>
+        <div id="form-body"></div>
+      </div>
+    </section>
+
+    <!-- ===== Tier list ===== -->
+    <section class="view" id="view-tiers" role="tabpanel" aria-labelledby="tab-tiers" hidden>
+      <div class="card" data-sec="Tính từ dữ liệu">
+        <header>
+          <h2>Tier list tính từ dữ liệu</h2>
+          <p class="desc" id="tl-desc">Tính lại mỗi vòng ingest từ chính bản game đang chạy. Tự chuyển sang bản mới khi có ván đầu tiên của bản đó.</p>
+        </header>
+        <div class="controls" id="tl-source">
+          <button class="pill" type="button" data-src="pro" aria-pressed="true">Chỉ giải chuyên nghiệp</button>
+          <button class="pill" type="button" data-src="combined" aria-pressed="false">Gộp giải + pub</button>
+        </div>
+        <div class="controls" id="tl-positions"></div>
+        <div id="tl-body"></div>
+      </div>
+
+      <div class="card" data-sec="Biên tập (đóng băng)">
+        <header>
+          <h2>Tier list hero theo vị trí</h2>
+          <p class="desc" id="tier-patch"></p>
+        </header>
+        <div class="controls" id="tier-positions"></div>
         <div class="controls">
           <label class="sr-only" for="tier-search">Tìm hero</label>
           <input type="search" id="tier-search" placeholder="Tìm hero…" autocomplete="off">

@@ -44,7 +44,36 @@ nhưng **vẫn phải kiểm lại sau mỗi lần sửa Caddyfile**, không đ�
 | File | Vì sao |
 |---|---|
 | `/opt/phuongkhanh/docker-compose.override.yml` | Giữ caddy trong network `web`. Untracked nên `git pull --ff-only` của CI bên kia không bị ảnh hưởng. Chỉ dùng `docker network connect` thì lần `compose up -d` sau sẽ tạo lại caddy và mất kết nối |
-| `/opt/ti2026/.env` | Chứa `TI2026_INGEST_TOKEN` |
+| `/opt/ti2026/.env` | Chứa `TI2026_INGEST_TOKEN` và `TI2026_OPENDOTA_API_KEY`. `chmod 600`, đã có trong `.gitignore` — **không bao giờ commit** |
+
+### API key của OpenDota
+
+Không bắt buộc. Thiếu key thì app vẫn chạy ở bậc miễn phí; có key thì đổi hẳn về quy mô:
+
+| | Không key | Có key |
+|---|---|---|
+| Trần ngày | 3000 request | không có |
+| Nhịp cho phép | 60/phút | 3000/phút |
+| Nhịp ta dùng | 0,8 req/s | 8 req/s (1/6 mức cho phép) |
+| Trần mỗi vòng | 300 ván | 2000 ván |
+| Nạp bù 1798 ván | hơn hai ngày | một vòng, vài phút |
+
+Giá: **$0,0001 mỗi request** — toàn bộ nạp bù 1798 ván tốn khoảng **$0,18**. Phản hồi 404, 429
+và 500 không bị tính tiền, nên luật dừng-sau-ba-lỗi của ta không tốn gì.
+
+Đặt key:
+
+```bash
+echo "TI2026_OPENDOTA_API_KEY=<key>" >> /opt/ti2026/.env
+chmod 600 /opt/ti2026/.env
+docker compose up -d --build
+```
+
+Kiểm đã ăn chưa — `api/ingest/status` báo `apiKey: "đang dùng"` và `requestsPerSecond: 8`.
+Endpoint đó **không bao giờ** trả về giá trị key: nó không cần xác thực.
+
+Key gửi qua header `Authorization: Bearer`, không phải `?api_key=`. Query param sẽ nằm lại
+trong log truy cập của nguồn, trong thông báo lỗi, và trong mọi chuỗi URL bị in ra khi gỡ lỗi.
 
 ⚠️ `/opt/phuongkhanh/Caddyfile` **đã bị sửa trực tiếp** để thêm khối tên miền, nên cây git
 ở đó đang bẩn. Bản gốc lưu tại `Caddyfile.bak-<ngày>`. Muốn sạch hẳn thì commit thay đổi này

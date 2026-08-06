@@ -669,7 +669,7 @@ public static class FantasyEndpoints
                     top?.Key,
                     games.Count,
                     FantasyScorer.MatchScores(games, config.CountBestGames).Count,
-                    FantasyScorer.AverageMatchScore(games, config.CountBestGames),
+                    FantasyScorer.WeightedAverageMatchScore(games, config.CountBestGames, DateTime.UtcNow),
                     games,
                     team?.Key,
                     team is null ? null : teamNames.GetValueOrDefault(team.Key),

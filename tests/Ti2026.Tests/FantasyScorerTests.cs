@@ -163,6 +163,53 @@ public class FantasyScorerTests
     public void Khong_co_tran_nao_thi_tra_null_chu_khong_phai_0()
     {
         FantasyScorer.AverageMatchScore([], 2).Should().BeNull();
+        FantasyScorer.WeightedAverageMatchScore([], 2, DateTime.UtcNow).Should().BeNull();
+    }
+
+    /// <summary>
+    /// Cân theo độ mới thay cho cửa sổ cắt cứng: trận gần đây nặng hơn trận cũ, và không có
+    /// vách vô lý ở mốc nào cả.
+    /// </summary>
+    [Fact]
+    public void Tran_gan_day_nang_hon_tran_cu()
+    {
+        var cfg = Config(("kills", 1, 1.0));
+        var now = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        FantasyGameScore At(int daysAgo, long series, double kills) =>
+            FantasyScorer.ScoreGame(
+                new FantasyGame(series, series, now.AddDays(-daysAgo),
+                    new Dictionary<string, double?> { ["kills"] = kills }), cfg);
+
+        // Trận cũ 10 điểm, trận mới 20 điểm. Trung bình thường ra 15.
+        var games = new[] { At(90, 1, 10), At(0, 2, 20) };
+
+        FantasyScorer.AverageMatchScore(games, 2).Should().Be(15);
+
+        var weighted = FantasyScorer.WeightedAverageMatchScore(games, 2, now, halfLifeDays: 30)!.Value;
+        weighted.Should().BeGreaterThan(15, "trận mới nặng hơn nên kéo trung bình lên");
+        weighted.Should().BeLessThan(20, "trận cũ vẫn còn đóng góp, không bị cắt bỏ");
+    }
+
+    /// <summary>
+    /// Hai trận cùng ngày thì cân hay không cân cũng ra một kết quả — phép cân không được tự
+    /// ý làm lệch khi không có gì để phân biệt.
+    /// </summary>
+    [Fact]
+    public void Cung_ngay_thi_can_hay_khong_can_deu_nhu_nhau()
+    {
+        var cfg = Config(("kills", 1, 1.0));
+        var now = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var games = new[]
+        {
+            FantasyScorer.ScoreGame(new FantasyGame(1, 1, now.AddDays(-5),
+                new Dictionary<string, double?> { ["kills"] = 10 }), cfg),
+            FantasyScorer.ScoreGame(new FantasyGame(2, 2, now.AddDays(-5),
+                new Dictionary<string, double?> { ["kills"] = 20 }), cfg),
+        };
+
+        FantasyScorer.WeightedAverageMatchScore(games, 2, now).Should().Be(15);
     }
 
     [Fact]

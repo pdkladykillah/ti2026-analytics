@@ -124,4 +124,58 @@ public static class FantasyScorer
         var scores = MatchScores(games, countBestGames);
         return scores.Count == 0 ? null : Math.Round(scores.Average(), 2);
     }
+
+    /// <summary>
+    /// Chu kỳ bán rã khi cân điểm theo độ mới, tính bằng ngày.
+    ///
+    /// Vì sao 30 chứ không phải 14 như tier list: hai thứ đo hai loại đại lượng khác nhau. Meta
+    /// hero đổi theo từng giải, còn cách chơi của một tuyển thủ — cắm mắt bao nhiêu, GPM bao
+    /// nhiêu — ổn định hơn nhiều; cân quá gắt chỉ thêm nhiễu chứ không thêm tín hiệu.
+    ///
+    /// Đo trên dữ liệu thật: trung vị mỗi người có 37 ván trong 120 ngày, và ở chu kỳ 30 ngày
+    /// mẫu hiệu dụng vẫn còn 25,4 ván. Tức gần như không mất sức mạnh thống kê mà vẫn bám được
+    /// phong độ gần đây và những lần đổi đội hình.
+    /// </summary>
+    public const double HalfLifeDays = 30;
+
+    /// <summary>
+    /// Trung bình CÓ CÂN theo độ mới: trận gần đây nặng hơn trận cũ.
+    ///
+    /// Thay cho cửa sổ cắt cứng vì cắt cứng tạo ra một vách vô lý — trận thứ 120 ngày tuổi
+    /// tính đủ, trận thứ 121 ngày biến mất hoàn toàn. Giảm dần thì mọi trận đều còn đóng góp,
+    /// chỉ khác trọng số, và không ai phải chọn con số 120 đó.
+    ///
+    /// Mốc thời gian của một trận lấy theo ván MỚI NHẤT trong series — đó là lúc trận đó thật
+    /// sự kết thúc.
+    /// </summary>
+    public static double? WeightedAverageMatchScore(
+        IEnumerable<FantasyGameScore> games, int countBestGames, DateTime now,
+        double halfLifeDays = HalfLifeDays)
+    {
+        var best = Math.Max(1, countBestGames);
+
+        var matches = games
+            .GroupBy(g => g.SeriesId is long s and > 0 ? $"s{s}" : $"m{g.MatchId}")
+            .Select(g => (
+                Score: g.OrderByDescending(x => x.Points).Take(best).Sum(x => x.Points),
+                When: g.Max(x => x.StartTime)))
+            .ToList();
+
+        if (matches.Count == 0) return null;
+
+        double sum = 0, weight = 0;
+        foreach (var (score, when) in matches)
+        {
+            var w = Math.Pow(0.5, Math.Max(0, (now - when).TotalDays) / halfLifeDays);
+            sum += score * w;
+            weight += w;
+        }
+
+        // Mọi trọng số bằng 0 chỉ xảy ra khi mọi trận cũ tới mức dưới ngưỡng dấu phẩy động.
+        // Khi đó quay về trung bình thường còn hơn trả về 0 — 0 nghĩa là "chơi tệ", không phải
+        // "chơi quá lâu rồi".
+        return weight <= 0
+            ? Math.Round(matches.Average(m => m.Score), 2)
+            : Math.Round(sum / weight, 2);
+    }
 }

@@ -58,7 +58,7 @@ public static class OpsEndpoints
         // ---------- Trạng thái scheduler ----------
         app.MapGet("/api/ingest/status", async (
             Ti2026DbContext db, IngestGate gate, IngestStatusTracker status,
-            IngestSchedule schedule) =>
+            IngestSchedule schedule, IOptions<Ti2026Options> cfg) =>
         {
             var raw = await db.IngestRuns
                 .OrderByDescending(r => r.StartedAt)
@@ -124,6 +124,12 @@ public static class OpsEndpoints
                     // là 200 trong khi trần thật đọc từ options — đổi cấu hình thì trang trạng
                     // thái vẫn báo 200, và mọi ước lượng "còn bao lâu xong" đều sai theo.
                     perRun = schedule.MaxMatchDetailsPerRun,
+
+                    // CHỈ báo có key hay không, tuyệt đối không trả về giá trị key. Endpoint
+                    // này không cần xác thực, nên mọi thứ ở đây coi như công khai.
+                    apiKey = cfg.Value.OpenDota.HasKey ? "đang dùng" : "chưa cấu hình",
+                    requestsPerSecond = cfg.Value.OpenDota.EffectiveRequestsPerSecond,
+
                     estimatedRunsLeft = schedule.MaxMatchDetailsPerRun <= 0
                         ? (int?)null
                         : (int)Math.Ceiling((double)pending / schedule.MaxMatchDetailsPerRun),

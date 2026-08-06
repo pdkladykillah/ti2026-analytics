@@ -36,8 +36,18 @@ builder.Services.AddHttpClient<OpenDotaClient>(c =>
         c.BaseAddress = new Uri(options.OpenDota.BaseUrl);
         c.Timeout = TimeSpan.FromSeconds(30);
         c.DefaultRequestHeaders.UserAgent.ParseAdd(options.Dltv.UserAgent);
+
+        // Bearer chứ không phải ?api_key= : query param sẽ nằm lại trong log truy cập của
+        // nguồn, trong thông báo lỗi của ta, và trong mọi chuỗi URL bị in ra khi gỡ lỗi.
+        if (options.OpenDota.HasKey)
+        {
+            c.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue(
+                    "Bearer", options.OpenDota.ApiKey);
+        }
     })
-    .AddHttpMessageHandler(() => new RateLimitedHandler(options.OpenDota.RequestsPerSecond));
+    .AddHttpMessageHandler(() =>
+        new RateLimitedHandler(options.OpenDota.EffectiveRequestsPerSecond));
 
 builder.Services.AddSingleton(new MediaPaths(paths.MediaDirectory));
 
@@ -60,7 +70,11 @@ builder.Services.AddScoped<IngestPipeline>();
 builder.Services.AddSingleton(new IngestSchedule(
     Interval: TimeSpan.FromHours(Math.Max(options.IngestIntervalHours, 1)),
     InitialDelay: TimeSpan.FromSeconds(30),
-    MaxMatchDetailsPerRun: Math.Max(options.MaxMatchDetailsPerRun, 1)));
+    MaxMatchDetailsPerRun: Math.Max(
+        options.OpenDota.HasKey
+            ? options.MaxMatchDetailsPerRunWithKey
+            : options.MaxMatchDetailsPerRun,
+        1)));
 
 // Bật scheduler chỉ khi có cấu hình rõ ràng. Test dùng WebApplicationFactory sẽ không chạy
 // ingest ngoài ý muốn, và người vận hành có thể tắt hẳn để chỉ chạy tay qua api/ingest/run.

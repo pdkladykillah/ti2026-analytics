@@ -45,6 +45,13 @@ public class Ti2026Options
     /// </summary>
     public int MaxMatchDetailsPerRun { get; set; } = 300;
 
+    /// <summary>
+    /// Trần mỗi vòng khi CÓ API key. Cao hơn nhiều vì trần ngày biến mất và nhịp nhanh gấp
+    /// mười: 2000 ván ở 8 req/giây mất khoảng bốn phút — vẫn NGẮN HƠN một vòng 300 ván ở nhịp
+    /// miễn phí, nên transaction không hề mở lâu hơn hiện nay.
+    /// </summary>
+    public int MaxMatchDetailsPerRunWithKey { get; set; } = 2000;
+
     /// <summary>Bắt buộc ở Production — bảo vệ POST api/ingest/run.</summary>
     public string? IngestToken { get; set; }
 
@@ -71,7 +78,33 @@ public class OpenDotaOptions
     /// </summary>
     public double RequestsPerSecond { get; set; } = 0.8;
 
+    /// <summary>
+    /// Nhịp khi CÓ API key. Bậc trả tiền cho 3000 request/phút (tức 50/giây) và không giới
+    /// hạn tổng, nhưng ta chỉ dùng 8/giây — bằng 1/6 mức cho phép.
+    ///
+    /// Không chạy sát trần vì không có lý do: 8/giây đã nạp xong 1798 ván trong khoảng bốn
+    /// phút, và chỗ dư đó là biên an toàn cho những lúc nguồn chậm. Ép lên 50/giây chỉ để
+    /// tiết kiệm ba phút là đánh đổi tồi.
+    /// </summary>
+    public double RequestsPerSecondWithKey { get; set; } = 8;
+
+    /// <summary>
+    /// API key của OpenDota. Gỡ trần 3000 request/ngày và nâng nhịp lên 3000/phút.
+    ///
+    /// KHÔNG BAO GIỜ đặt giá trị thật vào đây hay vào appsettings trong git — nạp qua biến
+    /// môi trường <c>Ti2026__OpenDota__ApiKey</c>, giống Ti2026__IngestToken.
+    ///
+    /// Gửi bằng header Authorization chứ không phải query param: query param sẽ nằm lại trong
+    /// log truy cập, trong thông báo lỗi và trong mọi chuỗi URL bị in ra.
+    /// </summary>
+    public string? ApiKey { get; set; }
+
     public string BaseUrl { get; set; } = "https://api.opendota.com/api/";
+
+    public bool HasKey => !string.IsNullOrWhiteSpace(ApiKey);
+
+    /// <summary>Nhịp thực tế: có key thì nhanh, không thì giữ mức tôn trọng bậc miễn phí.</summary>
+    public double EffectiveRequestsPerSecond => HasKey ? RequestsPerSecondWithKey : RequestsPerSecond;
 }
 
 public class DltvOptions

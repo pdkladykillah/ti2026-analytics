@@ -38,9 +38,25 @@ public static class H2hEndpoints
                          .Where(x => x.Key is not null)
                          .GroupBy(x => x.Key!))
             {
+                // VÁN và TRẬN là hai con số khác nhau, và trước đây chỉ có một con số duy nhất
+                // tên là `n` — UI đọc nó rồi ghi "71 trận" trong khi 71 là số ván, còn số trận
+                // thật chỉ là 32. Một Bo3 đếm thành ba trận thì mọi cặp đấu trông như đã gặp
+                // nhau gấp đôi ba lần thực tế.
+                var games = group.Count();
+                var withSeries = group.Where(x => x.Match.SeriesId is long s && s > 0).ToList();
+                var seriesCount = withSeries.Select(x => x.Match.SeriesId).Distinct().Count()
+                                  + (games - withSeries.Count);
+
                 pairs[group.Key] = new
                 {
-                    n = group.Count(),
+                    // Giữ tên `n` cho tương thích, nhưng thêm hai tên nói rõ nó là gì
+                    n = games,
+                    games,
+                    seriesCount,
+
+                    firstMet = group.Min(x => x.Match.StartTime).ToString("yyyy-MM-dd"),
+                    lastMet = group.Max(x => x.Match.StartTime).ToString("yyyy-MM-dd"),
+
                     series = group.Select(x => new object[]
                     {
                         x.Match.StartTime.ToString("yyyy-MM-dd"),
@@ -55,7 +71,12 @@ public static class H2hEndpoints
             {
                 updatedAt = DateTime.UtcNow,
                 source = "OpenDota",
-                window = "6 tháng gần nhất",
+
+                // "6 tháng gần nhất" là SAI và đã sai từ đầu: truy vấn ở trên không hề có bộ
+                // lọc thời gian. Cặp Falcons–Liquid trải từ 12/2023 tới nay. Đối đầu thì cố ý
+                // lấy toàn bộ lịch sử — vài lần gặp nhau trong sáu tháng là quá ít để nói gì —
+                // nhưng nhãn phải nói đúng điều đang làm.
+                window = "toàn bộ lịch sử đã nạp",
                 order = Order,
                 pairs,
             });

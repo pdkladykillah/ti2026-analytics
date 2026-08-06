@@ -168,6 +168,40 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
         ], "phải khớp đúng field order của h2h.json hiện tại");
     }
 
+    /// <summary>
+    /// VÁN và TRẬN phải là hai con số riêng, và nhãn cửa sổ phải nói đúng điều đang làm.
+    ///
+    /// Trước đây endpoint chỉ trả một con số tên `n`, UI đọc nó rồi ghi "71 trận" — trong khi 71
+    /// là số VÁN, còn số trận thật chỉ 32. Một Bo3 đếm thành ba trận thì mọi cặp đấu trông như
+    /// đã gặp nhau gấp ba lần thực tế.
+    ///
+    /// Và nhãn `window` từng ghi "6 tháng gần nhất" dù truy vấn không có bộ lọc thời gian nào —
+    /// cặp Falcons–Liquid trải từ 12/2023. Một nhãn sai về phạm vi dữ liệu làm sai mọi kết luận
+    /// rút ra từ nó.
+    /// </summary>
+    [Fact]
+    public async Task api_h2h_tach_rieng_so_van_va_so_tran_va_khai_dung_pham_vi()
+    {
+        using var doc = JsonDocument.Parse(
+            await factory.CreateClient().GetStringAsync("/api/h2h"));
+
+        doc.RootElement.GetProperty("window").GetString()
+            .Should().NotContain("6 tháng", "truy vấn không hề lọc theo thời gian");
+
+        foreach (var pair in doc.RootElement.GetProperty("pairs").EnumerateObject())
+        {
+            var games = pair.Value.GetProperty("games").GetInt32();
+            var seriesCount = pair.Value.GetProperty("seriesCount").GetInt32();
+
+            seriesCount.Should().BeLessThanOrEqualTo(games,
+                "một trận gồm một hoặc nhiều ván, nên số trận không thể lớn hơn số ván");
+            seriesCount.Should().BeGreaterThan(0);
+
+            pair.Value.TryGetProperty("firstMet", out _).Should().BeTrue();
+            pair.Value.TryGetProperty("lastMet", out _).Should().BeTrue();
+        }
+    }
+
     [Fact]
     public async Task api_tiers_va_api_players_phuc_vu_duoc_du_lieu_bien_tap()
     {

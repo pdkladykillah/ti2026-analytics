@@ -540,15 +540,32 @@ function renderH2h() {
   const key = [A.slug, B.slug].sort().join('|');
   const series = pairs[key];
 
+  // Hiện HẾT các ván trong một vùng cuộn, không cắt còn 10.
+  //
+  // Bản trước cắt `slice(0, 10)` nhưng nhãn vẫn ghi tổng số — nên trang nói "71 trận" rồi bày
+  // ra 10 dòng, và không có chữ nào cho biết là đã cắt. Người đọc chỉ có thể kết luận là dữ
+  // liệu bị thiếu.
+  //
+  // Và "71 trận" cũng sai đơn vị: 71 là số VÁN, còn số trận thật là 32. Một Bo3 đếm thành ba
+  // trận thì mọi cặp đấu trông như đã gặp nhau gấp ba lần thực tế.
   const history = series && series.series && series.series.length
     ? `<div style="margin-top:var(--s-5);padding-top:var(--s-4);border-top:1px solid var(--border)">
-         <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:var(--s-3)">
-           Lịch sử đối đầu · ${series.n} trận</h3>
-         ${series.series.slice(0, 10).map((row) => `<div class="h2h-row" style="grid-template-columns:1fr auto 1fr;padding:7px 0;border-bottom:1px solid var(--border)">
-             <span style="font-size:12.5px;color:var(--ink-2)">${esc(row[0])}</span>
-             <span class="num" style="font-weight:700">${esc(row[2])} – ${esc(row[3])}</span>
-             <span style="font-size:11.5px;color:var(--muted);text-align:right">${esc(row[1])}</span>
-           </div>`).join('')}
+         <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:var(--s-2)">
+           Lịch sử đối đầu · ${series.seriesCount ?? '?'} trận · ${series.games ?? series.n} ván</h3>
+         <p class="desc" style="margin:0 0 var(--s-3)">Toàn bộ lịch sử đã nạp${series.firstMet
+            ? `, từ <b>${esc(series.firstMet)}</b> tới <b>${esc(series.lastMet)}</b>` : ''} —
+            cuộn trong bảng để xem hết.</p>
+         <div class="table-scroll"><table>
+           <caption class="sr-only">Từng ván đối đầu giữa hai đội</caption>
+           <thead><tr>
+             <th scope="col">Ngày</th><th scope="col">Tỷ số</th><th scope="col">Giải</th>
+           </tr></thead>
+           <tbody>${series.series.map((row) => `<tr>
+             <td>${esc(row[0])}</td>
+             <td class="num"><b>${esc(row[2])} – ${esc(row[3])}</b></td>
+             <td>${esc(row[1])}</td>
+           </tr>`).join('')}</tbody>
+         </table></div>
        </div>`
     : `<div class="empty" style="margin-top:var(--s-4)">Chưa có lịch sử đối đầu giữa hai đội này.
          Dữ liệu trận sẽ có sau khi pipeline nạp được từ OpenDota.</div>`;

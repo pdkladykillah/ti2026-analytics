@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
+using Ti2026.Ingest.Analytics;
 using Ti2026.Ingest;
 using Ti2026.Ingest.Http;
 using Ti2026.Ingest.Media;
@@ -52,6 +53,7 @@ builder.Services.AddScoped<OpenDotaIngester>();
 builder.Services.AddScoped<MatchDetailIngester>();
 builder.Services.AddScoped<ProPubIngester>();
 builder.Services.AddScoped<SnapshotWriter>();
+builder.Services.AddScoped<PredictionLedger>();
 builder.Services.AddScoped<IngestOrchestrator>();
 builder.Services.AddScoped<IngestPipeline>();
 

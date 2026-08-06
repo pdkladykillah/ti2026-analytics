@@ -375,6 +375,102 @@ public static class AnalyticsEndpoints
         });
 
         // ---------- Hiệu chuẩn dự đoán (hồi tố, ngoài mẫu) ----------
+        // ---------- Sổ theo dõi: mô hình nói TRƯỚC, rồi đối chiếu ----------
+        //
+        // Khác hẳn /calibration ở ngay dưới. Chỗ đó chấm lại trên dữ liệu ĐÃ CÓ, mà tham số thì
+        // đã được chọn khi đã nhìn thấy chính những trận ấy — nên nó luôn đẹp hơn thực tế.
+        // Chỗ này chỉ đếm những dự đoán được ghi TRƯỚC khi trận diễn ra. Không dựng lại được
+        // sau: Elo đã thay đổi theo chính các trận đó.
+        api.MapGet("/ledger", async (Ti2026DbContext db) =>
+        {
+            var rows = await db.Predictions
+                .Where(p => p.ResolvedMatchId != null && p.TeamAWon != null)
+                .Select(p => new
+                {
+                    p.ProbabilityA, p.TeamAWon, p.CreatedAt, p.ResolvedAt,
+                    A = p.TeamA!.Name, B = p.TeamB!.Name,
+                })
+                .OrderByDescending(p => p.ResolvedAt)
+                .ToListAsync();
+
+            var open = await db.Predictions.CountAsync(p => p.ResolvedMatchId == null);
+            var first = await db.Predictions
+                .OrderBy(p => p.CreatedAt)
+                .Select(p => (DateTime?)p.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (rows.Count == 0)
+                return Results.Ok(new
+                {
+                    ready = false,
+                    resolved = 0,
+                    open,
+                    recordingSince = first,
+                    note = first is null
+                        ? "Sổ chưa ghi dòng nào. Vòng nạp tiếp theo sẽ mở sổ."
+                        : "Đã mở sổ nhưng chưa trận nào trong 16 đội diễn ra kể từ lúc đó. "
+                          + "Con số sẽ tự xuất hiện — không cần làm gì thêm.",
+                });
+
+            // Brier: trung bình bình phương sai số. 0 là hoàn hảo; đoán bừa 50% mọi trận ra 0,25.
+            var brier = rows.Average(r =>
+            {
+                var p = r.ProbabilityA / 100.0;
+                var actual = r.TeamAWon!.Value ? 1.0 : 0.0;
+                return (p - actual) * (p - actual);
+            });
+
+            // Đường hiệu chuẩn: trong những lần mô hình nói "70%", thực tế thắng bao nhiêu phần?
+            // Lệch nhiều nghĩa là mô hình đang nói dối, và đây là chỗ duy nhất thấy được.
+            var buckets = rows
+                .GroupBy(r => Math.Min(9, (int)(Math.Max(r.ProbabilityA, 100 - r.ProbabilityA) / 10)))
+                .Select(g =>
+                {
+                    // Quy về "phía được mô hình ưu tiên" để hai nửa đối xứng không triệt tiêu nhau
+                    var hits = g.Count(r => (r.ProbabilityA >= 50) == r.TeamAWon!.Value);
+                    return new
+                    {
+                        band = $"{g.Key * 10}–{g.Key * 10 + 9}%",
+                        said = Math.Round(g.Average(r => Math.Max(r.ProbabilityA, 100 - r.ProbabilityA)), 1),
+                        actual = Math.Round(100.0 * hits / g.Count(), 1),
+                        count = g.Count(),
+                    };
+                })
+                .OrderBy(x => x.band)
+                .ToList();
+
+            var correct = rows.Count(r => (r.ProbabilityA >= 50) == r.TeamAWon!.Value);
+
+            return Results.Ok(new
+            {
+                ready = true,
+                resolved = rows.Count,
+                open,
+                recordingSince = first,
+                brier = Math.Round(brier, 4),
+                accuracy = Math.Round(100.0 * correct / rows.Count, 1),
+                buckets,
+                recent = rows.Take(20).Select(r => new
+                {
+                    r.A, r.B,
+                    saidPercentA = r.ProbabilityA,
+                    aWon = r.TeamAWon,
+                    hit = (r.ProbabilityA >= 50) == r.TeamAWon!.Value,
+                    r.CreatedAt, r.ResolvedAt,
+                }),
+
+                note = "Chỉ tính những dự đoán được ghi TRƯỚC khi trận diễn ra. Mỗi dự đoán chấm "
+                     + "theo ván ĐẦU TIÊN giữa hai đội sau thời điểm ghi — cố tình không chấm mọi "
+                     + "ván của một series, vì ba ván trong cùng một Bo3 không độc lập với nhau và "
+                     + "gộp cả ba sẽ làm mẫu trông lớn gấp ba.",
+
+                caveat = rows.Count < 30
+                    ? $"Mới {rows.Count} dự đoán được chấm — quá ít để kết luận. Điểm Brier cần "
+                      + "vài chục trận mới ổn định."
+                    : null,
+            });
+        });
+
         api.MapGet("/calibration", async (Ti2026DbContext db) =>
         {
             var ratedList = await RatedMatchesAsync(db);

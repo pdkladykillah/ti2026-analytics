@@ -1,4 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Ti2026.Data;
+using Ti2026.Ingest.Analytics;
 using Ti2026.Ingest.OpenDota;
 using Ti2026.Ingest.Snapshots;
 
@@ -10,10 +13,34 @@ public class IngestPipeline(
     MatchDetailIngester matchDetails,
     ProPubIngester proPub,
     SnapshotWriter snapshots,
+    PredictionLedger ledger,
+    Ti2026DbContext db,
     IngestSchedule schedule,
     IngestGate gate,
     ILogger<IngestPipeline> logger)
 {
+    /// <summary>
+    /// Chấm dự đoán cũ rồi ghi dự đoán mới, đọc Elo từ snapshot vừa tính xong.
+    /// Trả về tổng số dòng đã đụng tới, để orchestrator ghi vào lịch sử vòng chạy.
+    /// </summary>
+    private async Task<int> PredictionLedgerAsync(CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var resolved = await ledger.ResolveAsync(now, ct);
+
+        var latest = await db.TeamStatSnapshots
+            .Where(s => s.WindowDays == 180)
+            .MaxAsync(s => (DateOnly?)s.CapturedOn, ct);
+
+        if (latest is null) return resolved;
+
+        var elo = await db.TeamStatSnapshots
+            .Where(s => s.CapturedOn == latest && s.WindowDays == 180 && s.Elo != null)
+            .ToDictionaryAsync(s => s.TeamId, s => s.Elo!.Value, ct);
+
+        return resolved + await ledger.SnapshotAsync(elo, now, ct);
+    }
+
     /// <summary>
     /// Chạy một vòng, CHỜ tới lượt nếu đang có vòng khác. Dành cho scheduler — nó không có ai
     /// ngồi đợi phản hồi nên chờ là hành vi đúng.
@@ -70,6 +97,14 @@ public class IngestPipeline(
             "snapshot",
             c => snapshots.WriteAsync(DateOnly.FromDateTime(DateTime.UtcNow), c),
             SanityKind.None, ct);
+
+        // Sổ theo dõi dự đoán. Đặt SAU snapshot vì nó đọc Elo vừa tính xong — ghi trước thì
+        // sổ luôn chậm một vòng so với mô hình đang phục vụ trang.
+        //
+        // Chấm TRƯỚC rồi mới ghi: chấm trước thì những dự đoán cũ đã có kết quả được đóng lại,
+        // nên bước ghi không coi chúng là "bản ghi chưa chấm gần nhất" và bỏ qua nhầm.
+        await orchestrator.RunSourceAsync(
+            "prediction-ledger", PredictionLedgerAsync, SanityKind.None, ct);
 
         logger.LogInformation("Kết thúc vòng ingest");
     }

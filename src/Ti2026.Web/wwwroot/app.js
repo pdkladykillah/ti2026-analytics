@@ -828,7 +828,81 @@ async function setupPredict() {
 
   loadPredict();
   loadCalibration();
+  loadLedger();
   loadPatches();
+}
+
+/**
+ * Sổ theo dõi. Khi chưa có dòng nào thì vẫn phải nói rõ ĐANG GHI TỪ BAO GIỜ — một mục trống
+ * không kèm ngày mở sổ trông y hệt một tính năng hỏng.
+ */
+async function loadLedger() {
+  const body = $('#ledger-body');
+  body.innerHTML = '<div class="skeleton" style="height:150px"></div>';
+
+  try {
+    const d = await getJson('api/ledger');
+    const since = d.recordingSince
+      ? new Date(d.recordingSince).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+      : null;
+
+    if (!d.ready) {
+      body.innerHTML = `<div class="empty">${esc(d.note || '')}</div>
+        <div class="bento" style="margin-top:var(--s-4)">
+          <article class="kpi p2">
+            <div class="kpi-label">Đang chờ kết quả</div>
+            <div class="kpi-value">${d.open}</div>
+            <div class="kpi-note">${since ? 'mở sổ từ ' + esc(since) : 'chưa mở sổ'}</div>
+          </article>
+        </div>`;
+      return;
+    }
+
+    // Cột "mô hình nói" và "thực tế" đặt cạnh nhau: lệch bao nhiêu mới là câu trả lời,
+    // chứ không phải từng con số riêng lẻ.
+    const rows = d.buckets.map((b) => `<tr>
+      <td>${esc(b.band)}</td>
+      <td class="num">${b.said}%</td>
+      <td class="num">${b.actual}%</td>
+      <td class="num">${(b.actual - b.said).toFixed(1)}</td>
+      <td class="num">${b.count}</td>
+    </tr>`).join('');
+
+    body.innerHTML = `
+      <div class="bento">
+        <article class="kpi p2">
+          <div class="kpi-label">Điểm Brier</div>
+          <div class="kpi-value">${d.brier}</div>
+          <div class="kpi-note">0 là hoàn hảo · đoán bừa 50% ra 0,25</div>
+        </article>
+        <article class="kpi p2">
+          <div class="kpi-label">Đoán đúng bên thắng</div>
+          <div class="kpi-value">${d.accuracy}%</div>
+          <div class="kpi-note">${d.resolved} dự đoán đã chấm · ${d.open} đang chờ</div>
+        </article>
+      </div>
+
+      ${d.caveat ? `<div class="note warn" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+        <div>${esc(d.caveat)}</div>
+      </div>` : ''}
+
+      <h3 style="margin-top:var(--s-5)">Nói bao nhiêu, thực tế bao nhiêu</h3>
+      <div class="table-scroll"><table>
+        <thead><tr>
+          <th scope="col">Mức tự tin</th><th scope="col">Mô hình nói</th>
+          <th scope="col">Thực tế</th><th scope="col">Lệch</th><th scope="col">Số trận</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>Mở sổ từ ${esc(since || '—')}. ${esc(d.note || '')}</div>
+      </div>`;
+  } catch (err) {
+    body.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
+  }
 }
 
 async function loadCalibration() {

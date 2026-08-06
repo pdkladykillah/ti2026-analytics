@@ -93,6 +93,13 @@ public class MatchPlayer
     /// <summary>Hoa sen QUY VỀ hoa sen gốc: Great tính 3, Greater tính 6 theo luật ghép.</summary>
     public int? Lotuses { get; set; }
 
+    /// <summary>
+    /// Hoa sen đếm theo MÓN: một Greater tính là 1. Giữ song song với <see cref="Lotuses"/>
+    /// vì chưa biết Valve đếm kiểu nào, và hai cách chênh tới 6 lần. Có sẵn cả hai thì lúc
+    /// biết chắc chỉ cần đổi một dòng trong fantasy.json, không phải nạp lại toàn bộ.
+    /// </summary>
+    public int? LotusItems { get; set; }
+
     /// <summary>Số lần chiếm watcher (ability_lamp_use).</summary>
     public int? Watchers { get; set; }
 

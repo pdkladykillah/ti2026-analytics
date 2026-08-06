@@ -99,20 +99,21 @@
       "otherworldly": { "label": "Otherworldly", "bonus": 7,  "dieuKien": "chơi hero undead, quỷ hoặc linh hồn" },
       "heroic":       { "label": "Heroic",       "bonus": 9,  "dieuKien": "chơi hero đeo mặt nạ hoặc khoác áo choàng" }
     },
+    "_suffixNote": "nhom = cách bản luật gốc xếp loại. 'on-dinh' là điều kiện gần như tự đến; 'ne-ra' là điều kiện BẤT LỢI mà ta không muốn xảy ra; 'hen-xui' là thuần may rủi. Cột 'doDuoc' ghi ta có tự tính được xác suất từ dữ liệu thật hay không.",
     "suffixes": {
-      "tormented":   { "label": "the Tormented",           "bonus": 23 },
-      "flayedTwins": { "label": "the Flayed Twins Acolyte", "bonus": 9 },
-      "patient":     { "label": "the Patient",             "bonus": 23 },
-      "underdog":    { "label": "the Underdog",            "bonus": 6 },
-      "decisive":    { "label": "the Decisive",            "bonus": 24 },
-      "clutch":      { "label": "the Clutch",              "bonus": 16 },
-      "lucky":       { "label": "the Lucky",               "bonus": 21 },
-      "cruel":       { "label": "the Cruel",               "bonus": 13 }
+      "tormented":   { "label": "the Tormented",            "bonus": 23, "nhom": "ne-ra",    "dieuKien": "có người trong đội hình chết vì Tormentor", "doDuoc": "killed_by.npc_dota_miniboss" },
+      "flayedTwins": { "label": "the Flayed Twins Acolyte", "bonus": 9,  "nhom": "ne-ra",    "dieuKien": "first blood xảy ra TRƯỚC tiếng còi khai cuộc", "doDuoc": "first_blood_time âm" },
+      "patient":     { "label": "the Patient",              "bonus": 23, "nhom": "ne-ra",    "dieuKien": "KHÔNG có first blood trước phút 10", "doDuoc": "first_blood_time >= 600" },
+      "underdog":    { "label": "the Underdog",             "bonus": 6,  "nhom": "on-dinh",  "dieuKien": "đội của người đó THUA ván này", "doDuoc": "kết quả ván" },
+      "decisive":    { "label": "the Decisive",             "bonus": 24, "nhom": "ne-ra",    "dieuKien": "ván kết thúc trước phút 25", "doDuoc": "duration < 1500" },
+      "clutch":      { "label": "the Clutch",               "bonus": 16, "nhom": "on-dinh",  "dieuKien": "ván cuối cùng có thể có của một trận", "doDuoc": "vị trí ván trong series" },
+      "lucky":       { "label": "the Lucky",                "bonus": 21, "nhom": "hen-xui",  "dieuKien": "số phút của thời lượng ván tận cùng bằng 8", "doDuoc": "duration" },
+      "cruel":       { "label": "the Cruel",                "bonus": 13, "nhom": "hen-xui",  "dieuKien": "có người bị giết ngay tại fountain nhà mình", "doDuoc": null }
     }
   },
 
   "_cauHoiConBoNgo": {
-    "lotusDemTheoMonHayTheoBongGoc": "Đây là điều chưa chắc chắn LỚN NHẤT của cả mô hình. Ta đang quy Great = 3 và Greater = 6 bông gốc, vì luật ghép của Dota là vậy và vì chữ dùng trong luật là 'Lotuses Collected' — nhặt thì nhặt từng bông gốc. Nếu Valve thật ra đếm theo MÓN trong túi thì ta đang thổi phồng chỉ số này tối đa 6 lần, và nó là chỉ số 176 điểm nên sai số không nhỏ. Kiểm bằng cách đối chiếu điểm fantasy thật của một tuyển thủ trong ván đầu TI với điểm ta tính.",
+    "lotusDemTheoMonHayTheoBongGoc": "Điều chưa chắc chắn LỚN NHẤT của cả mô hình, và giờ đã có thêm bằng chứng: dự án gốc — nơi bảng hệ số này lấy về — đếm theo MÓN, và số trung bình họ công bố cho người hỗ trợ là 380 điểm, trong khi cách quy về bông gốc của ta ra khoảng 1250. Chênh đúng cỡ hệ số ghép (3 và 6). Ta vẫn để mặc định là bông gốc vì luật ghi 'Lotuses Collected' mà nhặt thì nhặt từng bông, nhưng ĐÃ NẠP SẴN CẢ HAI cột: đổi 'field' của lotuses từ 'Lotuses' sang 'LotusItems' là xong, không phải nạp lại 1798 ván. Kiểm dứt điểm bằng cách đối chiếu điểm fantasy thật của một tuyển thủ trong ván đầu TI với điểm ta tính.",
     "roshanDemDu": "Ván mẫu 8926048199 có đúng 2 Roshan chết, nhưng tổng trường roshan_kills của 10 người là 3, còn tổng killed[npc_dota_roshan] là 2. Mới một ván nên chưa đổi hẳn; bên nạp đang ghi log mỗi lần hai nguồn lệch để còn biết chuyện này phổ biến đến đâu."
   },
 

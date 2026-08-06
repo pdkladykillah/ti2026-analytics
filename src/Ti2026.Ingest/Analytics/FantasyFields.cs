@@ -31,6 +31,24 @@ public static class FantasyFields
               + Get(itemUses, "greater_famango") * GreaterLotusInBase;
 
     /// <summary>
+    /// Hoa sen đếm theo MÓN, không quy về bông gốc — một Greater tính là 1.
+    ///
+    /// Tồn tại song song với <see cref="Lotuses"/> vì chưa ai biết Valve đếm kiểu nào, và hai
+    /// cách chênh nhau tới 6 lần trên một chỉ số 176 điểm. Dự án gốc — nơi bảng hệ số của ta
+    /// lấy về — đếm theo MÓN; số trung bình của họ cho người hỗ trợ là 380 điểm, còn cách quy
+    /// về bông gốc của ta ra khoảng 1250, tức lệch đúng cỡ hệ số ghép.
+    ///
+    /// Nạp cả hai để lúc TI bắt đầu chỉ cần đổi MỘT dòng "field" trong fantasy.json là xong,
+    /// không phải nạp lại 1798 ván.
+    /// </summary>
+    public static int? LotusItems(IReadOnlyDictionary<string, int>? itemUses) =>
+        itemUses is null
+            ? null
+            : Get(itemUses, "famango")
+              + Get(itemUses, "great_famango")
+              + Get(itemUses, "greater_famango");
+
+    /// <summary>
     /// Watcher = cột đèn. Tên nội bộ là <c>ability_lamp_use</c>, nằm ở <c>ability_uses</c>
     /// chứ không phải <c>item_uses</c> — không có chữ "watcher" nào trong payload, nên tìm
     /// theo tên hiển thị thì không bao giờ ra.

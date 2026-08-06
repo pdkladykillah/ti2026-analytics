@@ -34,8 +34,10 @@ public class MatchDetailIngester(
     ///     luận nhầm là "OpenDota không có". Chúng nằm trong item_uses/ability_uses/killed.
     /// 6 = Roshan đếm lại từ killed[npc_dota_roshan] vì trường roshan_kills đếm dư (đã kiểm
     ///     ba chiều với objectives trên hai ván). Nâng ở đây để mọi ván đã nạp được sửa lại.
+    /// 7 = thêm hoa sen đếm theo MÓN, song song với cách quy về bông gốc — chưa ai biết Valve
+    ///     đếm kiểu nào và hai cách chênh 6 lần, nên nạp sẵn cả hai.
     /// </summary>
-    public const int SchemaVersion = 6;
+    public const int SchemaVersion = 7;
 
     /// <summary>
     /// Số lỗi LIÊN TIẾP thì dừng mẻ. Lỗi rải rác là chuyện thường (một ván OpenDota chưa parse
@@ -246,6 +248,7 @@ public class MatchDetailIngester(
             // Năm chỉ số từng tưởng là không có nguồn — xem FantasyFields để biết vì sao
             // tìm theo tên hiển thị thì không bao giờ thấy chúng.
             existing.Lotuses = FantasyFields.Lotuses(p.ItemUses);
+            existing.LotusItems = FantasyFields.LotusItems(p.ItemUses);
             existing.Watchers = FantasyFields.Watchers(p.AbilityUses);
             existing.Smokes = FantasyFields.Smokes(p.ItemUses);
             existing.MadstoneBundles = FantasyFields.MadstoneBundles(p.ItemUses);

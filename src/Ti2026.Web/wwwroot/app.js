@@ -1860,6 +1860,7 @@ async function loadFantasy() {
   loadFantasyConfig();
   loadFantasyRoster();
   loadFantasyPlayers();
+  loadFantasyCalc();
 }
 
 /**
@@ -1868,6 +1869,149 @@ async function loadFantasy() {
  * Nó tồn tại để trả lời đúng một câu: trang này đang tính hay đang chờ? Không có nó thì ba
  * thẻ trống bên dưới trông như lỗi, chứ không phải như "chưa tới lúc".
  */
+/* ---------------------------- Máy tính emblem ---------------------------- */
+
+/**
+ * Bộ emblem người dùng đang dựng. Giữ ở đây thay vì đọc lại từ DOM mỗi lần tính: ô nào cũng có
+ * ba thứ (chỉ số, tier, trait) và chúng ảnh hưởng lẫn nhau, nên một nguồn sự thật duy nhất.
+ */
+const calcState = { playerId: null, slots: [] };
+
+async function loadFantasyCalc() {
+  const body = $('#fantasy-calc');
+  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+
+  try {
+    const [cfg, players] = await Promise.all([
+      getJson('api/fantasy/config'),
+      getJson('api/fantasy/players'),
+    ]);
+
+    if (!cfg.ready || !players.ready || !players.players?.length) {
+      body.innerHTML = '<div class="empty">Chưa đủ dữ liệu để tính.</div>';
+      return;
+    }
+
+    calcState.cfg = cfg;
+    calcState.players = players.players;
+
+    // Mặc định lấy người đứng đầu và chính ba ô banner mà bảng xếp hạng đã chọn cho họ —
+    // để mở lên là đã thấy một ví dụ thật, không phải một biểu mẫu trống.
+    const first = players.players.find((p) => p.banner?.slots?.length) || players.players[0];
+    calcState.playerId = first.playerId;
+    calcState.slots = (first.banner?.slots || []).map((s) => ({
+      statKey: s.statKey, tier: 'I', trait: 'none',
+    }));
+
+    renderCalc();
+  } catch (err) {
+    body.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
+  }
+}
+
+function renderCalc() {
+  const body = $('#fantasy-calc');
+  const cfg = calcState.cfg;
+  const traits = Object.entries(cfg.traits || {}).filter(([k]) => !k.startsWith('_'));
+  const tiers = Object.entries(cfg.tiers || {}).filter(([k]) => !k.startsWith('_'));
+
+  const playerOpts = calcState.players
+    .map((p) => `<option value="${p.playerId}"${p.playerId === calcState.playerId ? ' selected' : ''}>${esc(p.nick)}${p.positionName ? ' · ' + esc(p.positionName) : ''}</option>`)
+    .join('');
+
+  const statOpts = (sel) => cfg.stats
+    .map((s) => `<option value="${esc(s.key)}"${s.key === sel ? ' selected' : ''}>${esc(s.label)}</option>`)
+    .join('');
+
+  const rows = calcState.slots.map((s, i) => `<div class="calc-slot">
+    <span class="calc-slot-n">Ô ${i + 1}</span>
+    <select data-calc="stat" data-i="${i}" aria-label="Chỉ số ô ${i + 1}">${statOpts(s.statKey)}</select>
+    <select data-calc="tier" data-i="${i}" aria-label="Tier ô ${i + 1}">
+      ${tiers.map(([k, v]) => `<option value="${esc(k)}"${k === s.tier ? ' selected' : ''}>Tier ${esc(k)} (+${v}%)</option>`).join('')}
+    </select>
+    <select data-calc="trait" data-i="${i}" aria-label="Trait ô ${i + 1}">
+      ${traits.map(([k, v]) => `<option value="${esc(k)}"${k === s.trait ? ' selected' : ''}>${esc(v.label || k)}</option>`).join('')}
+    </select>
+  </div>`).join('');
+
+  body.innerHTML = `
+    <div class="calc-head">
+      <label class="sr-only" for="calc-player">Tuyển thủ</label>
+      <select id="calc-player">${playerOpts}</select>
+    </div>
+    <div class="calc-slots">${rows}</div>
+    <div id="calc-result"></div>`;
+
+  $('#calc-player').addEventListener('change', (e) => {
+    calcState.playerId = Number(e.target.value);
+    runCalc();
+  });
+
+  body.querySelectorAll('[data-calc]').forEach((el) => {
+    el.addEventListener('change', (e) => {
+      const i = Number(e.target.dataset.i);
+      calcState.slots[i][e.target.dataset.calc] = e.target.value;
+      runCalc();
+    });
+  });
+
+  runCalc();
+}
+
+async function runCalc() {
+  const out = $('#calc-result');
+  const emblems = calcState.slots.map((s) => `${s.statKey}:${s.tier}:${s.trait}`).join(',');
+
+  try {
+    const d = await getJson(`api/fantasy/banner-score?playerId=${calcState.playerId}&emblems=${encodeURIComponent(emblems)}`);
+    if (!d.ready) { out.innerHTML = `<div class="empty">${esc(d.note || '')}</div>`; return; }
+
+    // Chênh lệch so với bản không trait là con số quyết định giữ hay quay lại, nên nó
+    // phải hiện thành một con số riêng chứ không bắt người đọc tự trừ.
+    const delta = Math.round((d.total - d.totalWithoutTraits) * 100) / 100;
+    const sign = delta >= 0 ? '+' : '';
+
+    out.innerHTML = `
+      <div class="bento" style="margin-top:var(--s-4)">
+        <article class="kpi p2">
+          <div class="kpi-label">Điểm banner</div>
+          <div class="kpi-value">${d.total}</div>
+          <div class="kpi-note">${esc(d.nick)}${d.positionName ? ' · ' + esc(d.positionName) : ''}</div>
+        </article>
+        <article class="kpi p2">
+          <div class="kpi-label">Trait đóng góp</div>
+          <div class="kpi-value">${sign}${delta}</div>
+          <div class="kpi-note">so với cùng bộ emblem không trait (${d.totalWithoutTraits})</div>
+        </article>
+      </div>
+
+      <div class="table-scroll" style="margin-top:var(--s-3)"><table>
+        <thead><tr>
+          <th scope="col">Ô</th><th scope="col">Chỉ số</th><th scope="col">Điểm gốc</th>
+          <th scope="col">Tier</th><th scope="col">Trait</th>
+          <th scope="col">Hệ số trait</th><th scope="col">Tổng hệ số</th><th scope="col">Điểm</th>
+        </tr></thead>
+        <tbody>${d.slots.map((s) => `<tr>
+          <td>${s.slot + 1}</td>
+          <td>${esc(s.statLabel)}</td>
+          <td class="num">${s.basePoints}</td>
+          <td class="num">+${s.tierBonusPercent}%</td>
+          <td>${esc(s.trait)}</td>
+          <td class="num">×${s.traitFactor}</td>
+          <td class="num">×${s.factor}</td>
+          <td class="num"><b>${s.points}</b></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+
+      <div class="note" style="margin-top:var(--s-3)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div>${esc(d.note || '')}</div>
+      </div>`;
+  } catch (err) {
+    out.innerHTML = `<div class="error">${esc(err.serverMessage || err.message)}</div>`;
+  }
+}
+
 async function loadFantasyConfig() {
   const state = $('#fantasy-state');
   const body = $('#fantasy-config');

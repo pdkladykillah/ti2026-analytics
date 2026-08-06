@@ -63,6 +63,14 @@ public static class FantasyEndpoints
                 slots = LoadSlots(paths).Select(s => new { group = s.Key, count = s.Value }),
                 slotsConfirmed = SlotsConfirmed(paths),
                 bias = BiasWarning(config),
+
+                // Đi thẳng từ fantasy.json để UI khỏi khai lại lần thứ hai
+                tiers = LoadSection(paths, "tiers"),
+                traits = LoadSection(paths, "traits"),
+                titles = LoadSection(paths, "titles"),
+                bannerSlotColors = LoadSection(paths, "bannerSlotColors"),
+                bannerSlotColorsPlayoff = LoadSection(paths, "bannerSlotColorsPlayoff"),
+
                 stats = config.Stats.Select(s => new { s.Key, s.Label, s.Per, s.Points, s.Color, sourced = !string.IsNullOrEmpty(s.Field) }),
 
                 // Giới hạn của NGUỒN, không phải của bảng hệ số — điền hệ số cũng không cứu được
@@ -152,6 +160,99 @@ public static class FantasyEndpoints
         });
 
         MapOptimize(api);
+        MapBannerScore(api);
+    }
+
+    /// <summary>
+    /// Máy tính banner: đưa vào bộ emblem ĐÃ QUAY RA của một tuyển thủ, trả về điểm.
+    ///
+    /// Đây mới là thứ dùng được lúc chơi thật. Tier và trait là thứ quay trúng chứ không phải
+    /// thứ chọn được, nên "bộ emblem tốt nhất" không phải một lựa chọn có thật — cái người chơi
+    /// cần là biết bộ mình vừa quay ra đáng bao nhiêu, để quyết định giữ hay quay lại.
+    ///
+    /// Truyền qua query cho dễ chia sẻ link: emblems=stat:tier:trait,stat:tier:trait,...
+    /// </summary>
+    private static void MapBannerScore(RouteGroupBuilder api)
+    {
+        api.MapGet("/banner-score", async (
+            Ti2026DbContext db, Ti2026Paths paths, int playerId, string emblems, int days = 120) =>
+        {
+            var config = LoadConfig(paths, out var error);
+            if (config is null || !config.Ready)
+                return Results.Ok(new { ready = false, note = error ?? "Bảng hệ số chưa điền đủ." });
+
+            var parsed = ParseEmblems(emblems);
+            if (parsed.Count == 0)
+                return Results.Ok(new
+                {
+                    ready = false,
+                    note = "Chưa nhận được emblem nào. Định dạng: emblems=wards:III:vampiric,teamfight:I:none",
+                });
+
+            var scored = await ScorePlayersAsync(db, config, days);
+            var player = scored.FirstOrDefault(p => p.PlayerId == playerId);
+            if (player is null)
+                return Results.Ok(new { ready = false, note = "Không có tuyển thủ này trong cửa sổ đang xét." });
+
+            var statPoints = config.Stats.ToDictionary(s => s.Key, s => AvgPart(player.Games_, s.Key));
+            var rows = FantasyTraits.Score(parsed, statPoints);
+
+            // Đối chiếu với bản KHÔNG trait: người đọc phải thấy trait đóng góp bao nhiêu, vì
+            // đó chính là thứ quyết định nên giữ hay quay lại.
+            var noTrait = FantasyTraits.Total(
+                parsed.Select(e => e with { Trait = "none" }).ToList(), statPoints);
+
+            var byColor = config.Stats.ToDictionary(s => s.Key, s => s.Color);
+
+            return Results.Ok(new
+            {
+                ready = true,
+                playerId,
+                nick = player.Nick,
+                position = player.Position,
+                positionName = player.Position is int pos ? PositionInference.Name(pos) : null,
+
+                total = rows.Sum(x => x.Points),
+                totalWithoutTraits = noTrait,
+
+                slots = rows.Select(x => new
+                {
+                    slot = x.Slot,
+                    statKey = x.StatKey,
+                    statLabel = config.Stats.FirstOrDefault(s => s.Key == x.StatKey).Label ?? x.StatKey,
+                    color = byColor.GetValueOrDefault(x.StatKey),
+                    tier = x.Tier,
+                    trait = x.Trait,
+                    basePoints = x.BaseValue,
+                    tierBonusPercent = x.TierBonusPercent,
+                    traitFactor = x.TraitFactor,
+                    factor = x.Factor,
+                    points = x.Points,
+                }),
+
+                note = "Trait nhân SAU tier. Benevolent và vampiric tác động sang ô KỀ BÊN, nên "
+                     + "thứ tự đặt emblem có ảnh hưởng thật — vampiric ở đầu banner chỉ rút của "
+                     + "một hàng xóm thay vì hai.",
+            });
+        });
+    }
+
+    /// <summary>
+    /// Đọc "stat:tier:trait,stat:tier:trait". Thiếu phần nào thì mặc định tier I / trait none —
+    /// một chuỗi gõ vội vẫn ra kết quả, thay vì lỗi.
+    /// </summary>
+    private static List<Emblem> ParseEmblems(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+
+        return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => part.Split(':', StringSplitOptions.TrimEntries))
+            .Where(bits => bits.Length > 0 && bits[0].Length > 0)
+            .Select(bits => new Emblem(
+                bits[0],
+                bits.Length > 1 ? bits[1] : "I",
+                bits.Length > 2 ? bits[2] : "none"))
+            .ToList();
     }
 
     /// <summary>
@@ -624,6 +725,24 @@ public static class FantasyEndpoints
             statLabel = x.StatLabel, points = x.BasePoints,
         }),
     };
+
+    /// <summary>
+    /// Trả nguyên khối một mục của fantasy.json cho UI dựng danh sách chọn.
+    ///
+    /// Đi thẳng từ tệp thay vì khai lại thành kiểu C#: thêm một trait hay một suffix vào
+    /// fantasy.json là UI tự có, không phải sửa hai nơi rồi quên mất một nơi.
+    /// </summary>
+    private static JsonElement? LoadSection(Ti2026Paths paths, string name)
+    {
+        try
+        {
+            var doc = JsonDocument.Parse(File.ReadAllText(paths.EditorialFile("fantasy.json")));
+            if (doc.RootElement.TryGetProperty(name, out var el)) return el.Clone();
+        }
+        catch (Exception ex) when (ex is JsonException or IOException) { }
+
+        return null;
+    }
 
     private static Dictionary<string, int> LoadSlots(Ti2026Paths paths)
     {

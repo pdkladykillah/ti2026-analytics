@@ -742,3 +742,20 @@ tr.row-current .chip {
 /* Tiêu đề bảng bấm được: con trỏ và vùng bấm phải nói rõ nó là nút */
 thead th[data-sort-ready] { cursor: pointer; user-select: none; }
 thead th[data-sort-ready]:hover { color: var(--accent-ink); background: var(--surface-2); }
+
+/* ---- Máy tính emblem ----
+   Ba ô xếp hàng ngang là có chủ đích: benevolent và vampiric tác động sang ô KỀ BÊN, nên
+   người dùng phải nhìn thấy thứ tự vật lý của các ô thì mới hiểu vì sao đổi chỗ lại đổi điểm. */
+.calc-head { margin-bottom: var(--s-3); }
+.calc-head select { max-width: 22rem; }
+
+.calc-slots { display: grid; gap: var(--s-3); }
+@media (min-width: 720px) { .calc-slots { grid-template-columns: repeat(3, 1fr); } }
+
+.calc-slot {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.calc-slot select { width: 100%; }
+.calc-slot-n { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }

@@ -549,22 +549,22 @@ function renderH2h() {
   // Và "71 trận" cũng sai đơn vị: 71 là số VÁN, còn số trận thật là 32. Một Bo3 đếm thành ba
   // trận thì mọi cặp đấu trông như đã gặp nhau gấp ba lần thực tế.
   const history = series && series.series && series.series.length
-    ? `<div style="margin-top:var(--s-5);padding-top:var(--s-4);border-top:1px solid var(--border)">
+    ? `${verdictH2h(series, A, B)}
+       <div style="margin-top:var(--s-5);padding-top:var(--s-4);border-top:1px solid var(--border)">
          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:var(--s-2)">
-           Lịch sử đối đầu · ${series.seriesCount ?? '?'} trận · ${series.games ?? series.n} ván</h3>
-         <p class="desc" style="margin:0 0 var(--s-3)">Toàn bộ lịch sử đã nạp${series.firstMet
+           Toàn bộ lịch sử · ${series.seriesCount ?? '?'} trận · ${series.games ?? series.n} ván</h3>
+         <p class="desc" style="margin:0 0 var(--s-3)">Kể cả ván của đội hình cũ${series.firstMet
             ? `, từ <b>${esc(series.firstMet)}</b> tới <b>${esc(series.lastMet)}</b>` : ''} —
-            cuộn trong bảng để xem hết.</p>
+            dòng mờ là ván KHÔNG tính vào nhận định ở trên.</p>
          <div class="table-scroll"><table>
-           <caption class="sr-only">Từng ván đối đầu giữa hai đội</caption>
+           <caption class="sr-only">Từng ván đối đầu giữa hai đội, kèm số người của đội hình TI2026 có mặt</caption>
            <thead><tr>
-             <th scope="col">Ngày</th><th scope="col">Tỷ số</th><th scope="col">Giải</th>
+             <th scope="col">Ngày</th>
+             <th scope="col">Tỷ số<br><small style="font-weight:400;color:var(--muted)">${esc(A.name)} – ${esc(B.name)}</small></th>
+             <th scope="col">Còn mấy người<br><small style="font-weight:400;color:var(--muted)">của đội hình TI2026</small></th>
+             <th scope="col">Giải</th>
            </tr></thead>
-           <tbody>${series.series.map((row) => `<tr>
-             <td>${esc(row[0])}</td>
-             <td class="num"><b>${esc(row[2])} – ${esc(row[3])}</b></td>
-             <td>${esc(row[1])}</td>
-           </tr>`).join('')}</tbody>
+           <tbody>${series.series.map((row) => h2hRow(row, A, B)).join('')}</tbody>
          </table></div>
        </div>`
     : `<div class="empty" style="margin-top:var(--s-4)">Chưa có lịch sử đối đầu giữa hai đội này.
@@ -577,6 +577,72 @@ function renderH2h() {
       <div class="h2h-side right">${teamLogo(B)}<div><strong>${esc(B.name)}</strong><div class="region" style="font-size:12px;color:var(--muted)">${esc(B.region || '')}</div></div></div>
     </div>
     ${rows}${history}`;
+}
+
+/**
+ * Nhận định đối đầu, lọc theo ĐỘI HÌNH chứ không theo ngày.
+ *
+ * Một cặp đấu chỉ là cùng một cặp đấu khi mười người trên sân vẫn là mười người đó. Falcons–Liquid
+ * có 71 ván nhưng 51 ván trong đó Liquid chỉ còn 3/5 người của hôm nay — gộp cả vào rồi bảo "đối
+ * đầu 71 trận" là đem thành tích của một đội khác ra để đoán trận sắp tới.
+ *
+ * Máy chọn tập ván đáng dùng và nói luôn cách biệt đó có nghĩa hay không; việc của người đọc
+ * không phải là tự nhớ đội nào đổi người lúc nào.
+ */
+function verdictH2h(series, A, B) {
+  const v = series.verdict;
+  if (!v || !v.text) return '';
+
+  const cls = v.basis === 'khong-du' ? 'none' : v.decisive ? '' : 'thin';
+
+  const lineup = (T) => {
+    const l = series.lineup && series.lineup[T.slug];
+    return l
+      ? `<div><b>${esc(T.name)}</b> đá cùng nhau từ <b>${esc(l.since)}</b> · ${l.games} ván</div>`
+      : `<div><b>${esc(T.name)}</b> chưa từng ra sân đủ 5 người của đội hình TI2026</div>`;
+  };
+
+  return `<div class="h2h-verdict ${cls}">
+    <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">
+      Hệ thống nhận định</div>
+    ${esc(v.text)}
+    <div class="h2h-lineups">${lineup(A)}${lineup(B)}</div>
+  </div>`;
+}
+
+/**
+ * Một dòng lịch sử. Tỷ số xoay theo ĐÚNG hai đội đang chọn ở đầu trang.
+ *
+ * Bảng cũ in thẳng radiantScore – direScore mà không nói bên nào là radiant, nên "12 – 8" không
+ * cho biết ai được 12 — bày ra một con số không đọc được.
+ */
+function h2hRow(row, A, B) {
+  const [date, league, radScore, direScore, radSlug, radKept, direKept, winner] = row;
+
+  // Payload cũ chưa có 4 field sau: vẫn hiện được ngày/giải, chỉ bỏ phần đội hình.
+  const known = radSlug !== undefined && radKept !== undefined && direKept !== undefined;
+  const aIsRad = radSlug === A.slug;
+
+  const sa = !known || aIsRad ? radScore : direScore;
+  const sb = !known || aIsRad ? direScore : radScore;
+  const ka = aIsRad ? radKept : direKept;
+  const kb = aIsRad ? direKept : radKept;
+
+  const tone = (k) => (k >= 5 ? 'full' : k >= 3 ? 'swap' : 'gone');
+  const off = known && Math.min(ka, kb) < 5;
+
+  const score = known && winner
+    ? `${winner === A.slug ? `<b>${esc(sa)}</b>` : esc(sa)} – ${winner === B.slug ? `<b>${esc(sb)}</b>` : esc(sb)}`
+    : `<b>${esc(sa)} – ${esc(sb)}</b>`;
+
+  return `<tr class="${off ? 'off-lineup' : ''}">
+    <td>${esc(date)}</td>
+    <td class="num">${score}</td>
+    <td class="num">${known
+      ? `<span class="kept ${tone(ka)}">${ka}</span><span style="color:var(--muted)">/</span><span class="kept ${tone(kb)}">${kb}</span>`
+      : '—'}</td>
+    <td>${esc(league)}</td>
+  </tr>`;
 }
 
 /* ============================ Tier list ============================ */

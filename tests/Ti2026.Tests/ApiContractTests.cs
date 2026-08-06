@@ -202,6 +202,51 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
         }
     }
 
+    /// <summary>
+    /// Mỗi ván phải khai được BÊN NÀO là Radiant và mỗi bên còn mấy người của đội hình TI2026.
+    ///
+    /// Thiếu vế thứ nhất thì cột tỷ số "12 – 8" không cho biết ai được 12 — bảng bày ra một con
+    /// số không đọc được. Thiếu vế thứ hai thì trang lại gộp trận của đội hình cũ vào: Falcons–
+    /// Liquid có 71 ván nhưng 51 ván trong đó Liquid chỉ còn 3/5 người của hôm nay.
+    /// </summary>
+    [Fact]
+    public async Task api_h2h_khai_ro_ben_radiant_va_so_nguoi_con_lai_cua_doi_hinh_TI2026()
+    {
+        using var doc = JsonDocument.Parse(
+            await factory.CreateClient().GetStringAsync("/api/h2h"));
+
+        foreach (var pair in doc.RootElement.GetProperty("pairs").EnumerateObject())
+        {
+            var slugs = pair.Name.Split('|');
+
+            foreach (var row in pair.Value.GetProperty("series").EnumerateArray())
+            {
+                row.GetArrayLength().Should().Be(8,
+                    "UI đọc [ngày, giải, điểmRad, điểmDire, slugRad, keptRad, keptDire, slugThắng]");
+
+                slugs.Should().Contain(row[4].GetString()!,
+                    "bên Radiant phải là một trong hai đội của chính cặp đấu");
+                slugs.Should().Contain(row[7].GetString()!);
+
+                foreach (var i in new[] { 5, 6 })
+                    row[i].GetInt32().Should().BeInRange(0, 5, "một đội chỉ có 5 người ra sân");
+            }
+
+            var verdict = pair.Value.GetProperty("verdict");
+            verdict.GetProperty("basis").GetString()
+                .Should().BeOneOf("dung-doi-hinh", "lech-1-nguoi", "khong-du");
+            verdict.GetProperty("text").GetString().Should().NotBeNullOrWhiteSpace();
+
+            // Nhận định chỉ được dựa trên tập con của chính cặp đấu này
+            verdict.GetProperty("games").GetInt32()
+                .Should().BeLessThanOrEqualTo(pair.Value.GetProperty("games").GetInt32());
+
+            // Số ván dùng + số ván bỏ phải bằng đúng tổng — không được rơi mất ván nào
+            (verdict.GetProperty("games").GetInt32() + verdict.GetProperty("ignored").GetInt32())
+                .Should().Be(pair.Value.GetProperty("games").GetInt32());
+        }
+    }
+
     [Fact]
     public async Task api_tiers_va_api_players_phuc_vu_duoc_du_lieu_bien_tap()
     {

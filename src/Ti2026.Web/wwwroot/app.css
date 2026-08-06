@@ -426,6 +426,29 @@ select, input[type="search"], input[type="text"] {
 .h2h-side .logo, .h2h-side .logo-fallback { width: 44px; height: 44px; border-radius: 13px; font-size: 17px; }
 .h2h-vs { font-family: var(--font-head); font-weight: 700; color: var(--muted); font-size: 13px; }
 
+/* Nhận định đội hình đặt TRÊN bảng lịch sử, vì nó là câu trả lời còn bảng là bằng chứng.
+   Đặt dưới thì người đọc gặp 71 dòng trước rồi mới biết chỉ 20 dòng đáng tính. */
+.h2h-verdict {
+  background: var(--surface-2); border-left: 3px solid var(--accent);
+  border-radius: var(--r-md); padding: var(--s-4);
+  margin-top: var(--s-5); font-size: 13.5px; line-height: 1.55;
+}
+.h2h-verdict.thin { border-left-color: var(--warn); }
+.h2h-verdict.none { border-left-color: var(--neg); }
+.h2h-verdict b { color: var(--ink); }
+
+.h2h-lineups { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); margin-top: var(--s-3); }
+.h2h-lineups div { font-size: 12.5px; color: var(--muted); }
+.h2h-lineups b { color: var(--ink-2); font-weight: 600; }
+
+/* Ván không đúng đội hình vẫn hiện, nhưng mờ đi: giấu hẳn thì con số tổng không kiểm lại được,
+   còn để ngang hàng thì lại quay về đúng cái lỗi đang sửa. */
+tr.off-lineup td { opacity: .5; }
+.kept { font-variant-numeric: tabular-nums; font-size: 12px; }
+.kept.full { color: var(--pos); font-weight: 600; }
+.kept.swap { color: var(--warn); }
+.kept.gone { color: var(--neg); }
+
 .h2h-row { display: grid; grid-template-columns: 1fr 150px 1fr; gap: var(--s-3); align-items: center; margin-bottom: var(--s-3); }
 .h2h-bar-wrap { display: flex; align-items: center; gap: var(--s-2); }
 .h2h-bar-wrap.left { flex-direction: row-reverse; }

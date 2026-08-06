@@ -29,7 +29,18 @@ public static class TrendVerdict
     /// <summary>Dưới ngần này mốc thì chưa đủ để nói gì — hai điểm luôn tạo ra một đường thẳng.</summary>
     public const int MinPoints = 4;
 
-    public static TrendReading Read(IReadOnlyList<double> values, string label)
+    /// <param name="notableChange">
+    /// Mức thay đổi tối thiểu để ĐÁNG NÓI, tính theo đơn vị của chính chỉ số.
+    ///
+    /// Cần nó vì "tách được khỏi nhiễu" và "đáng quan tâm" là hai chuyện khác nhau. Một chuỗi
+    /// gần như phẳng có độ nhiễu xấp xỉ 0, nên MỌI trôi dạt đều thành nhiều lần độ nhiễu —
+    /// đã gặp thật: Elo đổi 0,36 điểm bị gọi là "đang xuống" vì nó gấp 3,79 lần nhiễu. Đúng về
+    /// thống kê nhưng vô nghĩa với người đọc.
+    ///
+    /// Dùng chung ngưỡng với ChangeDetector để cả trang nói cùng một ngôn ngữ về "đáng kể".
+    /// </param>
+    public static TrendReading Read(
+        IReadOnlyList<double> values, string label, double notableChange = 0)
     {
         if (values.Count < MinPoints)
             return new TrendReading("chưa đủ dữ liệu", 0, 0, 0, values.Count,
@@ -63,15 +74,23 @@ public static class TrendVerdict
         var ratio = noise <= 1e-9 ? (Math.Abs(change) > 1e-9 ? double.PositiveInfinity : 0)
                                   : Math.Abs(change) / noise;
 
-        var direction = ratio < NoiseMultiple ? "đi ngang"
-            : change > 0 ? "đang lên"
-            : "đang xuống";
+        // PHẢI thoả cả hai: tách được khỏi nhiễu VÀ đủ lớn để đáng nói. Thiếu vế thứ hai thì
+        // một chuỗi gần như phẳng biến mọi trôi dạt tí hon thành "xu hướng".
+        var standsOut = ratio >= NoiseMultiple;
+        var bigEnough = Math.Abs(change) >= notableChange;
 
-        var text = direction == "đi ngang"
-            ? $"{label} đi ngang: thay đổi {change:+0.0;-0.0;0} nhưng chuỗi vốn dao động "
-              + $"±{noise:0.0}, nên chưa tách được khỏi nhiễu."
-            : $"{label} {direction}: {change:+0.0;-0.0} qua {n} mốc, gấp {ratio:0.0} lần mức "
-              + $"dao động thường thấy (±{noise:0.0}).";
+        var direction = standsOut && bigEnough
+            ? change > 0 ? "đang lên" : "đang xuống"
+            : "đi ngang";
+
+        var text = direction != "đi ngang"
+            ? $"{label} {direction}: {change:+0.0;-0.0} qua {n} mốc, gấp {ratio:0.0} lần mức "
+              + $"dao động thường thấy (±{noise:0.0})."
+            : !bigEnough && standsOut
+                ? $"{label} đi ngang: có nhích {change:+0.0;-0.0} và tách được khỏi nhiễu, nhưng "
+                  + $"chưa tới mức {notableChange:0.#} nên chưa đáng gọi là xu hướng."
+                : $"{label} đi ngang: thay đổi {change:+0.0;-0.0;0} nhưng chuỗi vốn dao động "
+                  + $"±{noise:0.0}, nên chưa tách được khỏi nhiễu.";
 
         return new TrendReading(
             direction, Math.Round(change, 2), Math.Round(noise, 2), Math.Round(ratio, 2), n, text);

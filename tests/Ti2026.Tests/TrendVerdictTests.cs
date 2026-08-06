@@ -44,6 +44,34 @@ public class TrendVerdictTests
         nhieu.Noise.Should().BeGreaterThan(em.Noise);
     }
 
+    /// <summary>
+    /// "Tách được khỏi nhiễu" KHÔNG đủ để gọi là xu hướng — còn phải đủ lớn để đáng nói.
+    ///
+    /// Đây là lỗi đã xảy ra thật trên máy đang chạy: một đội có Elo đổi 0,36 điểm bị kết luận
+    /// "đang xuống" vì chuỗi gần như phẳng nên 0,36 gấp 3,79 lần độ nhiễu. Đúng về thống kê,
+    /// vô nghĩa với người đọc.
+    /// </summary>
+    [Fact]
+    public void Tach_khoi_nhieu_nhung_qua_nho_thi_van_la_di_ngang()
+    {
+        // Tăng đều 0,4 qua 5 mốc — nhiễu gần bằng 0 nên tỷ lệ rất cao
+        var values = new double[] { 1500.0, 1500.1, 1500.2, 1500.3, 1500.4 };
+
+        TrendVerdict.Read(values, "Elo").Direction
+            .Should().Be("đang lên", "không đặt ngưỡng thì nó vẫn là xu hướng");
+
+        var withFloor = TrendVerdict.Read(values, "Elo", notableChange: 40);
+        withFloor.Direction.Should().Be("đi ngang");
+        withFloor.Text.Should().Contain("chưa tới mức");
+    }
+
+    [Fact]
+    public void Du_lon_va_tach_khoi_nhieu_thi_moi_la_xu_huong()
+    {
+        TrendVerdict.Read([1500, 1520, 1540, 1560, 1580], "Elo", notableChange: 40)
+            .Direction.Should().Be("đang lên", "đổi 80 điểm, vượt xa ngưỡng 40");
+    }
+
     [Fact]
     public void Chuoi_phang_thi_di_ngang()
     {

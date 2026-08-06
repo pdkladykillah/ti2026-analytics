@@ -76,8 +76,10 @@ public static class TrendEndpoints
                     var elo = g.Where(x => x.elo is not null).Select(x => x.elo!.Value).ToList();
                     var wr = g.Select(x => x.winrate).ToList();
 
-                    var eloRead = TrendVerdict.Read(elo, "Elo");
-                    var wrRead = TrendVerdict.Read(wr, "Winrate");
+                    // Ngưỡng "đáng kể" dùng chung với ChangeDetector để cả trang nói cùng một
+                    // ngôn ngữ: Elo 40 điểm, winrate 8 điểm phần trăm.
+                    var eloRead = TrendVerdict.Read(elo, "Elo", notableChange: 40);
+                    var wrRead = TrendVerdict.Read(wr, "Winrate", notableChange: 8);
 
                     return new
                     {

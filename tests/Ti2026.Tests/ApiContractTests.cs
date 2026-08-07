@@ -247,6 +247,41 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
         }
     }
 
+    /// <summary>
+    /// Lịch nhập tay, tỷ số thì KHÔNG. Endpoint phải nói ra được cả hai điều đó, kể cả khi
+    /// chưa có dòng lịch nào — một tab trống không kèm lời giải thích trông y hệt một tính
+    /// năng hỏng.
+    /// </summary>
+    [Fact]
+    public async Task api_schedule_khai_ro_vi_sao_lich_phai_nhap_tay()
+    {
+        using var doc = JsonDocument.Parse(
+            await factory.CreateClient().GetStringAsync("/api/schedule"));
+
+        var root = doc.RootElement;
+
+        root.GetProperty("whyManual").GetString().Should().NotBeNullOrWhiteSpace();
+        root.GetProperty("source").GetString().Should().Contain("OpenDota");
+        root.TryGetProperty("fixtures", out var fixtures).Should().BeTrue();
+        root.TryGetProperty("unscheduled", out _).Should().BeTrue();
+
+        // File mẫu hỏng thì phải báo qua readError chứ không được ném
+        root.TryGetProperty("readError", out var err).Should().BeTrue();
+        if (err.ValueKind != JsonValueKind.Null)
+            err.GetString().Should().NotBeNullOrWhiteSpace();
+
+        foreach (var f in fixtures.EnumerateArray())
+        {
+            f.GetProperty("status").GetString()
+                .Should().BeOneOf("sap-toi", "dang-dien-ra", "da-xong", "cho-ket-qua");
+
+            // Tỷ số phải là số đo, không bao giờ vượt quá số ván thực sự đã đá
+            var played = f.GetProperty("gamesPlayed").GetInt32();
+            (f.GetProperty("winsA").GetInt32() + f.GetProperty("winsB").GetInt32())
+                .Should().Be(played);
+        }
+    }
+
     [Fact]
     public async Task api_tiers_va_api_players_phuc_vu_duoc_du_lieu_bien_tap()
     {

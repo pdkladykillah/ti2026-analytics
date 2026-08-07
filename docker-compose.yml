@@ -41,6 +41,17 @@ services:
     volumes:
       - app_data:/app/App_Data
 
+      # data/ gắn thẳng từ máy chủ, CHỈ ĐỌC.
+      #
+      # Không có dòng này thì mọi thay đổi trong data/*.json chỉ có hiệu lực sau một lần build
+      # lại image — chấp nhận được với teams.json (sửa vài tháng một lần) nhưng không chấp nhận
+      # được với schedule.json: lịch TI đổi giữa giải, và bắt build lại toàn bộ để dời giờ một
+      # trận là cách chắc chắn khiến lịch không bao giờ được cập nhật.
+      #
+      # api/schedule đọc file ở MỖI request nên sửa xong là thấy ngay, không cần khởi động lại.
+      # :ro để container không bao giờ ghi đè lên bản trong git.
+      - ./data:/app/data:ro
+
     # expose, KHÔNG dùng ports: — publish ra host sẽ đi vòng qua ufw (bẫy §5C)
     expose:
       - "8080"

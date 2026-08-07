@@ -830,6 +830,109 @@ function h2hRow(row, A, B) {
   </tr>`;
 }
 
+/* ============================ Lịch thi đấu ============================ */
+
+const STATUS_LABEL = {
+  'sap-toi': 'Sắp tới',
+  'dang-dien-ra': 'Đang diễn ra',
+  'da-xong': 'Đã xong',
+  'cho-ket-qua': 'Chờ kết quả',
+};
+
+/** Ngày theo múi giờ MÁY NGƯỜI XEM, không phải UTC — nếu không thì trận 6h sáng nhảy sang hôm trước. */
+const dayKey = (iso) => new Date(iso).toLocaleDateString('vi-VN', {
+  weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+});
+
+const clockOf = (iso) => new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+async function loadSchedule() {
+  const body = $('#schedule-body');
+  if (!body) return;
+  body.innerHTML = '<div class="skeleton" style="height:220px"></div>';
+
+  try {
+    renderSchedule(await getJson('api/schedule'));
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/schedule</code>.<br>
+      <small>${esc(err.message)}</small></div>`;
+  }
+}
+
+function renderSchedule(d) {
+  const body = $('#schedule-body');
+  if (!body) return;
+
+  const side = (t, right = false) => `
+    <div class="sc-side${right ? ' right' : ''}">
+      ${teamLogo({ name: t.name, logo: t.logo }, 26)}
+      <span>${esc(t.name)}</span>
+    </div>`;
+
+  const scoreCell = (r) => r.status === 'sap-toi' || r.status === 'cho-ket-qua'
+    ? `<span class="sc-time">${esc(clockOf(r.startsAt))}</span>`
+    : `<span class="sc-score num"><b>${n0(r.winsA)}</b>–<b>${n0(r.winsB)}</b></span>`;
+
+  const fixtureRow = (r) => `
+    <div class="sc-row status-${esc(r.status)}">
+      ${side(r.a)}
+      <div class="sc-mid">
+        ${scoreCell(r)}
+        <span class="sc-meta">${esc(r.format || '')} ${r.format ? '·' : ''} ${esc(STATUS_LABEL[r.status] || r.status)}</span>
+      </div>
+      ${side(r.b, true)}
+      <div class="sc-note">${esc(r.text)}</div>
+    </div>`;
+
+  // Gom theo NGÀY của người xem. Một mốc UTC 23:00 và 01:00 hôm sau là hai ngày khác nhau ở
+  // Việt Nam, nên gom theo chuỗi ngày đã đổi múi giờ chứ không cắt chuỗi ISO.
+  const byDay = new Map();
+  for (const r of d.fixtures || []) {
+    const k = dayKey(r.startsAt);
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(r);
+  }
+
+  const days = [...byDay.entries()].map(([day, rows]) => `
+    <h3 class="sc-day">${esc(day)}</h3>
+    <div class="sc-list">${rows.map(fixtureRow).join('')}</div>`).join('');
+
+  const loose = (d.unscheduled || []).length
+    ? `<h3 style="margin-top:var(--s-6)">Trận đã đá chưa có trong lịch</h3>
+       <p class="desc" style="margin:0 0 var(--s-3)">${n0(d.unscheduled.length)} loạt lấy từ ván
+         thật của giải. Chúng hiện ở đây vì chưa khớp được với dòng nào trong
+         <code>schedule.json</code> — thường là do lịch chưa nhập.</p>
+       <div class="sc-list">${d.unscheduled.map((u) => `
+         <div class="sc-row status-da-xong">
+           ${side(u.a)}
+           <div class="sc-mid">
+             <span class="sc-score num"><b>${n0(u.winsA)}</b>–<b>${n0(u.winsB)}</b></span>
+             <span class="sc-meta">${n0(u.games)} ván</span>
+           </div>
+           ${side(u.b, true)}
+           <div class="sc-note">${esc(dayKey(u.startsAt))} · ${esc(clockOf(u.startsAt))}</div>
+         </div>`).join('')}</div>`
+    : '';
+
+  const empty = !d.fixtureCount
+    ? `<div class="note">
+         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+         <div><b>Chưa nhập lịch thi đấu.</b><br>${esc(d.whyManual || '')}<br><br>
+           Điền vào <code>data/schedule.json</code> theo mẫu có sẵn trong file — chỉ cần ghi ai
+           đá với ai lúc nào. Tỷ số thì <b>không nhập</b>: hệ thống tự đọc từ ván thật ngay khi
+           trận đá xong.</div>
+       </div>`
+    : '';
+
+  const err = d.readError
+    ? `<div class="note warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+       <div>${esc(d.readError)}</div></div>`
+    : '';
+
+  body.innerHTML = err + empty + days + loose
+    + `<p class="desc" style="margin-top:var(--s-4)">${esc(d.source || '')}</p>`;
+}
+
 /* ============================ Tier list ============================ */
 
 function setupTiers() {
@@ -3146,6 +3249,10 @@ function setupTabs() {
         loadedViews.add('tiers');
         setupTierList();
       }
+
+      // Lịch thì nạp LẠI mỗi lần mở, không nhớ như các tab kia: nó có đồng hồ đếm ngược và
+      // trạng thái đang-diễn-ra, mà dữ liệu cũ từ nửa tiếng trước thì hai thứ đó đều sai.
+      if (view === 'schedule') loadSchedule();
 
       if (view === 'learn' && !loadedViews.has('learn')) {
         loadedViews.add('learn');

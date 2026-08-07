@@ -54,6 +54,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
       Tổng quan
     </button>
+    <button role="tab" type="button" data-view="schedule" aria-selected="false" aria-controls="view-schedule">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      Lịch thi đấu
+    </button>
     <button role="tab" type="button" data-view="table" aria-selected="false" aria-controls="view-table">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18M9 10v10"></path></svg>
       Bảng chỉ số
@@ -113,6 +117,18 @@
           <p class="desc">Dữ liệu tự nạp theo lịch. Đây là chỗ nói rõ vòng nào đang chạy, bao giờ chạy tiếp, và vòng nào đã hỏng — thay vì phải đi đọc log.</p>
         </header>
         <div id="sched-body" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ===== Lịch thi đấu ===== -->
+    <section class="view" id="view-schedule" role="tabpanel" aria-labelledby="tab-schedule" hidden>
+      <div class="card" data-sec="Lịch thi đấu">
+        <header>
+          <h2>Lịch thi đấu The International 2026</h2>
+          <p class="desc">Giờ hiển thị theo múi giờ máy bạn. Tỷ số không nhập tay — hệ thống
+            tự đọc từ ván thật ngay khi trận đá xong.</p>
+        </header>
+        <div id="schedule-body" aria-live="polite"></div>
       </div>
     </section>
 

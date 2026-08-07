@@ -47,9 +47,24 @@ public class TeamStatSnapshot
     /// <summary>
     /// Elo tại thời điểm chụp. Lưu vào snapshot thay vì bảng riêng để có LỊCH SỬ RATING
     /// miễn phí — biểu đồ phong độ vẽ được đường Elo theo ngày mà không thêm hạ tầng nào.
-    /// null với đội chưa có trận nào trong hệ.
+    ///
+    /// null khi đội chưa đá đủ <see cref="Ti2026.Ingest"/> SnapshotWriter.MinGamesForRating ván
+    /// mà CẢ HAI bên đều là đội hình TI2026 — xem <see cref="EloGames"/>.
     /// </summary>
     public double? Elo { get; set; }
+
+    /// <summary>
+    /// Số ván đã dùng để tính <see cref="Elo"/>: những ván mà cả hai bên đều ra sân đủ 5 người
+    /// của đội hình hiện tại.
+    ///
+    /// Phải công bố con số này. Không có nó thì một Elo dựng trên 11 ván trông y hệt một Elo
+    /// dựng trên 102 ván, và người đọc không có cách nào biết cái nào đáng tin. Khác
+    /// <see cref="Maps"/>: Maps đếm ván trong cửa sổ mà CHÍNH đội này đủ đội hình, không đòi
+    /// hỏi gì ở đối thủ.
+    ///
+    /// null = hàng ghi từ trước khi có luật lọc đội hình.
+    /// </summary>
+    public int? EloGames { get; set; }
 
     public double? AvgAssists { get; set; }
     public double? FirstBloodRate { get; set; }

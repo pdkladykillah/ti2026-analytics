@@ -24,18 +24,29 @@ public static class AnalyticsEndpoints
             var latest = await LatestSnapshotDateAsync(db);
             if (latest is null) return Results.Ok(Array.Empty<object>());
 
+            // KHÔNG lọc `Elo != null` nữa.
+            //
+            // Đội chưa đá đủ ván với đội hình TI2026 thì không có Elo — và nếu lọc bỏ ở đây thì
+            // đội đó biến mất khỏi bảng xếp hạng mà không một dòng nào nói vì sao. Người đọc chỉ
+            // thấy bảng có 14 đội thay vì 16 và không có cách nào biết hai đội kia đi đâu.
+            // Trả về hết, kèm eloGames, rồi để trang nói thẳng "chưa đủ ván".
             var rows = await db.TeamStatSnapshots
-                .Where(s => s.CapturedOn == latest && s.WindowDays == 180 && s.Elo != null)
+                .Where(s => s.CapturedOn == latest && s.WindowDays == 180)
                 .Include(s => s.Team)
-                .OrderByDescending(s => s.Elo)
+                .OrderByDescending(s => s.Elo == null)      // đội chưa xếp được xuống cuối
+                .ThenByDescending(s => s.Elo)
                 .Select(s => new
                 {
                     teamSlug = s.Team!.Slug,
                     teamName = s.Team.Name,
                     logo = s.Team.LogoUrl,
-                    elo = Math.Round(s.Elo!.Value),
+                    elo = s.Elo == null ? (double?)null : Math.Round(s.Elo.Value),
                     maps = s.Maps,
                     winrate = Math.Round(s.Winrate),
+
+                    // Số ván mà CẢ HAI bên đều là đội hình hiện tại — mẫu số thật của Elo
+                    eloGames = s.EloGames,
+                    ranked = s.Elo != null,
                 })
                 .ToListAsync();
 
@@ -121,8 +132,18 @@ public static class AnalyticsEndpoints
 
             return Results.Ok(new
             {
-                teamA = new { slug = teamA.Slug, name = teamA.Name, logo = teamA.LogoUrl, elo = eloA },
-                teamB = new { slug = teamB.Slug, name = teamB.Name, logo = teamB.LogoUrl, elo = eloB },
+                // eloGames đi kèm elo ở mọi nơi: elo null mà không nói vì sao thì trang chỉ còn
+                // cách đoán là "lỗi tải dữ liệu".
+                teamA = new
+                {
+                    slug = teamA.Slug, name = teamA.Name, logo = teamA.LogoUrl, elo = eloA,
+                    eloGames = snaps.TryGetValue(teamA.Id, out var ga) ? ga.EloGames : null,
+                },
+                teamB = new
+                {
+                    slug = teamB.Slug, name = teamB.Name, logo = teamB.LogoUrl, elo = eloB,
+                    eloGames = snaps.TryGetValue(teamB.Id, out var gb) ? gb.EloGames : null,
+                },
 
                 probabilityA = probA,
                 probabilityB = probA is double p ? Math.Round(100 - p, 1) : (double?)null,

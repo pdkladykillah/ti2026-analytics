@@ -426,6 +426,19 @@ select, input[type="search"], input[type="text"] {
 .h2h-side .logo, .h2h-side .logo-fallback { width: 44px; height: 44px; border-radius: 13px; font-size: 17px; }
 .h2h-vs { font-family: var(--font-head); font-weight: 700; color: var(--muted); font-size: 13px; }
 
+/* Đội chưa xếp được hạng: tách khỏi bảng nhưng VẪN hiện. Bỏ đi thì bảng còn 14 đội mà không
+   dòng nào nói vì sao. */
+.rank-unranked {
+  margin-top: var(--s-4); padding-top: var(--s-4);
+  border-top: 1px dashed var(--border-strong);
+}
+.rank-unranked h4 {
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); margin-bottom: var(--s-2); font-weight: 600;
+}
+.rank-unranked .rank-row { opacity: .62; }
+.mu { color: var(--muted); }
+
 /* Nhận định đội hình đặt TRÊN bảng lịch sử, vì nó là câu trả lời còn bảng là bằng chứng.
    Đặt dưới thì người đọc gặp 71 dòng trước rồi mới biết chỉ 20 dòng đáng tính. */
 .h2h-verdict {

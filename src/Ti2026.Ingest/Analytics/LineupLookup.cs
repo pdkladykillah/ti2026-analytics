@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
 
-namespace Ti2026.Web.Endpoints;
+namespace Ti2026.Ingest.Analytics;
 
 /// <summary>
 /// Tra cứu "ván này mỗi bên còn mấy người của đội hình TI2026".
@@ -9,11 +9,12 @@ namespace Ti2026.Web.Endpoints;
 /// Tính lúc ĐỌC chứ không lưu sẵn vào Match: roster còn có thể đổi trước giờ khai mạc, mà lưu
 /// sẵn thì mọi ván cũ giữ nguyên con số của roster hôm nạp và lặng lẽ sai đi.
 ///
-/// Dùng chung cho cả api/h2h và api/predict. Hai chỗ này cùng trả lời một câu hỏi — "hai đội
-/// này đối đầu ra sao" — nên nếu mỗi chỗ tự lọc một kiểu thì trang H2H nói 20 ván còn trang dự
-/// đoán nói 71 ván, và người đọc không có cách nào biết bên nào đúng.
+/// Dùng chung cho api/h2h, api/predict và SnapshotWriter (form + Elo). Cả ba cùng trả lời
+/// những câu hỏi về CÙNG một thứ — đội này mạnh yếu ra sao — nên nếu mỗi chỗ tự lọc một kiểu
+/// thì trang H2H nói 20 ván còn trang dự đoán nói 71 ván, và người đọc không có cách nào biết
+/// bên nào đúng.
 /// </summary>
-internal sealed class LineupLookup
+public sealed class LineupLookup
 {
     private readonly Dictionary<int, HashSet<int>> _roster;
     private readonly Dictionary<long, List<(int PlayerId, bool IsRadiant)>> _byMatch;
@@ -31,14 +32,15 @@ internal sealed class LineupLookup
     /// 13,6 nghìn hàng cho một cặp đấu có 71 ván.
     /// </param>
     public static async Task<LineupLookup> LoadAsync(
-        Ti2026DbContext db, IReadOnlyCollection<long>? matchIds = null)
+        Ti2026DbContext db, IReadOnlyCollection<long>? matchIds = null,
+        CancellationToken ct = default)
     {
         // Bỏ HLV: HLV không ra sân nên không bao giờ xuất hiện trong MatchPlayers, tính vào mẫu
         // số thì mọi đội mãi mãi chỉ đạt 5/6.
         var roster = (await db.RosterEntries
                 .Where(r => r.ValidTo == null && r.Role != "COACH")
                 .Select(r => new { r.TeamId, r.PlayerId })
-                .ToListAsync())
+                .ToListAsync(ct))
             .GroupBy(r => r.TeamId)
             .ToDictionary(g => g.Key, g => g.Select(x => x.PlayerId).ToHashSet());
 
@@ -53,7 +55,7 @@ internal sealed class LineupLookup
 
         var rows = await q
             .Select(p => new { p.MatchId, PlayerId = p.PlayerId!.Value, p.IsRadiant })
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return new LineupLookup(roster, rows
             .GroupBy(p => p.MatchId)

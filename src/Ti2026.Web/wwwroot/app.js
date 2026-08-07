@@ -1179,25 +1179,57 @@ function renderRatings(rows) {
     return;
   }
 
-  const max = Math.max(...rows.map((r) => r.elo));
-  const min = Math.min(...rows.map((r) => r.elo));
+  // Đội chưa đủ ván với đội hình TI2026 thì KHÔNG có Elo. Tách ra chứ không bỏ đi: một đội
+  // biến mất khỏi bảng mà không dòng nào giải thích là đúng loại lỗi đang phải sửa. Và cũng
+  // không được trộn vào phép tính min/max — elo null sẽ kéo đáy thang xuống 0 và mọi thanh bar
+  // dài như nhau.
+  const ranked = rows.filter((r) => r.elo !== null && r.elo !== undefined);
+  const unranked = rows.filter((r) => r.elo === null || r.elo === undefined);
+
+  const max = ranked.length ? Math.max(...ranked.map((r) => r.elo)) : 0;
+  const min = ranked.length ? Math.min(...ranked.map((r) => r.elo)) : 0;
   const span = Math.max(max - min, 1);
 
-  $('#ratings-body').innerHTML = rows.map((r, i) => {
+  const rankedHtml = ranked.map((r, i) => {
     const width = Math.max(((r.elo - min) / span) * 100, 3);
     // Đội ít ván: Elo dao động mạnh vì mỗi trận đổi tới 24 điểm
-    const thin = r.maps < MIN_MAPS_FOR_LEADERBOARD;
+    const thin = r.eloGames !== undefined && r.eloGames !== null
+      ? r.eloGames < MIN_MAPS_FOR_LEADERBOARD
+      : r.maps < MIN_MAPS_FOR_LEADERBOARD;
     return `<div class="rank-row">
       <span class="rank-no num">${i + 1}</span>
       <div class="rank-team">
         ${teamLogo({ name: r.teamName, logo: r.logo })}
         <span class="rank-name">${esc(r.teamName)}</span>
-        ${thin ? `<span class="rank-thin" title="Ít ván nên Elo còn dao động">${r.maps} ván</span>` : ''}
+        ${thin ? `<span class="rank-thin" title="Ít ván nên Elo còn dao động">${r.eloGames ?? r.maps} ván</span>` : ''}
       </div>
       <div class="elo-track"><span class="elo-bar" style="width:${width}%"></span></div>
       <span class="rank-val num">${r.elo}<small class="elo-wr">${r.winrate}%</small></span>
     </div>`;
-  }).join('') + `<p class="desc" style="margin-top:var(--s-3)">
+  }).join('');
+
+  const unrankedHtml = unranked.length
+    ? `<div class="rank-unranked">
+         <h4>Chưa xếp được hạng</h4>
+         ${unranked.map((r) => `<div class="rank-row">
+           <span class="rank-no num">—</span>
+           <div class="rank-team">
+             ${teamLogo({ name: r.teamName, logo: r.logo })}
+             <span class="rank-name">${esc(r.teamName)}</span>
+           </div>
+           <div class="elo-track"></div>
+           <span class="rank-val num mu">${r.eloGames ?? 0} ván</span>
+         </div>`).join('')}
+         <p class="desc" style="margin-top:var(--s-2)">Đội hình TI2026 của các đội này chưa đá
+           đủ ván với một đội hình TI2026 khác. Elo khởi điểm ở 1500 nên nếu vẫn hiện số, họ sẽ
+           nằm đúng giữa bảng và trông như đội trung bình — trong khi thật ra là <b>chưa
+           biết</b>.</p>
+       </div>`
+    : '';
+
+  $('#ratings-body').innerHTML = rankedHtml + unrankedHtml + `<p class="desc" style="margin-top:var(--s-3)">
+      Chỉ tính ván mà <b>cả hai bên</b> đều ra sân đúng đội hình TI2026 — Elo là số so sánh giữa
+      hai đội, chấm đội hôm nay bằng một trận của đội hình cũ thì sai cả hai phía.
       Chênh 100 điểm Elo ≈ 64% cơ hội thắng; chênh 200 điểm ≈ 76%.
       Cột phải là winrate thô để bạn thấy hai thước đo lệch nhau ở đâu.</p>`;
 }
@@ -1225,8 +1257,16 @@ function renderPredict(p) {
   const pa = p.probabilityA;
   const pb = p.probabilityB;
 
+  // Nói RÕ đội nào thiếu và thiếu gì. "Chưa đủ dữ liệu Elo cho một trong hai đội" bắt người
+  // đọc tự đoán là đội nào, và đoán sai thì họ kết luận sai về cả hai.
+  const noElo = [p.teamA, p.teamB].filter((t) => t.elo === null || t.elo === undefined);
+
   const head = pa === null
-    ? '<div class="empty">Chưa đủ dữ liệu Elo cho một trong hai đội.</div>'
+    ? `<div class="empty"><b>${noElo.map((t) => esc(t.name)).join(' và ')}</b>
+         chưa đá đủ ván với đội hình TI2026${noElo.some((t) => t.eloGames != null)
+           ? ` (${noElo.map((t) => `${esc(t.name)}: ${t.eloGames ?? 0} ván`).join(', ')})`
+           : ''} nên chưa có Elo — đưa ra tỷ lệ thắng lúc này là bịa một con số.
+         Phần đối đầu và kèo tài/xỉu bên dưới vẫn dùng được.</div>`
     : `<div class="pred-head">
          <div class="pred-side">
            ${teamLogo({ name: p.teamA.name, logo: p.teamA.logo }, 40)}

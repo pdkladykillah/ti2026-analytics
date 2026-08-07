@@ -265,12 +265,58 @@ public class IngestPipelineTests : IDisposable
 
     // ---------- SnapshotWriter ----------
 
+    /// <summary>
+    /// Gieo 5 người vào đội hình ĐANG hiệu lực của một đội.
+    ///
+    /// Bắt buộc từ khi form và Elo lọc theo đội hình: ván không có dòng MatchPlayer nào thì hệ
+    /// coi là KHÔNG BIẾT ai ra sân, và không biết thì không dùng để kết luận. Thiếu bước này,
+    /// mọi ván gieo trong test đều bị loại và snapshot ra rỗng.
+    /// </summary>
+    private static async Task<List<int>> SeedRosterAsync(Ti2026DbContext db, Team team)
+    {
+        var roles = new[] { "CORE", "MID", "OFFLANE", "SUPPORT", "FULL SUPPORT" };
+
+        var players = roles.Select((_, i) =>
+        {
+            var nick = $"{team.Slug}-p{i}";
+            return new Player { Nick = nick, NickKey = Player.MakeNickKey(nick) };
+        }).ToList();
+
+        db.Players.AddRange(players);
+        await db.SaveChangesAsync();
+
+        for (var i = 0; i < roles.Length; i++)
+            db.RosterEntries.Add(new RosterEntry
+            {
+                TeamId = team.Id, PlayerId = players[i].Id, Role = roles[i],
+                ValidFrom = new DateOnly(2026, 1, 1), ValidTo = null,
+            });
+
+        await db.SaveChangesAsync();
+        return players.Select(p => p.Id).ToList();
+    }
+
+    private static void AddPlayerRows(
+        Ti2026DbContext db, long matchId, IReadOnlyList<int> radiant, IReadOnlyList<int> dire)
+    {
+        for (var i = 0; i < 5; i++)
+        {
+            db.MatchPlayers.Add(new MatchPlayer
+            { MatchId = matchId, IsRadiant = true, HeroId = i + 1, PlayerId = radiant[i] });
+            db.MatchPlayers.Add(new MatchPlayer
+            { MatchId = matchId, IsRadiant = false, HeroId = i + 6, PlayerId = dire[i] });
+        }
+    }
+
     private static async Task<Team> SeedTeamsWithMatches(Ti2026DbContext db)
     {
         var team = new Team { Slug = "test-team", Name = "Test Team" };
         var foe = new Team { Slug = "foe", Name = "Foe" };
         db.Teams.AddRange(team, foe);
         await db.SaveChangesAsync();
+
+        var teamRoster = await SeedRosterAsync(db, team);
+        var foeRoster = await SeedRosterAsync(db, foe);
 
         var now = DateTime.UtcNow;
         for (var i = 0; i < 4; i++)
@@ -287,6 +333,8 @@ public class IngestPipelineTests : IDisposable
                 DireScore = 20,
                 IngestedAt = now,
             });
+
+            AddPlayerRows(db, 1000 + i, teamRoster, foeRoster);
         }
         await db.SaveChangesAsync();
         return team;

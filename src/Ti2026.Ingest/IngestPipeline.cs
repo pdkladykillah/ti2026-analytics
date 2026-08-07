@@ -42,6 +42,39 @@ public class IngestPipeline(
     }
 
     /// <summary>
+    /// Tính lại những ngày snapshot ghi TRƯỚC khi có luật lọc đội hình.
+    ///
+    /// Vì sao cần: biểu đồ Elo theo ngày đọc thẳng các hàng lịch sử. Để nguyên thì đường Elo có
+    /// một bậc nhảy ngay tại ngày đổi luật — bậc nhảy đó không phải chuyện xảy ra trên sân, mà
+    /// là hai định nghĩa khác nhau vẽ chung một đường. Và TrendVerdict đọc chính chuỗi đó để
+    /// nói đội "đang lên" hay "đang xuống", nên nó sẽ kết luận từ một hiện tượng do ta gây ra.
+    ///
+    /// Nhận biết hàng cũ bằng EloGames == null, nên bước này TỰ TẮT sau vòng đầu tiên và không
+    /// cần ai nhớ gỡ nó đi.
+    /// </summary>
+    private async Task<int> RestateOldSnapshotsAsync(CancellationToken ct)
+    {
+        var stale = await db.TeamStatSnapshots
+            .Where(s => s.EloGames == null)
+            .Select(s => s.CapturedOn)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToListAsync(ct);
+
+        if (stale.Count == 0) return 0;
+
+        logger.LogInformation(
+            "Tính lại {Count} ngày snapshot ghi trước luật lọc đội hình: {Days}",
+            stale.Count, string.Join(", ", stale));
+
+        var written = 0;
+        foreach (var day in stale)
+            written += await snapshots.WriteAsync(day, ct);
+
+        return written;
+    }
+
+    /// <summary>
     /// Chạy một vòng, CHỜ tới lượt nếu đang có vòng khác. Dành cho scheduler — nó không có ai
     /// ngồi đợi phản hồi nên chờ là hành vi đúng.
     /// </summary>
@@ -96,6 +129,9 @@ public class IngestPipeline(
         await orchestrator.RunSourceAsync(
             "snapshot",
             c => snapshots.WriteAsync(DateOnly.FromDateTime(DateTime.UtcNow), c),
+            SanityKind.None, ct);
+
+        await orchestrator.RunSourceAsync("snapshot-backfill", RestateOldSnapshotsAsync,
             SanityKind.None, ct);
 
         // Sổ theo dõi dự đoán. Đặt SAU snapshot vì nó đọc Elo vừa tính xong — ghi trước thì

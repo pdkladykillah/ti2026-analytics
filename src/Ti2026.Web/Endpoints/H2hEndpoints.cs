@@ -42,11 +42,23 @@ public static class H2hEndpoints
             // Từ ngày nào mỗi đội mới ra sân với đủ 5 người của TI2026, và đá cùng nhau bao nhiêu
             // ván. Đây là con số nói thẳng vì sao lịch sử lại ngắn đến thế: 12/16 đội mãi tới
             // năm 2026 mới lần đầu đủ mặt.
+            //
+            // Đếm trên MỌI ván của đội, kể cả ván gặp đối thủ ngoài 16 đội. Câu hiển thị là "đội
+            // hình này đá cùng nhau bao nhiêu ván", nên phải đếm đúng mọi ván họ đá cùng nhau —
+            // giới hạn ở ván có đủ hai đội thì Liquid hiện ra 165 trong khi con số thật là 195.
+            var allTeamMatches = await db.Matches
+                .Where(m => m.RadiantTeamId != null || m.DireTeamId != null)
+                .Select(m => new { m.Id, m.StartTime, m.RadiantTeamId, m.DireTeamId })
+                .ToListAsync();
+
             var together = new Dictionary<string, (string First, int Games)>();
-            foreach (var m in matches)
+            foreach (var m in allTeamMatches)
             {
-                foreach (var (teamId, radiantSide) in
-                         new[] { (m.RadiantTeamId!.Value, true), (m.DireTeamId!.Value, false) })
+                var sides = new List<(int, bool)>();
+                if (m.RadiantTeamId is int rad) sides.Add((rad, true));
+                if (m.DireTeamId is int dire) sides.Add((dire, false));
+
+                foreach (var (teamId, radiantSide) in sides)
                 {
                     if (lineups.Kept(m.Id, teamId, radiantSide) < 5
                         || !slugs.TryGetValue(teamId, out var s))

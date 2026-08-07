@@ -136,6 +136,30 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
             keptOfB.Should().BeOneOf(5, 2);
         }
 
+        // Ván gặp đối thủ NGOÀI 16 đội cũng phải được tính vào "đá cùng nhau bao nhiêu ván":
+        // câu đó nói về đội hình, không nói về đối thủ. Bỏ sót thì Liquid hiện 165 trong khi
+        // năm người đó đã đá cùng nhau 195 ván.
+        var oneSided = _nextId++;
+        db.Matches.Add(new Match
+        {
+            Id = oneSided, StartTime = t0.AddDays(2), DurationSeconds = 2100,
+            LeagueName = "Gặp đội ngoài 16",
+            RadiantTeamId = a.Id, DireTeamId = null,
+            RadiantWin = true, RadiantScore = 30, DireScore = 10, IngestedAt = t0,
+        });
+        for (var i = 0; i < 5; i++)
+            db.MatchPlayers.Add(new MatchPlayer
+            { MatchId = oneSided, IsRadiant = true, HeroId = i + 1, PlayerId = ra[i] });
+        await db.SaveChangesAsync();
+
+        using var doc2 = JsonDocument.Parse(await client.GetStringAsync("/api/h2h"));
+        var pair2 = doc2.RootElement.GetProperty("pairs").GetProperty(key);
+
+        pair2.GetProperty("games").GetInt32()
+            .Should().Be(5, "ván một chiều KHÔNG được lọt vào lịch sử đối đầu");
+        pair2.GetProperty("lineup").GetProperty(a.Slug).GetProperty("games").GetInt32()
+            .Should().Be(6, "nhưng nó VẪN là một ván đội hình đó đá cùng nhau");
+
         pair.GetProperty("lineup").GetProperty(a.Slug).GetProperty("games").GetInt32()
             .Should().Be(5, "a ra sân đủ 5 người ở cả 5 ván");
         pair.GetProperty("lineup").GetProperty(b.Slug).GetProperty("games").GetInt32()

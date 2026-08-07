@@ -46,12 +46,15 @@ public sealed class LineupLookup
 
         // Chỉ lấy hàng đã khớp được về Player của ta — hàng không khớp thì chắc chắn không
         // thuộc đội hình nào đang theo dõi.
+        //
+        // KHÔNG giới hạn ở ván có đủ hai đội. Bản trước có giới hạn đó, và hệ quả là câu "đội
+        // hình này đá cùng nhau N ván" đếm hụt: Liquid hiện ra 165 trong khi năm người đó đã đá
+        // cùng nhau 195 ván — 30 ván kia gặp đối thủ ngoài 16 đội nên không lọt vào bộ lọc.
+        // Mọi phép tính mức ĐỘI vẫn tự lọc "đủ hai đội" ở chỗ của nó, nên nới ở đây không làm
+        // ván một chiều lọt vào Elo hay đối đầu.
         var q = db.MatchPlayers.Where(p => p.PlayerId != null);
 
-        q = matchIds is null
-            ? q.Where(p => db.Matches.Any(
-                m => m.Id == p.MatchId && m.RadiantTeamId != null && m.DireTeamId != null))
-            : q.Where(p => matchIds.Contains(p.MatchId));
+        if (matchIds is not null) q = q.Where(p => matchIds.Contains(p.MatchId));
 
         var rows = await q
             .Select(p => new { p.MatchId, PlayerId = p.PlayerId!.Value, p.IsRadiant })

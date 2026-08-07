@@ -20,6 +20,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<IngestRun> IngestRuns => Set<IngestRun>();
     public DbSet<SeedState> SeedStates => Set<SeedState>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
+    public DbSet<ScheduledSeries> ScheduledSeries => Set<ScheduledSeries>();
     public DbSet<League> Leagues => Set<League>();
     public DbSet<DraftEvent> DraftEvents => Set<DraftEvent>();
     public DbSet<ItemPurchase> ItemPurchases => Set<ItemPurchase>();
@@ -65,6 +66,10 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
             .HasFilter("\"OpenDotaTeamId\" IS NOT NULL");
 
         b.Entity<TeamAlias>().HasIndex(x => new { x.Alias, x.Source }).IsUnique();
+
+        // Khoá tự nhiên của một nút bảng đấu là (giải, node_id) — Valve đánh số nút lại từ đầu
+        // cho mỗi giải. Unique để nạp lại nhiều lần chỉ cập nhật chứ không nhân bản bảng đấu.
+        b.Entity<ScheduledSeries>().HasIndex(x => new { x.LeagueId, x.NodeId }).IsUnique();
         b.Entity<TeamAlias>()
             .HasOne(x => x.Team).WithMany(x => x.Aliases)
             .HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Cascade);

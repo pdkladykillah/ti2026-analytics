@@ -49,6 +49,22 @@ builder.Services.AddHttpClient<OpenDotaClient>(c =>
     .AddHttpMessageHandler(() =>
         new RateLimitedHandler(options.OpenDota.EffectiveRequestsPerSecond));
 
+// API chính chủ của Valve. HttpClient RIÊNG: khác host, khác hạn mức, và nhịp 0,8 req/s đặt
+// ra để tôn trọng hạn mức OpenDota thì không có lý gì áp cho máy chủ Valve.
+//
+// Bật giải nén tự động vì danh mục giải là 1,9 MB thô nhưng chỉ 315 KB khi nén.
+builder.Services.AddHttpClient<Dota2WebClient>(c =>
+    {
+        c.BaseAddress = new Uri("https://www.dota2.com/");
+        c.Timeout = TimeSpan.FromSeconds(60);
+        c.DefaultRequestHeaders.UserAgent.ParseAdd(options.Dltv.UserAgent);
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AutomaticDecompression = System.Net.DecompressionMethods.GZip
+                                 | System.Net.DecompressionMethods.Deflate,
+    });
+
 builder.Services.AddSingleton(new MediaPaths(paths.MediaDirectory));
 
 // HttpClient RIENG cho tai anh. Khong dung chung voi OpenDotaClient: khac host, va nhip
@@ -62,6 +78,7 @@ builder.Services.AddScoped<TeamResolver>();
 builder.Services.AddScoped<OpenDotaIngester>();
 builder.Services.AddScoped<MatchDetailIngester>();
 builder.Services.AddScoped<LeagueBackfillIngester>();
+builder.Services.AddScoped<TiScheduleIngester>();
 builder.Services.AddScoped<ProPubIngester>();
 builder.Services.AddScoped<SnapshotWriter>();
 builder.Services.AddScoped<PredictionLedger>();

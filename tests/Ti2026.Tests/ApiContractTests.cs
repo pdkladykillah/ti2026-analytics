@@ -248,37 +248,41 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
     }
 
     /// <summary>
-    /// Lịch nhập tay, tỷ số thì KHÔNG. Endpoint phải nói ra được cả hai điều đó, kể cả khi
-    /// chưa có dòng lịch nào — một tab trống không kèm lời giải thích trông y hệt một tính
-    /// năng hỏng.
+    /// Bảng đấu lấy từ API chính chủ của Valve, KHÔNG nhập tay. Endpoint phải nói được nguồn,
+    /// và phải phân biệt "chưa nạp" với "đã nạp nhưng Valve chưa xếp giờ" — hai chuyện đó nhìn
+    /// trên trang giống hệt nhau nếu không khai ra.
     /// </summary>
     [Fact]
-    public async Task api_schedule_khai_ro_vi_sao_lich_phai_nhap_tay()
+    public async Task api_schedule_khai_ro_nguon_va_trang_thai_san_sang()
     {
         using var doc = JsonDocument.Parse(
             await factory.CreateClient().GetStringAsync("/api/schedule"));
 
         var root = doc.RootElement;
+        root.GetProperty("source").GetString().Should().Contain("Valve");
+        root.TryGetProperty("ready", out var ready).Should().BeTrue();
+        root.TryGetProperty("stages", out var stages).Should().BeTrue();
 
-        root.GetProperty("whyManual").GetString().Should().NotBeNullOrWhiteSpace();
-        root.GetProperty("source").GetString().Should().Contain("OpenDota");
-        root.TryGetProperty("fixtures", out var fixtures).Should().BeTrue();
-        root.TryGetProperty("unscheduled", out _).Should().BeTrue();
-
-        // File mẫu hỏng thì phải báo qua readError chứ không được ném
-        root.TryGetProperty("readError", out var err).Should().BeTrue();
-        if (err.ValueKind != JsonValueKind.Null)
-            err.GetString().Should().NotBeNullOrWhiteSpace();
-
-        foreach (var f in fixtures.EnumerateArray())
+        if (!ready.GetBoolean())
         {
-            f.GetProperty("status").GetString()
-                .Should().BeOneOf("sap-toi", "dang-dien-ra", "da-xong", "cho-ket-qua");
+            stages.GetArrayLength().Should().Be(0);
+            root.GetProperty("note").GetString().Should().NotBeNullOrWhiteSpace();
+            return;
+        }
 
-            // Tỷ số phải là số đo, không bao giờ vượt quá số ván thực sự đã đá
-            var played = f.GetProperty("gamesPlayed").GetInt32();
-            (f.GetProperty("winsA").GetInt32() + f.GetProperty("winsB").GetInt32())
-                .Should().Be(played);
+        foreach (var st in stages.EnumerateArray())
+        foreach (var s in st.GetProperty("series").EnumerateArray())
+        {
+            s.GetProperty("status").GetString()
+                .Should().BeOneOf("da-xong", "dang-dien-ra", "chua-xep-gio", "sap-toi", "cho-ket-qua");
+
+            // Nút chưa biết đội nào vào thì team phải là null, KHÔNG phải một đội rỗng
+            foreach (var k in new[] { "team1", "team2" })
+            {
+                var t = s.GetProperty(k);
+                if (t.ValueKind != JsonValueKind.Null)
+                    t.TryGetProperty("slug", out _).Should().BeTrue();
+            }
         }
     }
 

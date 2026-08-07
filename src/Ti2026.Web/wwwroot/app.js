@@ -837,9 +837,10 @@ const STATUS_LABEL = {
   'dang-dien-ra': 'Đang diễn ra',
   'da-xong': 'Đã xong',
   'cho-ket-qua': 'Chờ kết quả',
+  'chua-xep-gio': 'Chưa xếp giờ',
 };
 
-/** Ngày theo múi giờ MÁY NGƯỜI XEM, không phải UTC — nếu không thì trận 6h sáng nhảy sang hôm trước. */
+/** Ngày theo múi giờ MÁY NGƯỜI XEM — trận 6h sáng UTC là chiều hôm trước ở nhiều nơi. */
 const dayKey = (iso) => new Date(iso).toLocaleDateString('vi-VN', {
   weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
 });
@@ -859,78 +860,88 @@ async function loadSchedule() {
   }
 }
 
+/**
+ * Ô một đội trong bảng đấu.
+ *
+ * Nút chưa biết đội nào vào thì KHÔNG để trống: nói nó nhận đội thắng từ nút nào. Đó là thông
+ * tin thật của một bảng loại trực tiếp, và một ô trống trơn thì không phân biệt được với lỗi.
+ */
+function scheduleSide(team, fromNode, right) {
+  const inner = team
+    ? `${teamLogo({ name: team.name, logo: team.logo }, 26)}<span>${esc(team.name)}</span>`
+    : `<span class="sc-tbd">${fromNode ? `Đội thắng nút ${n0(fromNode)}` : 'Chưa xác định'}</span>`;
+  return `<div class="sc-side${right ? ' right' : ''}">${inner}</div>`;
+}
+
 function renderSchedule(d) {
   const body = $('#schedule-body');
   if (!body) return;
 
-  const side = (t, right = false) => `
-    <div class="sc-side${right ? ' right' : ''}">
-      ${teamLogo({ name: t.name, logo: t.logo }, 26)}
-      <span>${esc(t.name)}</span>
-    </div>`;
-
-  const scoreCell = (r) => r.status === 'sap-toi' || r.status === 'cho-ket-qua'
-    ? `<span class="sc-time">${esc(clockOf(r.startsAt))}</span>`
-    : `<span class="sc-score num"><b>${n0(r.winsA)}</b>–<b>${n0(r.winsB)}</b></span>`;
-
-  const fixtureRow = (r) => `
-    <div class="sc-row status-${esc(r.status)}">
-      ${side(r.a)}
-      <div class="sc-mid">
-        ${scoreCell(r)}
-        <span class="sc-meta">${esc(r.format || '')} ${r.format ? '·' : ''} ${esc(STATUS_LABEL[r.status] || r.status)}</span>
-      </div>
-      ${side(r.b, true)}
-      <div class="sc-note">${esc(r.text)}</div>
-    </div>`;
-
-  // Gom theo NGÀY của người xem. Một mốc UTC 23:00 và 01:00 hôm sau là hai ngày khác nhau ở
-  // Việt Nam, nên gom theo chuỗi ngày đã đổi múi giờ chứ không cắt chuỗi ISO.
-  const byDay = new Map();
-  for (const r of d.fixtures || []) {
-    const k = dayKey(r.startsAt);
-    if (!byDay.has(k)) byDay.set(k, []);
-    byDay.get(k).push(r);
+  if (!d.ready) {
+    body.innerHTML = `<div class="note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+      <div>${esc(d.note || '')}</div></div>
+      <p class="desc">${esc(d.source || '')}</p>`;
+    return;
   }
 
-  const days = [...byDay.entries()].map(([day, rows]) => `
-    <h3 class="sc-day">${esc(day)}</h3>
-    <div class="sc-list">${rows.map(fixtureRow).join('')}</div>`).join('');
+  const row = (s) => {
+    const decided = s.status === 'da-xong' || s.status === 'dang-dien-ra';
+    const mid = decided
+      ? `<span class="sc-score num"><b>${n0(s.wins1)}</b>–<b>${n0(s.wins2)}</b></span>`
+      : `<span class="sc-time">${s.scheduledAt ? esc(clockOf(s.scheduledAt)) : '—'}</span>`;
 
-  const loose = (d.unscheduled || []).length
-    ? `<h3 style="margin-top:var(--s-6)">Trận đã đá chưa có trong lịch</h3>
-       <p class="desc" style="margin:0 0 var(--s-3)">${n0(d.unscheduled.length)} loạt lấy từ ván
-         thật của giải. Chúng hiện ở đây vì chưa khớp được với dòng nào trong
-         <code>schedule.json</code> — thường là do lịch chưa nhập.</p>
-       <div class="sc-list">${d.unscheduled.map((u) => `
-         <div class="sc-row status-da-xong">
-           ${side(u.a)}
-           <div class="sc-mid">
-             <span class="sc-score num"><b>${n0(u.winsA)}</b>–<b>${n0(u.winsB)}</b></span>
-             <span class="sc-meta">${n0(u.games)} ván</span>
-           </div>
-           ${side(u.b, true)}
-           <div class="sc-note">${esc(dayKey(u.startsAt))} · ${esc(clockOf(u.startsAt))}</div>
-         </div>`).join('')}</div>`
-    : '';
+    return `<div class="sc-row status-${esc(s.status)}">
+      ${scheduleSide(s.team1, s.from1, false)}
+      <div class="sc-mid">
+        ${mid}
+        <span class="sc-meta">${esc(s.name || STATUS_LABEL[s.status] || s.status)}</span>
+      </div>
+      ${scheduleSide(s.team2, s.from2, true)}
+    </div>`;
+  };
 
-  const empty = !d.fixtureCount
-    ? `<div class="note">
-         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
-         <div><b>Chưa nhập lịch thi đấu.</b><br>${esc(d.whyManual || '')}<br><br>
-           Điền vào <code>data/schedule.json</code> theo mẫu có sẵn trong file — chỉ cần ghi ai
-           đá với ai lúc nào. Tỷ số thì <b>không nhập</b>: hệ thống tự đọc từ ván thật ngay khi
-           trận đá xong.</div>
-       </div>`
-    : '';
+  // Trong một vòng, gom theo NGÀY khi Valve đã xếp giờ. Chưa xếp thì gộp thành một khối cuối
+  // — xếp chúng vào một ngày bịa ra thì con số ngày trên trang là con số sai.
+  const stage = (st) => {
+    const timed = st.series.filter((s) => s.scheduledAt);
+    const untimed = st.series.filter((s) => !s.scheduledAt);
 
-  const err = d.readError
-    ? `<div class="note warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
-       <div>${esc(d.readError)}</div></div>`
-    : '';
+    const byDay = new Map();
+    for (const s of timed) {
+      const k = dayKey(s.scheduledAt);
+      if (!byDay.has(k)) byDay.set(k, []);
+      byDay.get(k).push(s);
+    }
 
-  body.innerHTML = err + empty + days + loose
-    + `<p class="desc" style="margin-top:var(--s-4)">${esc(d.source || '')}</p>`;
+    const days = [...byDay.entries()].map(([day, list]) =>
+      `<h4 class="sc-day">${esc(day)}</h4><div class="sc-list">${list.map(row).join('')}</div>`).join('');
+
+    const rest = untimed.length
+      ? `<h4 class="sc-day">Chưa xếp giờ · ${n0(untimed.length)} loạt</h4>
+         <div class="sc-list">${untimed.map(row).join('')}</div>`
+      : '';
+
+    return `<section class="sc-stage">
+      <header>
+        <h3>${esc(st.name)}</h3>
+        <span class="sc-progress">${n0(st.done)}/${n0(st.total)} loạt đã xong</span>
+      </header>
+      ${days}${rest}
+    </section>`;
+  };
+
+  body.innerHTML = `
+    <div class="sc-summary">
+      <span><b>${n0(d.totalSeries)}</b> loạt trong bảng đấu</span>
+      <span><b>${n0(d.scheduledSeries)}</b> đã có giờ</span>
+      <span><b>${n0(d.completedSeries)}</b> đã xong</span>
+    </div>
+    ${d.note ? `<div class="note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+      <div>${esc(d.note)}</div></div>` : ''}
+    ${d.stages.map(stage).join('')}
+    <p class="desc" style="margin-top:var(--s-4)">${esc(d.source || '')}</p>`;
 }
 
 /* ============================ Tier list ============================ */

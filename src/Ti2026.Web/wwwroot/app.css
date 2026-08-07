@@ -751,16 +751,29 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 
 /* ============================ Lịch thi đấu ============================ */
 
-.sc-day {
-  font-size: 13px; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--muted); margin: var(--s-5) 0 var(--s-2);
+.sc-summary {
+  display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5);
+  margin-bottom: var(--s-4); font-size: 13px; color: var(--ink-2);
 }
-.sc-day:first-child { margin-top: 0; }
+.sc-summary b { font-family: var(--font-head); font-size: 16px; color: var(--ink); }
+
+.sc-stage { margin-bottom: var(--s-6); }
+.sc-stage > header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--s-3); margin-bottom: var(--s-3);
+  padding-bottom: var(--s-2); border-bottom: 1px solid var(--border);
+}
+.sc-stage h3 { font-size: 17px; }
+.sc-progress { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+
+.sc-day {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); margin: var(--s-4) 0 var(--s-2); font-weight: 600;
+}
 
 .sc-list { display: grid; gap: var(--s-2); }
 
-/* Ba cột đối xứng để tỷ số luôn nằm chính giữa dù tên đội dài ngắn khác nhau. Ghi chú xuống
-   dòng riêng, trải hết chiều ngang — nhét vào cùng hàng thì trên điện thoại nó bóp nát tên đội. */
+/* Ba cột đối xứng để tỷ số luôn nằm chính giữa dù tên đội dài ngắn khác nhau. */
 .sc-row {
   display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--s-3);
   align-items: center;
@@ -771,22 +784,19 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .sc-row.status-dang-dien-ra { border-left-color: var(--pos); background: var(--pos-soft); }
 .sc-row.status-sap-toi { border-left-color: var(--accent); }
 .sc-row.status-cho-ket-qua { border-left-color: var(--warn); }
+.sc-row.status-chua-xep-gio { opacity: .72; }
 
 .sc-side { display: flex; align-items: center; gap: var(--s-2); min-width: 0; font-size: 14px; }
 .sc-side.right { flex-direction: row-reverse; text-align: right; }
 .sc-side span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-tbd { color: var(--muted); font-style: italic; font-size: 13px; }
 
-.sc-mid { display: grid; justify-items: center; gap: 2px; min-width: 5.5rem; }
+.sc-mid { display: grid; justify-items: center; gap: 2px; min-width: 6rem; }
 .sc-score { font-size: 18px; font-family: var(--font-head); }
 .sc-time { font-size: 16px; font-family: var(--font-head); color: var(--ink-2); }
-.sc-meta { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.sc-meta { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; text-align: center; }
 
-.sc-note { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
-
-@media (max-width: 560px) {
-  .sc-row { grid-template-columns: 1fr auto 1fr; padding: var(--s-3); }
-  .sc-side span { font-size: 13px; }
-}
+@media (max-width: 560px) { .sc-side span { font-size: 13px; } }
 
 /* ============================ Nhận định theo đội ============================ */
 

@@ -12,6 +12,7 @@ public class IngestPipeline(
     OpenDotaIngester openDota,
     MatchDetailIngester matchDetails,
     LeagueBackfillIngester leagueBackfill,
+    TiScheduleIngester tiSchedule,
     ProPubIngester proPub,
     SnapshotWriter snapshots,
     PredictionLedger ledger,
@@ -125,6 +126,11 @@ public class IngestPipeline(
         // (để những ván vừa thêm có detail ngay trong cùng vòng).
         await orchestrator.RunSourceAsync(
             "league-backfill", leagueBackfill.IngestAsync, SanityKind.None, ct);
+
+        // Bảng đấu TI từ API chính chủ của Valve. Độc lập với mọi bước khác — hỏng nguồn này
+        // thì chỉ tab lịch cũ đi, không ảnh hưởng phân tích.
+        await orchestrator.RunSourceAsync(
+            "ti-schedule", tiSchedule.IngestAsync, SanityKind.None, ct);
 
         // Nạp detail SAU khi có danh sách ván, TRƯỚC khi tính snapshot — để chỉ số của vòng
         // này đã bao gồm phần detail vừa nạp thêm.

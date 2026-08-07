@@ -1,170 +1,118 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
-using Ti2026.Ingest.Analytics;
+using Ti2026.Ingest.OpenDota;
 
 namespace Ti2026.Web.Endpoints;
 
 /// <summary>
-/// api/schedule — lịch thi đấu TI, kết quả tự điền.
+/// api/schedule — bảng đấu và lịch thi đấu The International.
 ///
-/// LỊCH là dữ liệu biên tập (data/schedule.json) vì không có nguồn nào cho trận sắp diễn ra:
-/// OpenDota chỉ có trận đã đá, và giải chính TI2026 còn chưa có trong danh mục giải của họ.
-/// KẾT QUẢ thì đo được, nên không nhập tay — nhập tay sẽ tạo hai nguồn sự thật cho cùng một
-/// tỷ số, và chúng sẽ lệch nhau đúng vào lúc giải đang diễn ra.
+/// NGUỒN LÀ API CHÍNH CHỦ CỦA VALVE (www.dota2.com/webapi/IDOTA2League/GetLeagueData), không
+/// phải dữ liệu nhập tay. Valve công bố sẵn khung bảng đấu — Swiss, Elimination Round,
+/// Playoff — kèm giờ và tỷ số từng nút, và cập nhật trong lúc giải diễn ra.
+///
+/// Đã cân nhắc hai nguồn khác và loại: OpenDota chỉ có trận ĐÃ đá, không có endpoint nào cho
+/// trận sắp diễn ra; Liquipedia có lịch nhưng robots.txt của họ ghi thẳng
+/// "Disallow: /dota2/api.php" dưới User-agent: * nên không được phép lấy tự động.
 /// </summary>
 public static class ScheduleEndpoints
 {
-    /// <summary>Nhận diện giải TI trong LeagueName. Đủ dùng và không cần ai khai id trước.</summary>
-    private const string EventMarker = "International 2026";
-
     public static void MapScheduleEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/schedule", async (Ti2026DbContext db, Ti2026Paths paths) =>
+        app.MapGet("/api/schedule", async (Ti2026DbContext db) =>
         {
-            var slugs = await db.Teams.ToDictionaryAsync(t => t.Id, t => t.Slug);
-            var names = await db.Teams.ToDictionaryAsync(t => t.Slug, t => t.Name);
-            var logos = await db.Teams.ToDictionaryAsync(t => t.Slug, t => t.LogoUrl);
+            var rows = await db.ScheduledSeries
+                .Include(s => s.Team1)
+                .Include(s => s.Team2)
+                .OrderBy(s => s.ScheduledAt == null)
+                .ThenBy(s => s.ScheduledAt)
+                .ThenBy(s => s.NodeId)
+                .ToListAsync();
 
-            var played = (await db.Matches
-                    .Where(m => m.LeagueName != null && m.LeagueName.Contains(EventMarker)
-                                && m.RadiantTeamId != null && m.DireTeamId != null)
-                    .Select(m => new
-                    {
-                        m.Id, m.SeriesId, m.StartTime, m.RadiantTeamId, m.DireTeamId,
-                        m.RadiantWin, m.LeagueName,
-                    })
-                    .ToListAsync())
-                .Select(m => new PlayedGame(
-                    m.Id, m.SeriesId, m.StartTime,
-                    slugs[m.RadiantTeamId!.Value], slugs[m.DireTeamId!.Value], m.RadiantWin))
-                .ToList();
+            if (rows.Count == 0)
+            {
+                return Results.Ok(new
+                {
+                    updatedAt = DateTime.UtcNow,
+                    source = Source,
+                    ready = false,
+                    note = "Chưa nạp được bảng đấu. Vòng ingest tới sẽ lấy về từ Valve.",
+                    stages = Array.Empty<object>(),
+                });
+            }
 
-            var doc = ReadSchedule(paths, out var readError);
-            var fixtures = doc.Fixtures;
             var now = DateTime.UtcNow;
 
-            var rows = fixtures
-                .Select(f => f with
+            var stages = rows
+                .GroupBy(s => s.GroupName ?? "Khác")
+                .Select(g => new
                 {
-                    NameA = names.GetValueOrDefault(f.SlugA),
-                    NameB = names.GetValueOrDefault(f.SlugB),
-                })
-                .Select(f => ScheduleBuilder.Build(f, played, now))
-                .OrderBy(r => r.StartsAt)
-                .Select(r => new
-                {
-                    startsAt = r.StartsAt,
-                    stage = r.Stage,
-                    format = r.Format,
-                    status = r.Status,
-                    winsA = r.WinsA,
-                    winsB = r.WinsB,
-                    gamesPlayed = r.GamesPlayed,
-                    target = r.Target,
-                    text = r.Text,
-                    a = TeamDto(r.SlugA),
-                    b = TeamDto(r.SlugB),
-                })
-                .ToList();
+                    name = g.Key,
+                    total = g.Count(),
+                    done = g.Count(x => x.IsCompleted),
 
-            // Ván đã đá mà không khớp cặp nào trong lịch. Khi lịch chưa nhập thì đây là toàn bộ
-            // nội dung của trang — bỏ đi thì tab trống trơn trong lúc dữ liệu nằm sẵn trong DB.
-            var loose = ScheduleBuilder.Unscheduled(fixtures, played)
-                .GroupBy(g => g.SeriesId is long s && s > 0 ? $"s{s}" : $"m{g.MatchId}")
-                .Select(g =>
-                {
-                    var first = g.OrderBy(x => x.StartTime).First();
-                    var winsA = g.Count(x => x.SlugA == first.SlugA ? x.AWon : !x.AWon);
-                    return new
+                    // Giờ sớm nhất/muộn nhất mà Valve ĐÃ xếp cho vòng này. null khi chưa xếp —
+                    // và "chưa xếp" là trạng thái thật, không phải thiếu dữ liệu.
+                    from = g.Where(x => x.ScheduledAt != null).Min(x => x.ScheduledAt),
+                    to = g.Where(x => x.ScheduledAt != null).Max(x => x.ScheduledAt),
+
+                    series = g.Select(s => new
                     {
-                        startsAt = first.StartTime,
-                        games = g.Count(),
-                        winsA,
-                        winsB = g.Count() - winsA,
-                        a = TeamDto(first.SlugA),
-                        b = TeamDto(first.SlugB),
-                    };
+                        nodeId = s.NodeId,
+                        name = s.Name,
+                        scheduledAt = s.ScheduledAt,
+                        actualAt = s.ActualAt,
+                        wins1 = s.Wins1,
+                        wins2 = s.Wins2,
+                        status = Status(s.IsCompleted, s.HasStarted, s.ScheduledAt, now),
+
+                        // Nút chưa biết đội nào vào thì nói NÓ NHẬN ĐỘI TỪ ĐÂU, thay vì để
+                        // trống — đó là thông tin thật của một bảng đấu loại trực tiếp.
+                        from1 = s.TeamId1 == null && s.ValveTeamId1 == null ? s.IncomingNodeId1 : null,
+                        from2 = s.TeamId2 == null && s.ValveTeamId2 == null ? s.IncomingNodeId2 : null,
+
+                        team1 = TeamDto(s.Team1?.Slug, s.Team1?.Name, s.Team1?.LogoUrl, s.ValveTeamId1),
+                        team2 = TeamDto(s.Team2?.Slug, s.Team2?.Name, s.Team2?.LogoUrl, s.ValveTeamId2),
+                    }).ToList(),
                 })
-                .OrderByDescending(x => x.startsAt)
                 .ToList();
 
             return Results.Ok(new
             {
                 updatedAt = DateTime.UtcNow,
-                @event = doc.Event,
-                fixtureCount = fixtures.Count,
-                serverTime = now,
+                source = Source,
+                ready = true,
+                leagueId = rows[0].LeagueId,
+                syncedAt = rows.Max(r => r.SyncedAt),
 
-                // Nói RÕ vì sao lịch phải nhập tay, ngay trong payload — người mở trang thấy tab
-                // trống mà không có lời giải thích sẽ hiểu là hệ thống hỏng.
-                source = "Lịch nhập tay ở data/schedule.json; tỷ số đọc từ ván thật của OpenDota.",
-                whyManual = "OpenDota không có endpoint nào cho trận sắp diễn ra, và giải chính "
-                          + "TI2026 còn chưa xuất hiện trong danh mục giải của họ — mới chỉ có 5 "
-                          + "giải vòng loại khu vực.",
-                readError,
+                totalSeries = rows.Count,
+                scheduledSeries = rows.Count(r => r.ScheduledAt != null),
+                completedSeries = rows.Count(r => r.IsCompleted),
 
-                fixtures = rows,
-                unscheduled = loose,
+                // Nói rõ khi Valve mới chỉ dựng khung mà chưa xếp giờ. Không có câu này thì một
+                // bảng đấu 27 nút trống trơn trông y hệt một lỗi tải dữ liệu.
+                note = rows.All(r => r.ScheduledAt == null)
+                    ? "Valve đã công bố khung bảng đấu nhưng chưa xếp giờ và chưa điền đội. "
+                      + "Các ô sẽ tự đầy lên khi họ cập nhật — không cần ai nhập tay."
+                    : null,
+
+                stages,
             });
 
-            object TeamDto(string slug) => new
-            {
-                slug,
-                name = names.GetValueOrDefault(slug, slug),
-                logo = logos.GetValueOrDefault(slug),
-            };
+            static object? TeamDto(string? slug, string? name, string? logo, int? valveId) =>
+                slug is null && valveId is null
+                    ? null
+                    : new { slug, name = name ?? (valveId is null ? null : $"#{valveId}"), logo };
         });
     }
 
-    private sealed record ScheduleDoc(string? Event, List<Fixture> Fixtures);
+    private const string Source =
+        "Bảng đấu và lịch lấy từ API chính chủ của Valve (dota2.com), tự cập nhật mỗi vòng ingest.";
 
-    /// <summary>
-    /// Đọc schedule.json. File hỏng thì trả lịch RỖNG kèm lời báo lỗi, KHÔNG ném.
-    ///
-    /// Cùng lý do với try/catch quanh EditorialSeeder: file này được sửa tay, nên một dấu phẩy
-    /// thừa là chuyện sẽ xảy ra. Để nó hạ cả endpoint thì mất luôn phần kết quả tự động vốn
-    /// không liên quan gì tới lỗi cú pháp đó.
-    /// </summary>
-    private static ScheduleDoc ReadSchedule(Ti2026Paths paths, out string? error)
-    {
-        error = null;
-        var path = paths.EditorialFile("schedule.json");
-        if (!File.Exists(path)) return new ScheduleDoc(null, []);
-
-        try
-        {
-            using var json = JsonDocument.Parse(File.ReadAllText(path));
-            var root = json.RootElement;
-
-            var name = root.TryGetProperty("event", out var e) ? e.GetString() : null;
-            var list = new List<Fixture>();
-
-            if (root.TryGetProperty("fixtures", out var arr) && arr.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var f in arr.EnumerateArray())
-                {
-                    if (!f.TryGetProperty("startsAt", out var s) || !s.TryGetDateTime(out var when))
-                        continue;
-                    if (!f.TryGetProperty("a", out var a) || !f.TryGetProperty("b", out var b))
-                        continue;
-
-                    list.Add(new Fixture(
-                        when.ToUniversalTime(),
-                        f.TryGetProperty("stage", out var st) ? st.GetString() ?? "" : "",
-                        a.GetString() ?? "",
-                        b.GetString() ?? "",
-                        f.TryGetProperty("format", out var fm) ? fm.GetString() : null));
-                }
-            }
-
-            return new ScheduleDoc(name, list);
-        }
-        catch (Exception ex)
-        {
-            error = $"schedule.json không đọc được ({ex.Message}) — trang vẫn hiện phần kết quả "
-                  + "đo được, chỉ thiếu lịch.";
-            return new ScheduleDoc(null, []);
-        }
-    }
+    private static string Status(bool completed, bool started, DateTime? scheduled, DateTime now) =>
+        completed ? "da-xong"
+        : started ? "dang-dien-ra"
+        : scheduled is null ? "chua-xep-gio"
+        : scheduled > now ? "sap-toi"
+        : "cho-ket-qua";
 }

@@ -30,24 +30,38 @@ public class LeagueBackfillIngester(
     /// <summary>Từ ngần này đội TI2026 góp mặt thì coi là giải ở mặt bằng của TI.</summary>
     public const int MinTiTeams = 8;
 
-    /// <summary>
-    /// Chỉ xét giải có ván trong ngần này ngày. Tier list chỉ đọc bản game hiện tại, nên nạp
-    /// bù cả lịch sử là tốn tiền cho dữ liệu không ai đọc.
-    /// </summary>
-    public const int RecentDays = 120;
-
     public async Task<int> IngestAsync(CancellationToken ct)
     {
-        var since = DateTime.UtcNow.AddDays(-RecentDays);
+        // Phạm vi là BẢN GAME HIỆN TẠI, không phải "N ngày gần đây".
+        //
+        // Cả hai nơi tiêu thụ dữ liệu này — tier list và "Học từ pro" — đều lọc đúng
+        // PatchVersion == bản hiện tại, nên lấy đúng phạm vi đó là khớp theo định nghĩa, và tự
+        // co giãn khi game lên bản mới mà không ai phải chỉnh hằng số.
+        //
+        // Bản trước dùng cửa sổ 120 ngày và bỏ sót ESL One Birmingham 2026 (72 ván, 9 đội TI)
+        // chỉ vì nó diễn ra 136 ngày trước — trong khi vẫn thuộc bản game đang đo. Với tier
+        // list thì không sao (nửa đời 14 ngày khiến ván đó có trọng số 0,0012), nhưng "Học từ
+        // pro" KHÔNG đánh trọng số theo thời gian nên ở đó chúng đáng lẽ phải được tính đủ.
+        var patch = await db.Matches
+            .Where(m => m.PatchVersion != null)
+            .OrderByDescending(m => m.StartTime)
+            .Select(m => m.PatchVersion)
+            .FirstOrDefaultAsync(ct);
+
+        if (patch is null)
+        {
+            logger.LogInformation("Chưa biết bản game nào — không nạp bù theo giải");
+            return 0;
+        }
 
         // Giải "cấp cao" đọc từ chính dữ liệu: đếm số đội của ta đã ra sân ở đó.
         //
         // Gom nhóm ở phía ứng dụng chứ không trong SQL: đếm số đội phân biệt qua HAI cột đòi
-        // hỏi trải hai cột thành một tập, mà EF không dịch được biểu thức đó sang SQL. Trong
-        // cửa sổ 120 ngày chỉ có vài trăm hàng ba cột nên đọc lên là rẻ hơn nhiều so với việc
-        // bẻ cong truy vấn cho vừa bộ dịch.
+        // hỏi trải hai cột thành một tập, mà EF không dịch được biểu thức đó sang SQL. Một bản
+        // game chỉ có vài chục giải nên đọc lên là rẻ hơn nhiều so với việc bẻ cong truy vấn
+        // cho vừa bộ dịch.
         var recent = await db.Matches
-            .Where(m => m.LeagueId != null && m.StartTime >= since)
+            .Where(m => m.LeagueId != null && m.PatchVersion == patch)
             .Select(m => new { LeagueId = m.LeagueId!.Value, m.RadiantTeamId, m.DireTeamId })
             .ToListAsync(ct);
 

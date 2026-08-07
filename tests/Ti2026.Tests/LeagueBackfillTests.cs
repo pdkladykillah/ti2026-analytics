@@ -80,6 +80,7 @@ public class LeagueBackfillTests : IDisposable
                 LeagueName = name,
                 RadiantTeamId = teams[i].Id,
                 DireTeamId = teams[i + 1].Id,
+                PatchVersion = "60",
                 RadiantWin = true, RadiantScore = 20, DireScore = 10,
                 IngestedAt = DateTime.UtcNow,
             });
@@ -172,14 +173,26 @@ public class LeagueBackfillTests : IDisposable
         m.DireTeamId.Should().BeNull("222 chưa khai cho ai");
     }
 
+    /// <summary>
+    /// Giải của bản game CŨ thì không xét tới — cả tier list lẫn "Học từ pro" đều chỉ đọc bản
+    /// hiện tại, nên nạp bù cho bản cũ là trả tiền cho dữ liệu không nơi nào đọc.
+    /// </summary>
     [Fact]
-    public async Task Giai_qua_cu_thi_khong_xet_toi()
+    public async Task Giai_cua_ban_game_cu_thi_khong_xet_toi()
     {
         using var db = NewDb();
-        SeedLeague(db, 100, "Giải lớn", LeagueBackfillIngester.MinTiTeams);
+        SeedLeague(db, 100, "Giải bản cũ", LeagueBackfillIngester.MinTiTeams);
 
-        foreach (var m in await db.Matches.ToListAsync())
-            m.StartTime = Recent(LeagueBackfillIngester.RecentDays + 30);
+        foreach (var m in await db.Matches.ToListAsync()) m.PatchVersion = "59";
+        await db.SaveChangesAsync();
+
+        // Một ván lẻ của bản mới, ở một giải khác, để "bản hiện tại" là 60
+        db.Matches.Add(new Match
+        {
+            Id = 999_999, StartTime = Recent(1), DurationSeconds = 2000,
+            LeagueId = 300, LeagueName = "Giải mới", PatchVersion = "60",
+            RadiantWin = true, RadiantScore = 1, DireScore = 0, IngestedAt = DateTime.UtcNow,
+        });
         await db.SaveChangesAsync();
 
         var h = new FakeHandler(new Dictionary<long, string> { [100] = LeagueJson(100, [900005]) });
@@ -187,7 +200,7 @@ public class LeagueBackfillTests : IDisposable
         var added = await new LeagueBackfillIngester(
             db, Client(h), NullLogger<LeagueBackfillIngester>.Instance).IngestAsync(default);
 
-        h.Asked.Should().BeEmpty();
+        h.Asked.Should().NotContain(100, "giải đó thuộc bản game cũ");
         added.Should().Be(0);
     }
 

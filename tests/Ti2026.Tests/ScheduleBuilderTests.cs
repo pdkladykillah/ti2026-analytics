@@ -15,7 +15,7 @@ public class ScheduleBuilderTests
     private static readonly DateTime T0 = new(2026, 9, 5, 7, 0, 0, DateTimeKind.Utc);
 
     private static Fixture Fix(string format = "Bo3", int hourOffset = 0) =>
-        new(T0.AddHours(hourOffset), "Vòng bảng", "alpha", "beta", format);
+        new(T0.AddHours(hourOffset), "Vòng bảng", "alpha", "beta", format, "Đội Alpha", "Đội Beta");
 
     private static PlayedGame Game(int minutes, bool alphaWon, long series = 500, long id = 0) =>
         new(id == 0 ? 1000 + minutes : id, series, T0.AddMinutes(minutes), "alpha", "beta", alphaWon);
@@ -53,7 +53,7 @@ public class ScheduleBuilderTests
         r.Status.Should().Be("da-xong");
         r.WinsA.Should().Be(2);
         r.WinsB.Should().Be(1);
-        r.Text.Should().Contain("alpha thắng 2–1");
+        r.Text.Should().Contain("Đội Alpha thắng 2–1", "câu kết quả phải đọc tên đội, không phải slug");
     }
 
     [Fact]

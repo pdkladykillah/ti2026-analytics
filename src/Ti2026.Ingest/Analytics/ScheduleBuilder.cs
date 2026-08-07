@@ -3,7 +3,8 @@ namespace Ti2026.Ingest.Analytics;
 /// <summary>Một cặp đấu đã lên lịch, đọc từ schedule.json.</summary>
 /// <param name="Format">Bo1 | Bo2 | Bo3 | Bo5 — null nếu chưa biết.</param>
 public readonly record struct Fixture(
-    DateTime StartsAt, string Stage, string SlugA, string SlugB, string? Format);
+    DateTime StartsAt, string Stage, string SlugA, string SlugB, string? Format,
+    string? NameA = null, string? NameB = null);
 
 /// <summary>Một ván đã đá, lấy từ OpenDota.</summary>
 public readonly record struct PlayedGame(
@@ -87,9 +88,12 @@ public static class ScheduleBuilder
             "sap-toi" => Countdown(f.StartsAt - now),
             "cho-ket-qua" => "Đã tới giờ nhưng chưa có ván nào được nạp về.",
             "dang-dien-ra" => $"Đang diễn ra — {winsA}–{winsB} sau {window.Count} ván.",
+            // Tên hiển thị, KHÔNG phải slug: câu "team-spirit thắng 2–1" đọc như một dòng log
+            // chứ không phải một câu tiếng Việt. Slug là khoá tra cứu, không phải thứ để đọc.
             _ => winsA == winsB
                 ? $"Hoà {winsA}–{winsB}."
-                : $"{(winsA > winsB ? f.SlugA : f.SlugB)} thắng {Math.Max(winsA, winsB)}–{Math.Min(winsA, winsB)}.",
+                : $"{(winsA > winsB ? f.NameA ?? f.SlugA : f.NameB ?? f.SlugB)} thắng "
+                  + $"{Math.Max(winsA, winsB)}–{Math.Min(winsA, winsB)}.",
         };
 
         return new ScheduleRow(f.StartsAt, f.Stage, f.SlugA, f.SlugB, f.Format,

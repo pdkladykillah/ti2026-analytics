@@ -45,6 +45,11 @@ public static class ScheduleEndpoints
             var now = DateTime.UtcNow;
 
             var rows = fixtures
+                .Select(f => f with
+                {
+                    NameA = names.GetValueOrDefault(f.SlugA),
+                    NameB = names.GetValueOrDefault(f.SlugB),
+                })
                 .Select(f => ScheduleBuilder.Build(f, played, now))
                 .OrderBy(r => r.StartsAt)
                 .Select(r => new

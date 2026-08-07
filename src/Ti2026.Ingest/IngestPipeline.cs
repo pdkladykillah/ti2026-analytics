@@ -14,6 +14,7 @@ public class IngestPipeline(
     ProPubIngester proPub,
     SnapshotWriter snapshots,
     PredictionLedger ledger,
+    StaleTeamIdDetector staleTeamIds,
     Ti2026DbContext db,
     IngestSchedule schedule,
     IngestGate gate,
@@ -132,6 +133,14 @@ public class IngestPipeline(
             SanityKind.None, ct);
 
         await orchestrator.RunSourceAsync("snapshot-backfill", RestateOldSnapshotsAsync,
+            SanityKind.None, ct);
+
+        // Đặt CUỐI, sau khi đã nạp xong: nó soi chính dữ liệu vừa nạp để tìm đội của ta đang
+        // ra sân dưới một team_id chưa khai. Đây là loại hỏng không làm gì đổ vỡ — ingest vẫn
+        // báo Succeeded trong lúc mất trắng ván của một đội — nên phải có ai đó đi tìm nó.
+        await orchestrator.RunSourceAsync(
+            "stale-team-id",
+            async c => (await staleTeamIds.FindAsync(DateTime.UtcNow, c)).Count,
             SanityKind.None, ct);
 
         // Sổ theo dõi dự đoán. Đặt SAU snapshot vì nó đọc Elo vừa tính xong — ghi trước thì

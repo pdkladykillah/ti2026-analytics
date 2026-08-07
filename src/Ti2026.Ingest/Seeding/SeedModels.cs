@@ -51,6 +51,18 @@ public class TeamDto
     /// từ chối đoán trong các ca đó, vì chọn sai sẽ gán toàn bộ ván của một đội cho đội khác.
     /// </summary>
     public int? OpenDotaTeamId { get; set; }
+
+    /// <summary>
+    /// MỌI team_id OpenDota của đội này, kể cả bản ghi đã ngừng nhận ván.
+    ///
+    /// Trong Dota, "đội" là tổ chức còn team_id là một bản ghi; roster đổi tổ chức hoặc đăng ký
+    /// lại thì OpenDota sinh bản ghi MỚI và bản ghi cũ chết. Với một id duy nhất, hệ thống lặng
+    /// lẽ ngừng nhận ván của đội đó — PariVision mất nguyên giải EWC 2026 mà họ vô địch, và
+    /// vòng ingest vẫn báo "Succeeded".
+    ///
+    /// <see cref="OpenDotaTeamId"/> tự động được gộp vào danh sách này, không cần khai lại.
+    /// </summary>
+    public int[]? OpenDotaTeamIds { get; set; }
 }
 
 /// <summary>

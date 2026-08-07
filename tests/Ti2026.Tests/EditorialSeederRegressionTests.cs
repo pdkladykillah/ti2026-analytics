@@ -258,6 +258,61 @@ public class EditorialSeederRegressionTests : IDisposable
         (await db.Teams.FirstAsync()).OpenDotaTeamId.Should().Be(7119388);
     }
 
+    /// <summary>
+    /// Một đội có thể có NHIỀU team_id OpenDota, và id chính phải tự nằm trong danh sách.
+    ///
+    /// Trong Dota, "đội" là tổ chức còn team_id là một bản ghi: roster đổi tổ chức hoặc đăng ký
+    /// lại thì OpenDota sinh bản ghi MỚI và bản ghi cũ ngừng nhận ván. Với một id duy nhất, hệ
+    /// thống lặng lẽ ngừng nhận ván của đội đó và vòng ingest vẫn báo "Succeeded" — PariVision
+    /// mất nguyên giải EWC 2026 mà họ vô địch vì đúng lỗi này.
+    /// </summary>
+    [Fact]
+    public async Task Mot_doi_giu_duoc_nhieu_openDotaTeamId_va_id_chinh_tu_duoc_gop_vao()
+    {
+        File.WriteAllText(Path.Combine(_dir, "teams.json"), """
+        {"teams":[{"name":"Alpha","slug":"alpha","openDotaTeamId":9824702,
+                   "openDotaTeamIds":[9572001,9824702]}]}
+        """);
+
+        using var db = NewDb();
+        await Seeder(db).SeedAsync(CancellationToken.None);
+
+        var ids = await db.TeamOpenDotaIds.Select(x => x.OpenDotaTeamId).OrderBy(x => x).ToListAsync();
+        ids.Should().Equal([9572001, 9824702]);
+
+        (await db.Teams.FirstAsync()).OpenDotaTeamId.Should().Be(9824702, "id chính vẫn là id chính");
+    }
+
+    /// <summary>
+    /// Một team_id chỉ được thuộc đúng một đội. Chuyển nó sang đội khác thì phải GỠ khỏi đội cũ,
+    /// không thì unique index nổ ngay lúc startup và app không lên được.
+    /// </summary>
+    [Fact]
+    public async Task Chuyen_mot_openDotaTeamId_sang_doi_khac_thi_go_khoi_doi_cu()
+    {
+        File.WriteAllText(Path.Combine(_dir, "teams.json"), """
+        {"teams":[{"name":"Alpha","slug":"alpha","openDotaTeamIds":[555]},
+                  {"name":"Beta","slug":"beta"}]}
+        """);
+
+        using var db = NewDb();
+        await Seeder(db).SeedAsync(CancellationToken.None);
+
+        File.WriteAllText(Path.Combine(_dir, "teams.json"), """
+        {"teams":[{"name":"Alpha","slug":"alpha"},
+                  {"name":"Beta","slug":"beta","openDotaTeamIds":[555]}]}
+        """);
+        await Seeder(db).SeedAsync(CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var owner = await db.TeamOpenDotaIds
+            .Where(x => x.OpenDotaTeamId == 555)
+            .Select(x => x.Team!.Slug)
+            .ToListAsync();
+
+        owner.Should().Equal(["beta"]);
+    }
+
     [Fact]
     public async Task De_trong_thi_KHONG_xoa_gia_tri_resolver_da_gan()
     {

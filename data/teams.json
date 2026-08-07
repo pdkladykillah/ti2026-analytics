@@ -164,7 +164,12 @@
         "killDiff": 1.19
       },
       "logo": "https://dltv.org/uploads/teams/ABiiALC6B9K3sk7Fui1M5Uhnf6RetRll.png.webp",
-      "openDotaTeamId": 10182357
+      "openDotaTeamId": 10182357,
+      "openDotaTeamIds": [
+        10182357,
+        10150413
+      ],
+      "_openDotaNote": "cung roster tung thi dau duoi ten Iron Wing (10150413)"
     },
     {
       "name": "Team Spirit",
@@ -212,7 +217,12 @@
         "killDiff": 6.83
       },
       "logo": "https://dltv.org/uploads/teams/LsVqzDTPzN7qzT7EsqLuyeOpGkht5AVt.png.webp",
-      "openDotaTeamId": 9572001
+      "openDotaTeamId": 9824702,
+      "openDotaTeamIds": [
+        9572001,
+        9824702
+      ],
+      "_openDotaNote": "ban ghi cu chet 25/06/2026; PVISION 9824702 la ban ghi dang thi dau, vo dich EWC 2026"
     },
     {
       "name": "Nigma Galaxy",
@@ -259,7 +269,13 @@
         "totalKills": 48.37,
         "killDiff": 0.27
       },
-      "logo": "https://dltv.org/uploads/teams/KzJfVKwybUiDjKIwpPVFc2TirGkIqPPk.png"
+      "logo": "https://dltv.org/uploads/teams/KzJfVKwybUiDjKIwpPVFc2TirGkIqPPk.png",
+      "openDotaTeamIds": [
+        9303383,
+        10182299
+      ],
+      "_openDotaNote": "ban ghi cu chet 09/05/2026; L1 TEAM 10182299 la ban ghi dang thi dau",
+      "openDotaTeamId": 10182299
     },
     {
       "name": "Team Resilience",
@@ -352,7 +368,12 @@
         "killDiff": 3.03
       },
       "logo": "https://dltv.org/uploads/teams/6dA6cd7zwFvaAuFFPldKLrbygXopSqBr.png",
-      "openDotaTeamId": 10150538
+      "openDotaTeamId": 10150538,
+      "openDotaTeamIds": [
+        10150538,
+        10144195
+      ],
+      "_openDotaNote": "cung roster tung thi dau duoi ten ex-HEROIC (10144195)"
     },
     {
       "name": "GamerLegion",
@@ -378,5 +399,5 @@
       "logo": "https://dltv.org/uploads/teams/small/SL5XvIyOVg02fCankoCetSnjT3x7FdVY.png"
     }
   ],
-  "_openDotaNote": "openDotaTeamId: chỉ định tay, ghi đè bộ so khớp tự động (TeamResolver). Căn cứ từng đội: team-spirit=7119388 (ứng viên kia #2621843 trận cuối 2019-01-02); lgd-gaming=10150538 (ứng viên kia #15 dừng từ 2024-08-03; cửa sổ 6 tháng cần đội đang thi đấu); parivision=9572001 (OpenDota ghi tên \"TEAM VISION\", khớp ghi chú TEAM VISION = PARIVISION); betboom-team=8255888 (OpenDota ghi tên \"BoomBoys\", tag BB, đang thi đấu, rating 1480 — chủ project xác nhận); nigma=10136357 (thực thể MỚI, đá 2026-08-02; đội hình đã thay đổi trong cửa sổ nên lấy bản mới thay vì #7554697); 1win-team=10182357 (OpenDota ghi tên \"1w\" nên so khớp theo tên thất bại; xác định qua /proPlayers: cả 5 tuyển thủ 33, Whitemon, bzm, Pure, Ari đều trỏ về team_id này)."
+  "_openDotaNote": "openDotaTeamIds: MOI team_id cua doi, ke ca ban ghi da ngung nhan van. Trong Dota, 'doi' la to chuc con team_id la mot ban ghi; roster doi to chuc hoac dang ky lai thi OpenDota sinh ban ghi MOI va ban ghi cu chet. Voi mot id duy nhat, he thong lang le ngung nhan van cua doi do va vong ingest van bao Succeeded - PariVision da mat nguyen giai EWC 2026 ma ho vo dich vi loi nay."
 }

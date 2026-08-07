@@ -57,7 +57,8 @@ public static class OpsEndpoints
         // ---------- Trạng thái scheduler ----------
         app.MapGet("/api/ingest/status", async (
             Ti2026DbContext db, IngestGate gate, IngestStatusTracker status,
-            IngestSchedule schedule, IOptions<Ti2026Options> cfg) =>
+            IngestSchedule schedule, IOptions<Ti2026Options> cfg,
+            StaleTeamIdDetector staleTeamIds) =>
         {
             var raw = await db.IngestRuns
                 .OrderByDescending(r => r.StartedAt)
@@ -108,10 +109,32 @@ public static class OpsEndpoints
             var total = await db.Matches.CountAsync(
                 m => (m.RadiantTeamId != null && m.DireTeamId != null) || m.StartTime >= cutoff);
 
+            // Đội đang ra sân dưới một team_id OpenDota chưa khai.
+            //
+            // Phải hiện ở đây chứ không chỉ trong log. Đây là loại hỏng KHÔNG làm gì đổ vỡ:
+            // ingest vẫn báo "Succeeded" trong lúc mất trắng ván của một đội. PariVision mất
+            // nguyên giải EWC 2026 mà họ vô địch, và chỉ lộ ra vì có người tình cờ hỏi đúng câu.
+            var unknownSides = await staleTeamIds.FindAsync(DateTime.UtcNow, default);
+
             return Results.Ok(new
             {
                 running = gate.IsRunning,
                 enabled = status.Enabled,
+
+                lineupMismatch = unknownSides
+                    .GroupBy(x => x.Slug)
+                    .Select(g => new
+                    {
+                        team = g.Key,
+                        games = g.Count(),
+                        certain = g.Count(x => x.RosterMatched >= StaleTeamIdDetector.CertainMatch),
+                        latest = g.Max(x => x.StartTime).ToString("yyyy-MM-dd"),
+                        note = "Đội này ra sân ở một bên không nhận diện được — nhiều khả năng "
+                             + "đang thi đấu dưới một team_id OpenDota chưa khai trong teams.json.",
+                    })
+                    .OrderByDescending(x => x.games)
+                    .ToList(),
+
                 intervalHours = status.Interval == TimeSpan.Zero ? (double?)null : status.Interval.TotalHours,
                 lastStartedAt = status.LastStartedAt,
                 nextRunAt = status.NextRunAt,

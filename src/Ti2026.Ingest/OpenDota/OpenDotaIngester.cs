@@ -45,7 +45,8 @@ public class OpenDotaIngester(
         await UpdateLeaguesAsync(ct);
 
         var teams = await db.Teams
-            .Where(t => t.OpenDotaTeamId != null)
+            .Include(t => t.OpenDotaIds)
+            .Where(t => t.OpenDotaTeamId != null || t.OpenDotaIds.Count > 0)
             .ToListAsync(ct);
 
         if (teams.Count == 0)
@@ -54,15 +55,32 @@ public class OpenDotaIngester(
             return 0;
         }
 
-        // Bản đồ ngược để ánh xạ opposing_team_id về đội của ta
-        var byOpenDotaId = teams.ToDictionary(t => t.OpenDotaTeamId!.Value, t => t.Id);
+        // Mỗi đội có thể có NHIỀU team_id trên OpenDota: một roster đổi tổ chức hoặc đăng ký
+        // lại thì OpenDota sinh bản ghi mới, bản ghi cũ ngừng nhận ván. Nạp theo đúng một id
+        // là cách lặng lẽ mất trắng dữ liệu của một đội — đã xảy ra thật với PariVision, mất
+        // nguyên giải EWC 2026 mà họ vô địch.
+        var idsOf = teams.ToDictionary(
+            t => t.Id,
+            t => t.OpenDotaIds.Select(x => x.OpenDotaTeamId)
+                  .Concat(t.OpenDotaTeamId is int p ? [p] : Array.Empty<int>())
+                  .Distinct()
+                  .ToList());
+
+        // Bản đồ ngược để ánh xạ opposing_team_id về đội của ta — cũng phải phủ MỌI id, không
+        // thì chính đội của ta xuất hiện như "đối thủ ngoài 16 đội" và ván bị loại khỏi H2H.
+        var byOpenDotaId = idsOf
+            .SelectMany(kv => kv.Value.Select(id => (id, teamId: kv.Key)))
+            .ToDictionary(x => x.id, x => x.teamId);
 
         var written = 0;
 
         foreach (var team in teams)
         {
-            var matches = await client.GetTeamMatchesAsync(team.OpenDotaTeamId!.Value, ct);
-            written += await UpsertMatchesAsync(team, matches, byOpenDotaId, ct);
+            foreach (var openDotaId in idsOf[team.Id])
+            {
+                var matches = await client.GetTeamMatchesAsync(openDotaId, ct);
+                written += await UpsertMatchesAsync(team, matches, byOpenDotaId, ct);
+            }
         }
 
         await db.SaveChangesAsync(ct);

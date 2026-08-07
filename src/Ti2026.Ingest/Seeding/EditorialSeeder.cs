@@ -93,11 +93,17 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
     {
         var written = 0;
 
+        // Nạp TRƯỚC vòng lặp, và gắn qua navigation property chứ không qua khoá ngoại.
+        // Đội mới thêm chưa có Id (vẫn là 0) cho tới lúc SaveChanges ở cuối, nên gán TeamId
+        // bằng tay sẽ nổ "FOREIGN KEY constraint failed" — im lặng ở lúc build, chỉ lộ lúc chạy.
+        var claimed = await db.TeamOpenDotaIds.ToDictionaryAsync(x => x.OpenDotaTeamId, ct);
+
         foreach (var dto in file.Teams)
         {
             if (string.IsNullOrWhiteSpace(dto.Slug)) continue;
 
-            var team = await db.Teams.Include(t => t.Aliases)
+            var team = await db.Teams
+                           .Include(t => t.Aliases).Include(t => t.OpenDotaIds)
                            .FirstOrDefaultAsync(t => t.Slug == dto.Slug, ct)
                        ?? db.Teams.Local.FirstOrDefault(t => t.Slug == dto.Slug);
 
@@ -120,6 +126,12 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
                 await ReleaseIdFromOtherTeamsAsync(explicitId, team.Slug, ct);
                 team.OpenDotaTeamId = explicitId;
             }
+
+            // Id PHỤ: một roster đổi tổ chức hoặc đăng ký lại thì OpenDota sinh bản ghi mới.
+            // Khai ở đây thì ingest nạp theo cả bản ghi cũ lẫn mới thay vì mất trắng một bên.
+            EnsureOpenDotaIds(
+                team, claimed,
+                (dto.OpenDotaTeamIds ?? []).Concat(dto.OpenDotaTeamId is int e ? [e] : []));
 
             EnsureAlias(team, dto.Name);
             if (!string.IsNullOrWhiteSpace(dto.Short)) EnsureAlias(team, dto.Short!);
@@ -435,6 +447,38 @@ public class EditorialSeeder(Ti2026DbContext db, string editorialDirectory)
 
         foreach (var other in others) other.OpenDotaTeamId = null;
         if (others.Count > 0) await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Ghi nhận mọi team_id OpenDota khai trong teams.json cho đội này.
+    ///
+    /// Giống <see cref="ReleaseIdFromOtherTeamsAsync"/>: chỉ định tay phải luôn thắng, nên id
+    /// nào đang bị đội khác giữ thì gỡ ra trước — không thì unique index nổ ngay lúc startup và
+    /// app không lên được.
+    /// </summary>
+    private void EnsureOpenDotaIds(
+        Team team, Dictionary<int, TeamOpenDotaId> claimed, IEnumerable<int> openDotaIds)
+    {
+        foreach (var id in openDotaIds.Distinct())
+        {
+            if (claimed.TryGetValue(id, out var existing))
+            {
+                // Đã thuộc đúng đội này rồi thì thôi. Thuộc đội khác thì gỡ ra — chỉ định tay
+                // phải luôn thắng, giống ReleaseIdFromOtherTeamsAsync.
+                if (ReferenceEquals(existing.Team, team) || existing.TeamId == team.Id) continue;
+                db.TeamOpenDotaIds.Remove(existing);
+            }
+
+            var row = new TeamOpenDotaId
+            {
+                OpenDotaTeamId = id,
+                Source = "editorial",
+                AddedAt = DateTime.UtcNow,
+            };
+
+            team.OpenDotaIds.Add(row);      // EF tự điền TeamId lúc SaveChanges
+            claimed[id] = row;
+        }
     }
 
     /// <summary>

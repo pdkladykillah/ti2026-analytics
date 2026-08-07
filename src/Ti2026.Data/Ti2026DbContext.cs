@@ -8,6 +8,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
 {
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<TeamAlias> TeamAliases => Set<TeamAlias>();
+    public DbSet<TeamOpenDotaId> TeamOpenDotaIds => Set<TeamOpenDotaId>();
     public DbSet<Player> Players => Set<Player>();
     public DbSet<RosterEntry> RosterEntries => Set<RosterEntry>();
     public DbSet<Hero> Heroes => Set<Hero>();
@@ -66,6 +67,14 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<TeamAlias>().HasIndex(x => new { x.Alias, x.Source }).IsUnique();
         b.Entity<TeamAlias>()
             .HasOne(x => x.Team).WithMany(x => x.Aliases)
+            .HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Cascade);
+
+        // Một team_id của OpenDota chỉ được thuộc về ĐÚNG MỘT đội của ta. Không có ràng buộc
+        // này thì một lần thêm nhầm sẽ quy toàn bộ ván của một đội cho hai đội cùng lúc, và
+        // mọi con số suy ra đều sai mà không có gì đổ vỡ để báo.
+        b.Entity<TeamOpenDotaId>().HasIndex(x => x.OpenDotaTeamId).IsUnique();
+        b.Entity<TeamOpenDotaId>()
+            .HasOne(x => x.Team).WithMany(x => x.OpenDotaIds)
             .HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<Player>().HasIndex(x => x.OpenDotaAccountId).IsUnique()

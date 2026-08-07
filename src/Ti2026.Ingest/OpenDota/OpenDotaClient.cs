@@ -30,6 +30,10 @@ public class OpenDotaClient(HttpClient http)
     public Task<List<OpenDotaLeague>> GetLeaguesAsync(CancellationToken ct) =>
         GetListAsync<OpenDotaLeague>("leagues", ct);
 
+    /// <summary>Mọi ván của một giải, kể cả ván không có đội nào trong 16 đội đang theo dõi.</summary>
+    public Task<List<OpenDotaLeagueMatch>> GetLeagueMatchesAsync(long leagueId, CancellationToken ct) =>
+        GetListAsync<OpenDotaLeagueMatch>($"leagues/{leagueId}/matches", ct);
+
     public async Task<OpenDotaMatchDetail> GetMatchAsync(long matchId, CancellationToken ct)
     {
         using var res = await http.GetAsync($"matches/{matchId}", ct);

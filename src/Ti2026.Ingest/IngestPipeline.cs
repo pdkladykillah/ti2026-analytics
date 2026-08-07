@@ -11,6 +11,7 @@ public class IngestPipeline(
     IngestOrchestrator orchestrator,
     OpenDotaIngester openDota,
     MatchDetailIngester matchDetails,
+    LeagueBackfillIngester leagueBackfill,
     ProPubIngester proPub,
     SnapshotWriter snapshots,
     PredictionLedger ledger,
@@ -118,6 +119,12 @@ public class IngestPipeline(
         // trận mới nào.
         await orchestrator.RunSourceAsync(
             "opendota", openDota.IngestAsync, SanityKind.None, ct);
+
+        // Nạp nốt ván của giải cấp cao mà cả hai bên đều ngoài 16 đội. Phải nằm SAU ingest
+        // theo đội (nó đọc chính dữ liệu đó để biết giải nào là cấp cao) và TRƯỚC nạp detail
+        // (để những ván vừa thêm có detail ngay trong cùng vòng).
+        await orchestrator.RunSourceAsync(
+            "league-backfill", leagueBackfill.IngestAsync, SanityKind.None, ct);
 
         // Nạp detail SAU khi có danh sách ván, TRƯỚC khi tính snapshot — để chỉ số của vòng
         // này đã bao gồm phần detail vừa nạp thêm.

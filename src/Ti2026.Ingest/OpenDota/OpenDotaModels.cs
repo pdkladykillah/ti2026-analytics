@@ -43,6 +43,32 @@ public class OpenDotaTeamMatch
     [JsonPropertyName("opposing_team_name")] public string? OpposingTeamName { get; set; }
 }
 
+/// <summary>
+/// GET /leagues/{id}/matches — MỌI ván của một giải, kể cả ván giữa hai đội ngoài 16 đội.
+///
+/// Khác <see cref="OpenDotaTeamMatch"/> ở chỗ nó khai thẳng cả hai phe (radiant_team_id và
+/// dire_team_id) thay vì "đội được hỏi" và "đối thủ", nên dùng được cho ván không có đội nào
+/// của ta. Đây là nguồn duy nhất lấy được những ván đó — nạp theo từng đội thì vĩnh viễn không
+/// thấy chúng.
+/// </summary>
+public class OpenDotaLeagueMatch
+{
+    [JsonPropertyName("match_id")] public long MatchId { get; set; }
+    [JsonPropertyName("radiant_win")] public bool RadiantWin { get; set; }
+    [JsonPropertyName("radiant_score")] public int RadiantScore { get; set; }
+    [JsonPropertyName("dire_score")] public int DireScore { get; set; }
+    [JsonPropertyName("duration")] public int Duration { get; set; }
+
+    /// <summary>Unix epoch giây, UTC.</summary>
+    [JsonPropertyName("start_time")] public long StartTime { get; set; }
+
+    [JsonPropertyName("leagueid")] public long? LeagueId { get; set; }
+    [JsonPropertyName("series_id")] public long? SeriesId { get; set; }
+
+    [JsonPropertyName("radiant_team_id")] public int? RadiantTeamId { get; set; }
+    [JsonPropertyName("dire_team_id")] public int? DireTeamId { get; set; }
+}
+
 /// <summary>GET /leagues — dùng để lọc trận nào được tính vào Elo.</summary>
 public class OpenDotaLeague
 {

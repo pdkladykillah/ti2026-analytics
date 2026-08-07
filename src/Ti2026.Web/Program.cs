@@ -61,6 +61,7 @@ builder.Services.AddSingleton<PlayerLookup>();
 builder.Services.AddScoped<TeamResolver>();
 builder.Services.AddScoped<OpenDotaIngester>();
 builder.Services.AddScoped<MatchDetailIngester>();
+builder.Services.AddScoped<LeagueBackfillIngester>();
 builder.Services.AddScoped<ProPubIngester>();
 builder.Services.AddScoped<SnapshotWriter>();
 builder.Services.AddScoped<PredictionLedger>();

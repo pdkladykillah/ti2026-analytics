@@ -148,6 +148,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapDataEndpoints();
 app.MapH2hEndpoints();
 app.MapTrendEndpoints();
+app.MapInsightEndpoints();
 app.MapAnalyticsEndpoints();
 app.MapLearnEndpoints();
 app.MapTierListEndpoints();

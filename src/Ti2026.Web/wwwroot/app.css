@@ -69,10 +69,16 @@
   --font-body: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --ease: cubic-bezier(.32, .72, 0, 1);
+
+  /* Viền quanh logo đội. Xem ghi chú ở .logo — nhiều đội dùng logo đơn sắc TRẮNG. */
+  --logo-edge: rgba(22, 26, 46, .55);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
+
+  /* Nền tối thì đảo lại: logo đơn sắc ĐEN mới là loại biến mất. */
+  --logo-edge: rgba(255, 255, 255, .45);
 
   --bg: #14151f;
   --surface: #1c1e2c;
@@ -335,9 +341,19 @@ td.na { color: var(--muted); }
 
 .team-cell { display: flex; align-items: center; gap: var(--s-2); font-weight: 600; }
 
+/* Rất nhiều đội dùng logo ĐƠN SẮC TRẮNG — Liquid, Falcons, Nigma. Trên nền sáng chúng biến
+   mất hoàn toàn: người dùng thấy một ô trống ở chỗ đáng lẽ là logo.
+
+   Không đặt nền phẳng phía sau nữa. Nền phẳng biến cả ô thành khối đặc, nên drop-shadow sẽ
+   viền theo HÌNH CHỮ NHẬT chứ không theo hình logo — vô dụng. Bỏ nền đi thì bóng bám đúng
+   silhouette của logo và chữ trắng có viền tối để nổi lên.
+
+   Hai lớp bóng chứ không một: một lớp sát để tạo nét, một lớp toả rộng hơn để logo mảnh
+   (đường kẻ 1px) vẫn tách được khỏi nền. */
 .logo {
   width: 24px; height: 24px; border-radius: 7px; object-fit: contain;
-  background: var(--surface-2); flex: none;
+  flex: none;
+  filter: drop-shadow(0 0 1px var(--logo-edge)) drop-shadow(0 0 2.5px var(--logo-edge));
 }
 .logo-fallback {
   width: 24px; height: 24px; border-radius: 7px; flex: none;
@@ -404,6 +420,64 @@ select, input[type="search"], input[type="text"] {
   padding: 10px 13px; min-height: 44px;
   font-family: var(--font-body); font-size: 14px;
 }
+
+/* ---------------------------------------------------------------------------
+   Ô chọn đội có tìm kiếm.
+
+   <select> gốc vẫn nằm nguyên trong DOM và vẫn là nơi giữ giá trị — mọi đoạn mã cũ đọc
+   `sel.value` hay gán `sel.onchange` chạy y như trước. Lớp này chỉ phủ lên trên. Cách đó
+   an toàn hơn hẳn so với thay hẳn <select> rồi phải sửa mọi nơi đang dùng nó.
+
+   Với 16 đội thì cuộn một danh sách thả xuống đã bắt đầu chậm, và tên đội ("Team Falcons",
+   "Team Liquid", "Team Spirit", "Team Yandex", "Team Resilience") giống nhau ở đầu chuỗi nên
+   đọc lướt rất dễ chọn nhầm. Gõ vài ký tự nhanh hơn, và logo cho nhận ra bằng mắt.
+   --------------------------------------------------------------------------- */
+.combo { position: relative; display: inline-block; }
+
+/* Giữ lại để mã cũ đọc value, nhưng lấy ra khỏi luồng hiển thị và khỏi trình đọc màn hình —
+   để cả hai cùng lộ ra thì người dùng bàn phím gặp hai ô cho cùng một lựa chọn. */
+.combo-native {
+  position: absolute; width: 1px; height: 1px; opacity: 0;
+  pointer-events: none; clip: rect(0 0 0 0);
+}
+
+.combo-btn {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  min-height: 44px; min-width: 13rem; max-width: 100%;
+  padding: 6px 12px;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  font-family: var(--font-body); font-size: 14px; text-align: left;
+  cursor: pointer; transition: border-color .15s var(--ease);
+}
+.combo-btn:hover { border-color: var(--accent); }
+.combo-btn .combo-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combo-btn .combo-caret { flex: none; color: var(--muted); transition: transform .15s var(--ease); }
+.combo[data-open="1"] .combo-caret { transform: rotate(180deg); }
+
+.combo-pop {
+  position: absolute; z-index: 40; top: calc(100% + 4px); left: 0;
+  min-width: 100%; width: max-content; max-width: min(22rem, 90vw);
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-md); box-shadow: var(--shadow-lg);
+  padding: var(--s-2);
+}
+
+.combo-search { width: 100%; min-height: 38px; margin-bottom: var(--s-2); }
+
+.combo-list { max-height: min(48vh, 320px); overflow-y: auto; scrollbar-width: thin; }
+
+.combo-opt {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%;
+  padding: 7px 9px; border: 0; border-radius: var(--r-sm);
+  background: none; color: var(--ink); text-align: left;
+  font-family: var(--font-body); font-size: 14px; cursor: pointer;
+}
+.combo-opt:hover, .combo-opt.active { background: var(--surface-2); }
+.combo-opt[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.combo-opt .region { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+
+.combo-empty { padding: 10px; color: var(--muted); font-size: 13px; }
 
 .pill {
   background: var(--surface); border: 1px solid var(--border);
@@ -674,6 +748,30 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
   .tier-row { grid-template-columns: 76px 1fr; }
   .hero { width: 78px; height: 46px; }
 }
+
+/* ============================ Nhận định theo đội ============================ */
+
+.insight-grid { display: grid; gap: var(--s-3); }
+@media (min-width: 780px) { .insight-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.insight-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: var(--s-4);
+}
+.insight-card header { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-3); }
+.insight-card header strong { font-family: var(--font-head); font-size: 15px; }
+.insight-sub { font-size: 12px; color: var(--muted); }
+
+.insight-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.insight-card li { display: flex; gap: var(--s-2); font-size: 13.5px; line-height: 1.55; }
+.insight-card li svg { width: 16px; height: 16px; flex: none; margin-top: 3px; }
+
+.insight-card li.tone-good { color: var(--ink-2); }
+.insight-card li.tone-good svg { color: var(--pos); }
+.insight-card li.tone-bad svg { color: var(--neg); }
+.insight-card li.tone-warn svg { color: var(--warn); }
+.insight-card li.tone-flat svg { color: var(--muted); }
+.insight-card li:not(.tone-good) { color: var(--ink-2); }
 
 /* ============================ Hiệu chuẩn ============================ */
 

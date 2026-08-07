@@ -30,8 +30,10 @@ public static class DistributionStats
             Median: Math.Round(Percentile(sorted, 0.50), 2),
             P25: Math.Round(Percentile(sorted, 0.25), 2),
             P75: Math.Round(Percentile(sorted, 0.75), 2),
-            Min: sorted[0],
-            Max: sorted[^1]);
+            // Làm tròn như bốn giá trị trên. Không làm tròn thì thời lượng trận ra
+            // "13.733333333333333 phút" trên trang — đúng về số học và vô dụng khi đọc.
+            Min: Math.Round(sorted[0], 2),
+            Max: Math.Round(sorted[^1], 2));
     }
 
     /// <summary>

@@ -32,11 +32,31 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
 
 /**
  * Hiển thị một con số có thể chưa biết.
+ *
  * null/undefined -> "—", KHÔNG phải "0". Đây là quy ước xuyên suốt: API trả null
  * cho chỉ số mà nguồn dữ liệu chưa cung cấp, và hiển thị 0 ở đó là bịa số liệu.
+ *
+ * Định dạng theo vi-VN: dấu chấm ngăn nghìn, dấu phẩy ngăn thập phân — "1.557", "25.111",
+ * "58,3%". toFixed() không có dấu ngăn nghìn, nên "25111" phải đếm bằng mắt mới biết là bao
+ * nhiêu, còn "13.733333333333333" thì không ai đọc nổi.
  */
 const fmt = (v, digits = 0, suffix = '') =>
-  (v === null || v === undefined) ? '—' : v.toFixed(digits) + suffix;
+  (v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v)))
+    ? '—'
+    : Number(v).toLocaleString('vi-VN', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      }) + suffix;
+
+/**
+ * Số nguyên có dấu ngăn nghìn — dùng cho những chỗ nội suy thẳng vào template mà không
+ * qua fmt(). Giữ nguyên "—" khi chưa biết.
+ */
+const n0 = (v) => fmt(v, 0);
+
+/** Số có dấu, dùng cho mức thay đổi: "+42", "−1,3". */
+const signed = (v, digits = 0) =>
+  (v === null || v === undefined) ? '—' : (v > 0 ? '+' : '') + fmt(v, digits);
 
 const state = {
   teams: [],
@@ -169,6 +189,169 @@ function teamLogo(team, size) {
     onerror="this.outerHTML='<span class=&quot;logo-fallback&quot;>${initial}</span>'">`;
 }
 
+/* ============================ Ô chọn đội có tìm kiếm ============================ */
+
+/** Bỏ dấu tiếng Việt để gõ "wallachia" tìm được, và "Đông" khớp "dong". */
+const deburr = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/đ/gi, 'd').toLowerCase();
+
+/**
+ * Phủ một ô chọn có tìm kiếm lên trên <select> sẵn có.
+ *
+ * <select> gốc VẪN là nơi giữ giá trị: mọi đoạn mã cũ đọc `sel.value` hay gán `sel.onchange`
+ * chạy y như trước, và mỗi lần chọn ở đây sẽ phát `change` để chúng chạy. Đổi hẳn sang thẻ
+ * khác thì phải sửa mọi nơi đang dùng, và mỗi nơi bỏ sót là một tính năng chết lặng.
+ *
+ * Gọi SAU khi đã đổ option và gán value.
+ */
+function enhanceTeamSelect(sel) {
+  if (!sel || sel.dataset.combo) return;
+  sel.dataset.combo = '1';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'combo';
+  sel.parentNode.insertBefore(wrap, sel);
+  wrap.appendChild(sel);
+  sel.classList.add('combo-native');
+  sel.setAttribute('aria-hidden', 'true');
+  sel.tabIndex = -1;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'combo-btn';
+  btn.setAttribute('aria-haspopup', 'listbox');
+  btn.setAttribute('aria-expanded', 'false');
+
+  const labelledBy = document.querySelector(`label[for="${sel.id}"]`);
+  if (labelledBy) {
+    if (!labelledBy.id) labelledBy.id = `${sel.id}-label`;
+    btn.setAttribute('aria-labelledby', `${labelledBy.id} ${sel.id}-value`);
+  }
+
+  const pop = document.createElement('div');
+  pop.className = 'combo-pop';
+  pop.hidden = true;
+
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'combo-search';
+  search.placeholder = 'Gõ để tìm đội…';
+  search.setAttribute('aria-label', 'Tìm đội');
+
+  const list = document.createElement('div');
+  list.className = 'combo-list';
+  list.setAttribute('role', 'listbox');
+  list.id = `${sel.id}-list`;
+
+  pop.append(search, list);
+  wrap.append(btn, pop);
+  btn.setAttribute('aria-controls', list.id);
+
+  const CARET = '<svg class="combo-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" '
+    + 'stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
+
+  let active = -1;
+  let shown = [];
+
+  const rows = () => [...sel.options].map((o) => ({
+    value: o.value,
+    label: o.text,
+    team: state.teams.find((t) => t.slug === o.value) || null,
+  }));
+
+  function paintButton() {
+    const r = rows().find((x) => x.value === sel.value);
+    const logo = r && r.team ? teamLogo(r.team, 22) : '';
+    btn.innerHTML =
+      `${logo}<span class="combo-name" id="${sel.id}-value">${esc(r ? r.label : '—')}</span>${CARET}`;
+  }
+
+  function paintList() {
+    const q = deburr(search.value.trim());
+    shown = rows().filter((r) => !q || deburr(r.label).includes(q) || deburr(r.value).includes(q));
+
+    if (shown.length === 0) {
+      list.innerHTML = '<div class="combo-empty">Không có đội nào khớp.</div>';
+      active = -1;
+      return;
+    }
+
+    if (active >= shown.length) active = shown.length - 1;
+
+    list.innerHTML = shown.map((r, i) => `
+      <button type="button" class="combo-opt${i === active ? ' active' : ''}" role="option"
+        aria-selected="${r.value === sel.value}" data-value="${esc(r.value)}">
+        ${r.team ? teamLogo(r.team, 22) : ''}
+        <span>${esc(r.label)}</span>
+        ${r.team && r.team.region ? `<span class="region">${esc(r.team.region)}</span>` : ''}
+      </button>`).join('');
+  }
+
+  function open() {
+    wrap.dataset.open = '1';
+    pop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    search.value = '';
+
+    // Vẽ lần đầu để `shown` có nội dung, rồi mới đặt được con trỏ vào đúng đội đang chọn.
+    paintList();
+    active = shown.findIndex((r) => r.value === sel.value);
+    paintList();
+
+    search.focus();
+    list.querySelector('.combo-opt.active')?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function close(focusBtn = true) {
+    delete wrap.dataset.open;
+    pop.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    if (focusBtn) btn.focus();
+  }
+
+  function choose(value) {
+    if (value === sel.value) { close(); return; }
+    sel.value = value;
+    paintButton();
+    close();
+    // Phát change để onchange cũ chạy — đây là toàn bộ lý do <select> còn nằm lại.
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  btn.addEventListener('click', () => (pop.hidden ? open() : close()));
+
+  search.addEventListener('input', () => { active = shown.length ? 0 : -1; paintList(); });
+
+  search.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!shown.length) return;
+      active = e.key === 'ArrowDown'
+        ? (active + 1) % shown.length
+        : (active - 1 + shown.length) % shown.length;
+      paintList();
+      list.querySelector('.combo-opt.active')?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (active >= 0 && shown[active]) choose(shown[active].value);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
+  });
+
+  list.addEventListener('click', (e) => {
+    const opt = e.target.closest('.combo-opt');
+    if (opt) choose(opt.dataset.value);
+  });
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!pop.hidden && !wrap.contains(e.target)) close(false);
+  });
+
+  paintButton();
+}
+
 /* ============================ Tổng quan ============================ */
 
 const KPIS = [
@@ -176,7 +359,7 @@ const KPIS = [
     label: 'Winrate cao nhất', cls: 'p2',
     pick: (a, b) => b.stats.winrate - a.stats.winrate,
     value: (t) => fmt(t.stats.winrate, 0, '%'),
-    note: (t) => `${t.stats.maps} ván đã đấu`,
+    note: (t) => `${n0(t.stats.maps)} ván đã đấu`,
   },
   {
     label: 'Áp đảo giao tranh', cls: 'p1',
@@ -265,7 +448,7 @@ function renderRanking(data) {
       <div class="rank-team">
         ${teamLogo(t)}
         <span class="rank-name">${esc(t.name)}</span>
-        ${thin ? `<span class="rank-thin" title="Ít ván nên chỉ số dao động mạnh">${t.stats.maps} ván</span>` : ''}
+        ${thin ? `<span class="rank-thin" title="Ít ván nên chỉ số dao động mạnh">${n0(t.stats.maps)} ván</span>` : ''}
       </div>
       <div class="rank-track">
         <div class="rank-half left">${diff < 0 ? `<span class="rank-bar neg" style="width:${width}%"></span>` : ''}</div>
@@ -502,6 +685,8 @@ function setupH2h() {
   b.value = data[1].slug;
 
   a.onchange = b.onchange = renderH2h;
+  enhanceTeamSelect(a);
+  enhanceTeamSelect(b);
   renderH2h();
 }
 
@@ -552,7 +737,7 @@ function renderH2h() {
     ? `${verdictH2h(series, A, B)}
        <div style="margin-top:var(--s-5);padding-top:var(--s-4);border-top:1px solid var(--border)">
          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:var(--s-2)">
-           Toàn bộ lịch sử · ${series.seriesCount ?? '?'} trận · ${series.games ?? series.n} ván</h3>
+           Toàn bộ lịch sử · ${n0(series.seriesCount ?? 0)} trận · ${n0(series.games ?? series.n)} ván</h3>
          <p class="desc" style="margin:0 0 var(--s-3)">Kể cả ván của đội hình cũ${series.firstMet
             ? `, từ <b>${esc(series.firstMet)}</b> tới <b>${esc(series.lastMet)}</b>` : ''} —
             dòng mờ là ván KHÔNG tính vào nhận định ở trên.</p>
@@ -863,7 +1048,10 @@ function renderForm(rows, meta) {
          <span class="swatch" style="background:${s.color}"></span>${esc(s.name)}
        </button>`).join('')}</div>
     <p class="desc" style="margin-top:var(--s-3)">Bấm vào tên đội để ẩn/hiện đường của đội đó.</p>
-    ${verdictTable(meta)}`;
+    ${verdictTable(meta)}
+    <div id="insight-body"></div>`;
+
+  loadInsights();
 
   $$('#form-body .legend button').forEach((btn) => {
     btn.onclick = () => {
@@ -873,6 +1061,80 @@ function renderForm(rows, meta) {
       renderForm(rows, meta);
     };
   });
+}
+
+/**
+ * Nhận định chi tiết theo từng đội.
+ *
+ * Bảng xu hướng phía trên chỉ trả lời được một câu: Elo/winrate đang lên hay xuống. Mọi thứ
+ * khác — đội này thắng nhờ đâu, có tận dụng được lợi thế đầu trận không, đội hình đã ăn ý
+ * chưa, ai đang khắc chế ai — đều nằm sẵn trong dữ liệu nhưng trước đây bắt người đọc tự ghép.
+ *
+ * Đội KHÔNG có nhận định nào vẫn được hiện, kèm lý do. Ẩn đi thì người đọc không phân biệt
+ * được "không có gì đáng nói" với "hỏng, không tải được".
+ */
+let insightsLoaded = false;
+
+async function loadInsights() {
+  const body = $('#insight-body');
+  if (!body) return;
+
+  if (insightsLoaded) { renderInsights(insightsLoaded); return; }
+  body.innerHTML = '<div class="skeleton" style="height:160px;margin-top:var(--s-5)"></div>';
+
+  try {
+    insightsLoaded = await getJson('api/insights');
+    renderInsights(insightsLoaded);
+  } catch (err) {
+    body.innerHTML = `<div class="error" style="margin-top:var(--s-5)">Không tải được
+      <code>api/insights</code>.<br><small>${esc(err.message)}</small></div>`;
+  }
+}
+
+const TONE_ICON = {
+  good: '<path d="M20 6L9 17l-5-5"/>',
+  bad: '<path d="M18 6L6 18M6 6l12 12"/>',
+  warn: '<path d="M12 9v5M12 17.5v.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L14.7 3.9a2 2 0 00-3.4 0z"/>',
+  flat: '<path d="M5 12h14"/>',
+};
+
+function renderInsights(data) {
+  const body = $('#insight-body');
+  if (!body) return;
+
+  const teams = (data.teams || []).filter((t) => t.insights.length > 0);
+  const quiet = (data.teams || []).filter((t) => t.insights.length === 0);
+
+  if (!teams.length && !quiet.length) {
+    body.innerHTML = '';
+    return;
+  }
+
+  const card = (t) => `
+    <article class="insight-card">
+      <header>
+        ${teamLogo(state.teams.find((x) => x.slug === t.slug) || { name: t.name }, 26)}
+        <div>
+          <strong>${esc(t.name)}</strong>
+          <div class="insight-sub">${n0(t.lineupGames)} ván đúng đội hình${
+            t.lineupSince ? ` · từ ${esc(t.lineupSince)}` : ''}</div>
+        </div>
+      </header>
+      <ul>${t.insights.map((i) => `
+        <li class="tone-${esc(i.tone)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round">${TONE_ICON[i.tone] || TONE_ICON.flat}</svg>
+          <span>${esc(i.text)}</span>
+        </li>`).join('')}</ul>
+    </article>`;
+
+  body.innerHTML = `
+    <h3 style="margin-top:var(--s-6)">Hệ thống đọc được gì về từng đội</h3>
+    <p class="desc" style="margin:0 0 var(--s-4)">${esc(data.method || '')}</p>
+    <div class="insight-grid">${teams.map(card).join('')}</div>
+    ${quiet.length ? `<p class="desc" style="margin-top:var(--s-4)">
+       Không có nhận định nào vượt ngưỡng nhiễu cho ${n0(quiet.length)} đội:
+       <b>${quiet.map((t) => esc(t.name)).join(', ')}</b>.</p>` : ''}`;
 }
 
 /**
@@ -911,8 +1173,8 @@ function verdictTable(meta) {
       <tbody>${moving.map((x) => `<tr>
         <td>${esc(x.teamName)}</td>
         <td>${chip(x.elo)}</td>
-        <td class="num">${x.elo.change > 0 ? '+' : ''}${x.elo.change}</td>
-        <td class="num">${x.elo.ratio}×</td>
+        <td class="num">${signed(x.elo.change, 1)}</td>
+        <td class="num">${fmt(x.elo.ratio, 1)}×</td>
         <td>${chip(x.winrate)}</td>
       </tr>`).join('')}</tbody>
     </table></div>
@@ -950,6 +1212,8 @@ async function setupPredict() {
   a.value = data[0].slug;
   b.value = data[1].slug;
   a.onchange = b.onchange = loadPredict;
+  enhanceTeamSelect(a);
+  enhanceTeamSelect(b);
 
   loadPredict();
   loadCalibration();
@@ -990,7 +1254,7 @@ async function loadLedger() {
       <td class="num">${b.said}%</td>
       <td class="num">${b.actual}%</td>
       <td class="num">${(b.actual - b.said).toFixed(1)}</td>
-      <td class="num">${b.count}</td>
+      <td class="num">${n0(b.count)}</td>
     </tr>`).join('');
 
     body.innerHTML = `
@@ -1201,10 +1465,10 @@ function renderRatings(rows) {
       <div class="rank-team">
         ${teamLogo({ name: r.teamName, logo: r.logo })}
         <span class="rank-name">${esc(r.teamName)}</span>
-        ${thin ? `<span class="rank-thin" title="Ít ván nên Elo còn dao động">${r.eloGames ?? r.maps} ván</span>` : ''}
+        ${thin ? `<span class="rank-thin" title="Ít ván nên Elo còn dao động">${n0(r.eloGames ?? r.maps)} ván</span>` : ''}
       </div>
       <div class="elo-track"><span class="elo-bar" style="width:${width}%"></span></div>
-      <span class="rank-val num">${r.elo}<small class="elo-wr">${r.winrate}%</small></span>
+      <span class="rank-val num">${fmt(r.elo, 0)}<small class="elo-wr">${fmt(r.winrate, 0)}%</small></span>
     </div>`;
   }).join('');
 
@@ -1218,7 +1482,7 @@ function renderRatings(rows) {
              <span class="rank-name">${esc(r.teamName)}</span>
            </div>
            <div class="elo-track"></div>
-           <span class="rank-val num mu">${r.eloGames ?? 0} ván</span>
+           <span class="rank-val num mu">${n0(r.eloGames ?? 0)} ván</span>
          </div>`).join('')}
          <p class="desc" style="margin-top:var(--s-2)">Đội hình TI2026 của các đội này chưa đá
            đủ ván với một đội hình TI2026 khác. Elo khởi điểm ở 1500 nên nếu vẫn hiện số, họ sẽ
@@ -1299,7 +1563,7 @@ function renderPredict(p) {
          <h3>Đối đầu trực tiếp</h3>
          ${lv && lv.games > 0
            ? `<p class="pred-h2h num"><b>${lv.winsA}</b> – <b>${lv.winsB}</b>
-                <span class="mu">sau ${lv.games} ván đúng đội hình</span></p>`
+                <span class="mu">sau ${n0(lv.games)} ván đúng đội hình</span></p>`
            : `<p class="pred-h2h num mu">chưa có ván nào đúng đội hình</p>`}
          ${lv ? `<p class="desc" style="margin:0 0 var(--s-3)">${esc(lv.text)}</p>` : ''}
          ${p.headToHead.recent.map((m) => {
@@ -1333,7 +1597,7 @@ function renderPredict(p) {
     return `<div class="pred-block">
       <h3>${esc(title)}</h3>
       <p class="desc">Trung vị <b>${d.median}${unit}</b> · nửa số trận nằm trong
-         <b>${d.p25}–${d.p75}${unit}</b> · dải ${d.min}–${d.max}${unit} qua ${d.count} ván</p>
+         <b>${fmt(d.p25, 1)}–${fmt(d.p75, 1)}${unit}</b> · dải ${fmt(d.min, 1)}–${fmt(d.max, 1)}${unit} qua ${n0(d.count)} ván</p>
       ${rows}
     </div>`;
   }
@@ -1366,7 +1630,7 @@ async function loadChanges() {
     }
 
     body.innerHTML = `<p class="desc" style="margin-bottom:var(--s-3)">
-        ${r.changes.length} biến động, tự rà ${(r.horizons || []).map((d) => d + ' ngày').join(' · ')}
+        ${n0(r.changes.length)} biến động, tự rà ${(r.horizons || []).map((d) => d + ' ngày').join(' · ')}
         · tính tới <b>${esc(r.latest)}</b></p>` +
       r.changes.map((c) => `<div class="change ${c.improved ? 'up' : 'down'}">
           <span class="change-arrow" aria-hidden="true">${c.improved ? '▲' : '▼'}</span>
@@ -1405,7 +1669,7 @@ async function loadSeries() {
       <article class="kpi p4">
         <div class="kpi-label">Số series</div>
         <div class="kpi-value">${s.seriesCount}</div>
-        <div class="kpi-note">${s.gamesInSeries} ván nằm trong series</div>
+        <div class="kpi-note">${n0(s.gamesInSeries)} ván nằm trong series</div>
       </article>
     </div>`;
   } catch (err) {
@@ -1420,6 +1684,7 @@ function setupPlayerStats() {
   sel.innerHTML = '<option value="">— Tất cả các đội —</option>' +
     state.teams.map((t) => `<option value="${esc(t.slug)}">${esc(t.name)}</option>`).join('');
   sel.onchange = () => loadPlayerStats(sel.value);
+  enhanceTeamSelect(sel);
   loadPlayerStats('');
 }
 
@@ -1443,7 +1708,7 @@ async function loadPlayerStats(team) {
       </tr></thead>
       <tbody>${r.players.map((p) => `<tr>
         <td><span style="font-weight:600">${esc(p.nick)}</span></td>
-        <td class="num">${p.games}</td>
+        <td class="num">${n0(p.games)}</td>
         <td class="num">${fmt(p.kills, 2)}</td>
         <td class="num">${fmt(p.deaths, 2)}</td>
         <td class="num">${fmt(p.assists, 2)}</td>
@@ -1493,7 +1758,7 @@ async function loadHeroPool(team) {
       return `<div class="tl-hero ${tone}" title="${esc(name)} · ${h.games} ván · winrate ${h.winrate}%">
         ${heroImg(img ? HERO_CDN + img + '.png' : null, 58, 33)}
         <span class="tl-name">${esc(name)}</span>
-        <span class="tl-num">${h.games} ván · ${Math.round(h.winrate)}%</span>
+        <span class="tl-num">${n0(h.games)} ván · ${fmt(h.winrate, 0)}%</span>
       </div>`;
     }).join('') + '</div>';
   } catch (err) {
@@ -1556,8 +1821,8 @@ async function loadProPub() {
       <td class="hero-cell">${heroImg(h.image)}<span>${esc(h.name)}</span></td>
       <td class="num"><b>${h.players}</b></td>
       <td><div class="minibar"><span style="width:${Math.round((h.players / max) * 100)}%"></span></div></td>
-      <td class="num">${h.games}</td>
-      <td class="num">${h.winrate}%</td>
+      <td class="num">${n0(h.games)}</td>
+      <td class="num">${fmt(h.winrate, 0)}%</td>
       <td class="who">${(h.who || []).map((w) => esc(w)).join(', ')}</td>
     </tr>`).join('');
 
@@ -1565,12 +1830,12 @@ async function loadProPub() {
       <div class="bento">
         <article class="kpi p2">
           <div class="kpi-label">Ván pub đã ghi</div>
-          <div class="kpi-value">${d.totalGames}</div>
+          <div class="kpi-value">${n0(d.totalGames)}</div>
           <div class="kpi-note">${d.days} ngày gần nhất</div>
         </article>
         <article class="kpi p4">
           <div class="kpi-label">Tuyển thủ có dữ liệu</div>
-          <div class="kpi-value">${d.totalPlayers}</div>
+          <div class="kpi-value">${n0(d.totalPlayers)}</div>
           <div class="kpi-note">${esc(d.schedule || '')}</div>
         </article>
       </div>
@@ -1865,8 +2130,8 @@ async function loadLanes(role) {
         <td class="num">${l.medianEfficiency}%</td>
         <td class="num">${l.p25}% – ${l.p75}%</td>
         <td class="num ${tone}">${l.vsBaseline > 0 ? '+' : ''}${l.vsBaseline}</td>
-        <td class="num">${l.winrate}%</td>
-        <td class="num">${l.games}</td>
+        <td class="num">${fmt(l.winrate, 0)}%</td>
+        <td class="num">${n0(l.games)}</td>
       </tr>`;
     }).join('');
 
@@ -2315,13 +2580,13 @@ async function runCalc() {
       <div class="bento" style="margin-top:var(--s-4)">
         <article class="kpi p2">
           <div class="kpi-label">Điểm banner</div>
-          <div class="kpi-value">${d.total}</div>
+          <div class="kpi-value">${n0(d.total)}</div>
           <div class="kpi-note">${esc(d.nick)}${d.positionName ? ' · ' + esc(d.positionName) : ''}</div>
         </article>
         <article class="kpi p2">
           <div class="kpi-label">Trait đóng góp</div>
           <div class="kpi-value">${sign}${delta}</div>
-          <div class="kpi-note">so với cùng bộ emblem không trait (${d.totalWithoutTraits})</div>
+          <div class="kpi-note">so với cùng bộ emblem không trait (${n0(d.totalWithoutTraits)})</div>
         </article>
       </div>
 
@@ -2339,7 +2604,7 @@ async function runCalc() {
           <td>${esc(s.trait)}</td>
           <td class="num">×${s.traitFactor}</td>
           <td class="num">×${s.factor}</td>
-          <td class="num"><b>${s.points}</b></td>
+          <td class="num"><b>${fmt(s.points, 1)}</b></td>
         </tr>`).join('')}</tbody>
       </table></div>
 
@@ -2387,7 +2652,7 @@ function altTable(s) {
       <tbody>${window.map((a) => `<tr${a.isCurrent ? ' style="font-weight:600"' : ''}>
         <td>${esc(a.tier)} <span class="na">(+${a.tierBonusPercent}%)</span></td>
         <td>${esc(a.trait)}</td>
-        <td class="num">${a.total}</td>
+        <td class="num">${fmt(a.total, 1)}</td>
         <td class="num">${a.isCurrent ? '— đang dùng'
           : (a.delta > 0 ? '+' : '') + a.delta}</td>
       </tr>`).join('')}</tbody>

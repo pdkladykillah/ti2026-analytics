@@ -171,26 +171,68 @@ public class TeamInsightsTests
         Has(TeamInsights.For(t, Peers(50, 50, 50, 50)), "ben-san").Should().BeFalse();
     }
 
-    // ---------- Khắc tinh ----------
+    // ---------- Cặp đối đầu lệch nhất ----------
 
+    /// <summary>
+    /// Bài kiểm quan trọng nhất của cả bộ. Cặp này được chọn là cặp CỰC ĐOAN NHẤT trong 15
+    /// đối thủ, nên chấm nó bằng ngưỡng dành cho một phép so duy nhất là lỗi so sánh bội —
+    /// bản đầu mắc đúng lỗi này và nhận định bật cho 11/16 đội.
+    /// </summary>
     [Fact]
-    public void Bi_mot_doi_khac_che_thi_neu_ten_doi_do()
+    public void Thua_5_5_thi_neu_con_so_nhung_KHONG_duoc_goi_la_khac_che()
     {
-        var t = Team(nemesis: "BETA", nemLosses: 6, nemGames: 7);
-        var i = TeamInsights.For(t, Peers(50, 50, 50, 50)).Single(x => x.Kind == "khac-tinh");
+        var i = TeamInsights.For(Team(nemesis: "BETA", nemLosses: 5, nemGames: 5),
+            Peers(50, 50, 50, 50)).Single(x => x.Kind == "khac-tinh");
 
-        i.Text.Should().Contain("BETA");
-        i.Text.Should().Contain("6/7");
+        i.Text.Should().Contain("5/5");
+        i.Text.Should().Contain("có thể chỉ là ngẫu nhiên");
+        i.Text.Should().NotContain("Bị BETA khắc chế");
+        i.Tone.Should().Be("flat");
     }
 
     [Fact]
-    public void Doi_dau_can_bang_hoac_qua_it_van_thi_khong_goi_la_khac_che()
+    public void Cach_biet_du_lon_de_vuot_hieu_chinh_thi_moi_goi_la_khac_che()
+    {
+        var i = TeamInsights.For(Team(nemesis: "BETA", nemLosses: 10, nemGames: 10),
+            Peers(50, 50, 50, 50)).Single(x => x.Kind == "khac-tinh");
+
+        i.Tone.Should().Be("bad");
+        i.Text.Should().Contain("khắc chế");
+        i.Text.Should().Contain("15 đối thủ");
+    }
+
+    /// <summary>Cặp lệch chưa chắc chắn phải xếp DƯỚI nhận định thật, không được chiếm chỗ.</summary>
+    [Fact]
+    public void Cap_lech_chua_chac_chan_xep_duoi_nhan_dinh_that()
+    {
+        var t = Team(nemesis: "BETA", nemLosses: 5, nemGames: 5,
+            recent: [false, false, false, false]);
+
+        var r = TeamInsights.For(t, Peers(50, 50, 50, 50));
+        r.FindIndex(x => x.Kind == "chuoi")
+            .Should().BeLessThan(r.FindIndex(x => x.Kind == "khac-tinh"));
+    }
+
+    [Fact]
+    public void Doi_dau_can_bang_hoac_qua_it_van_thi_khong_neu()
     {
         Has(TeamInsights.For(Team(nemesis: "BETA", nemLosses: 4, nemGames: 7),
             Peers(50, 50, 50, 50)), "khac-tinh").Should().BeFalse();
 
-        Has(TeamInsights.For(Team(nemesis: "BETA", nemLosses: 3, nemGames: 3),
+        Has(TeamInsights.For(Team(nemesis: "BETA", nemLosses: 4, nemGames: 4),
             Peers(50, 50, 50, 50)), "khac-tinh").Should().BeFalse();
+    }
+
+    /// <summary>Chuỗi ĐANG diễn ra, không phải chuỗi dài nhất — đừng khai điều không kiểm.</summary>
+    [Fact]
+    public void Chuoi_khong_duoc_khai_la_chuoi_dai_nhat()
+    {
+        var r = TeamInsights.For(Team(recent: [true, true, true, false, true, true, true, true, true]),
+            Peers(50, 50, 50, 50));
+
+        var s = r.Single(i => i.Kind == "chuoi");
+        s.Text.Should().Contain("thắng 3 ván liên tiếp");
+        s.Text.Should().NotContain("dài nhất");
     }
 
     // ---------- Không đủ dữ liệu ----------

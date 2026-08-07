@@ -99,10 +99,12 @@ public static class TeamInsights
         var n = t.RecentResults.TakeWhile(r => r == won).Count();
         if (n < MinStreak) return;
 
+        // KHÔNG gọi đây là "chuỗi dài nhất": n là chuỗi ĐANG diễn ra, không phải chuỗi dài nhất
+        // trong cửa sổ. Bản trước ghi "chuỗi dài nhất trong 20 ván gần nhất" — một câu sai sự
+        // thật mà nghe rất xuôi, đúng loại câu không ai đi kiểm.
         found.Add(new Insight("chuoi", won ? "good" : "bad",
-            won
-                ? $"Đang thắng {n} ván liên tiếp — chuỗi dài nhất trong {t.RecentResults.Count} ván gần nhất của họ."
-                : $"Đang thua {n} ván liên tiếp trong {t.RecentResults.Count} ván gần nhất.",
+            $"Đang {(won ? "thắng" : "thua")} {n} ván liên tiếp "
+            + $"(xét {t.RecentResults.Count} ván gần nhất đúng đội hình).",
             50 + n * 5));
     }
 
@@ -230,16 +232,57 @@ public static class TeamInsights
             + "biệt này đã vượt mức giải thích được bằng may rủi.", 60));
     }
 
+    /// <summary>Số đối thủ một đội có thể gặp — mẫu số của phép hiệu chỉnh so sánh bội.</summary>
+    public const int OpponentCount = 15;
+
+    /// <summary>
+    /// Cặp đối đầu lệch nhất.
+    ///
+    /// CHỖ DỄ SAI NHẤT của cả bộ, và bản đầu đã sai: ngưỡng "thua ≥70% trong ≥4 ván" làm nhận
+    /// định này bật cho 11/16 đội. Lý do không phải là 11 đội thật sự bị khắc chế, mà là ta
+    /// chọn cặp CỰC ĐOAN NHẤT trong 15 đối thủ rồi chấm nó bằng ngưỡng dành cho một phép so
+    /// duy nhất. Lấy cực trị của 15 lần thử thì gần như luôn có một cặp trông rất lệch — đó là
+    /// lỗi so sánh bội, không phải phát hiện.
+    ///
+    /// Nên: vẫn nêu con số (nó hữu ích khi chuẩn bị cho giải), nhưng chỉ dùng chữ "khắc chế"
+    /// khi vượt được ngưỡng ĐÃ HIỆU CHỈNH. Không đạt thì nói thẳng rằng phần lớn có thể là
+    /// ngẫu nhiên, và hạ độ ưu tiên để nó không chiếm chỗ của nhận định thật.
+    /// </summary>
     private static void AddNemesis(TeamFacts t, List<Insight> found)
     {
-        if (t.NemesisName is null || t.NemesisGames < 4) return;
+        if (t.NemesisName is null || t.NemesisGames < 5) return;
 
         var lossRate = t.NemesisLosses * 100.0 / t.NemesisGames;
         if (lossRate < 70) return;
 
-        found.Add(new Insight("khac-tinh", "bad",
-            $"Đang bị {t.NemesisName} khắc chế: thua {t.NemesisLosses}/{t.NemesisGames} ván gặp "
-            + "nhau khi cả hai đều ra sân đúng đội hình TI2026.", 72));
+        var wins = t.NemesisGames - t.NemesisLosses;
+        var decisive = LowerTailAtHalf(t.NemesisGames, wins) < 0.05 / OpponentCount;
+
+        found.Add(decisive
+            ? new Insight("khac-tinh", "bad",
+                $"Bị {t.NemesisName} khắc chế: thua {t.NemesisLosses}/{t.NemesisGames} ván gặp nhau "
+                + "khi cả hai đều đúng đội hình TI2026. Cách biệt này vẫn đứng vững kể cả sau khi "
+                + "tính tới việc đây là cặp lệch nhất trong 15 đối thủ.", 72)
+            : new Insight("khac-tinh", "flat",
+                $"Cặp đối đầu lệch nhất: thua {t.NemesisName} {t.NemesisLosses}/{t.NemesisGames} ván. "
+                + "Đây là cặp lệch nhất trong 15 đối thủ nên phần lớn có thể chỉ là ngẫu nhiên — "
+                + "chưa đủ để gọi là bị khắc chế.", 25));
+    }
+
+    /// <summary>
+    /// P(thắng ≤ <paramref name="wins"/> trong <paramref name="games"/> ván) nếu hai đội thật sự
+    /// ngang nhau. Tính chính xác bằng nhị thức — cỡ mẫu ở đây chỉ vài chục ván nên không cần
+    /// xấp xỉ, và xấp xỉ chuẩn sai khá nhiều ở đuôi phân phối, đúng chỗ đang dùng.
+    /// </summary>
+    private static double LowerTailAtHalf(int games, int wins)
+    {
+        double total = 0, c = 1;
+        for (var k = 0; k <= wins; k++)
+        {
+            total += c;
+            c = c * (games - k) / (k + 1);
+        }
+        return total / Math.Pow(2, games);
     }
 
     private static double Median(List<double> values)

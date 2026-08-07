@@ -204,7 +204,7 @@ const deburr = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
  *
  * Gọi SAU khi đã đổ option và gán value.
  */
-function enhanceTeamSelect(sel) {
+function enhanceSelect(sel, placeholder = 'Gõ để tìm…') {
   if (!sel || sel.dataset.combo) return;
   sel.dataset.combo = '1';
 
@@ -235,8 +235,8 @@ function enhanceTeamSelect(sel) {
   const search = document.createElement('input');
   search.type = 'text';
   search.className = 'combo-search';
-  search.placeholder = 'Gõ để tìm đội…';
-  search.setAttribute('aria-label', 'Tìm đội');
+  search.placeholder = placeholder;
+  search.setAttribute('aria-label', placeholder);
 
   const list = document.createElement('div');
   list.className = 'combo-list';
@@ -271,7 +271,7 @@ function enhanceTeamSelect(sel) {
     shown = rows().filter((r) => !q || deburr(r.label).includes(q) || deburr(r.value).includes(q));
 
     if (shown.length === 0) {
-      list.innerHTML = '<div class="combo-empty">Không có đội nào khớp.</div>';
+      list.innerHTML = '<div class="combo-empty">Không có mục nào khớp.</div>';
       active = -1;
       return;
     }
@@ -685,8 +685,8 @@ function setupH2h() {
   b.value = data[1].slug;
 
   a.onchange = b.onchange = renderH2h;
-  enhanceTeamSelect(a);
-  enhanceTeamSelect(b);
+  enhanceSelect(a, 'Gõ để tìm đội…');
+  enhanceSelect(b, 'Gõ để tìm đội…');
   renderH2h();
 }
 
@@ -1212,8 +1212,8 @@ async function setupPredict() {
   a.value = data[0].slug;
   b.value = data[1].slug;
   a.onchange = b.onchange = loadPredict;
-  enhanceTeamSelect(a);
-  enhanceTeamSelect(b);
+  enhanceSelect(a, 'Gõ để tìm đội…');
+  enhanceSelect(b, 'Gõ để tìm đội…');
 
   loadPredict();
   loadCalibration();
@@ -1684,7 +1684,7 @@ function setupPlayerStats() {
   sel.innerHTML = '<option value="">— Tất cả các đội —</option>' +
     state.teams.map((t) => `<option value="${esc(t.slug)}">${esc(t.name)}</option>`).join('');
   sel.onchange = () => loadPlayerStats(sel.value);
-  enhanceTeamSelect(sel);
+  enhanceSelect(sel, 'Gõ để tìm đội…');
   loadPlayerStats('');
 }
 
@@ -2551,6 +2551,9 @@ function renderCalc() {
     calcState.playerId = Number(e.target.value);
     runCalc();
   });
+
+  // 80 tuyển thủ trong một danh sách thả xuống là chỗ khó chọn nhất trang.
+  enhanceSelect($('#calc-player'), 'Gõ tên tuyển thủ…');
 
   body.querySelectorAll('[data-calc]').forEach((el) => {
     el.addEventListener('change', (e) => {

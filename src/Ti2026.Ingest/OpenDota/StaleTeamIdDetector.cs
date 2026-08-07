@@ -39,8 +39,22 @@ public class StaleTeamIdDetector(Ti2026DbContext db, ILogger<StaleTeamIdDetector
     // bảng định danh là loại thao tác mà một lần sai sẽ quy toàn bộ ván của một đội cho đội
     // khác — im lặng và rất khó lần ra. Báo cho người, người khai vào teams.json.
 
-    /// <summary>Chỉ xét ván trong ngần này ngày: ánh xạ chết là chuyện của hiện tại.</summary>
-    public const int LookbackDays = 180;
+    /// <summary>
+    /// Chỉ xét ván trong ngần này ngày.
+    ///
+    /// 45 chứ không phải 180, và đây là con số quyết định bộ dò này có dùng được hay không.
+    ///
+    /// Với 180 ngày, nó báo vĩnh viễn hai ca KHÔNG cần sửa: đội hình 1win từng thi đấu dưới màu
+    /// Tundra Esports (05/2026) và đội hình LGD từng dưới màu HEROIC (04/2026). Cùng năm người,
+    /// nhưng đó là tổ chức khác VẪN ĐANG HOẠT ĐỘNG với roster khác — nhận id của họ về sẽ kéo
+    /// theo ván của những người hoàn toàn khác và gán nhầm cho đội ta. Cố ý không nhận.
+    ///
+    /// Mà một cảnh báo lúc nào cũng sáng thì chẳng khác gì tắt: người ta học cách bỏ qua nó, và
+    /// đúng hôm nó báo chuyện thật thì không ai nhìn. 45 ngày đủ để một ánh xạ vừa chết lộ ra
+    /// (PariVision đá EWC cách đây 19 ngày, thừa sức bắt được) và đủ ngắn để chuyện đổi tổ chức
+    /// của mùa trước tự rơi ra khỏi tầm nhìn.
+    /// </summary>
+    public const int LookbackDays = 45;
 
     public async Task<List<UnknownSide>> FindAsync(DateTime now, CancellationToken ct)
     {

@@ -38,6 +38,44 @@ public class PredictionLedgerTests
 
     private static DateTime T(int hour) => new(2026, 8, 1, hour, 0, 0, DateTimeKind.Utc);
 
+    /// <summary>
+    /// Dọn sổ chạy ĐÚNG MỘT LẦN và chỉ đụng vào dòng CHƯA CHẤM.
+    ///
+    /// Không có chốt một lần thì mỗi vòng ingest lại xoá sạch những dòng vừa ghi ở chính vòng
+    /// đó, và sổ vĩnh viễn rỗng — hỏng im lặng, vì "0 dòng" trông y hệt "chưa tới lúc ghi".
+    /// </summary>
+    [Fact]
+    public async Task Don_so_chi_chay_mot_lan_va_khong_dung_vao_dong_da_cham()
+    {
+        var (db, ledger, a, b) = await SetupAsync();
+
+        await ledger.SnapshotAsync(new Dictionary<int, double> { [a] = 1600, [b] = 1400 }, T(1), default);
+        await db.SaveChangesAsync();
+
+        // Một dòng đã chấm: là lịch sử, không được xoá
+        var done = await db.Predictions.SingleAsync();
+        done.ResolvedMatchId = 12345;
+        done.TeamAWon = true;
+        await db.SaveChangesAsync();
+
+        await ledger.SnapshotAsync(new Dictionary<int, double> { [a] = 1700, [b] = 1300 }, T(2), default);
+        await db.SaveChangesAsync();
+        (await db.Predictions.CountAsync()).Should().Be(2);
+
+        (await ledger.PurgeSupersededOnceAsync(T(3), default)).Should().Be(1);
+
+        var left = await db.Predictions.ToListAsync();
+        left.Should().ContainSingle().Which.ResolvedMatchId.Should().Be(12345);
+
+        // Lần hai KHÔNG được xoá gì nữa
+        await ledger.SnapshotAsync(new Dictionary<int, double> { [a] = 1800, [b] = 1200 }, T(4), default);
+        await db.SaveChangesAsync();
+
+        (await ledger.PurgeSupersededOnceAsync(T(5), default)).Should().Be(0);
+        (await db.Predictions.CountAsync(p => p.ResolvedMatchId == null)).Should().Be(1,
+            "dòng vừa ghi ở vòng sau phải còn nguyên");
+    }
+
     [Fact]
     public async Task Ghi_du_doan_cho_moi_cap_doi()
     {

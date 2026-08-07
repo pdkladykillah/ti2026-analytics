@@ -27,7 +27,12 @@ public class IngestPipeline(
     private async Task<int> PredictionLedgerAsync(CancellationToken ct)
     {
         var now = DateTime.UtcNow;
-        var resolved = await ledger.ResolveAsync(now, ct);
+
+        // TRƯỚC khi chấm và ghi: dọn nốt các dòng do mô hình cũ ghi ra. Chạy sau đó thì đúng
+        // những dòng vừa ghi lại bị dọn, và sổ không bao giờ có gì.
+        var purged = await ledger.PurgeSupersededOnceAsync(now, ct);
+
+        var resolved = purged + await ledger.ResolveAsync(now, ct);
 
         var latest = await db.TeamStatSnapshots
             .Where(s => s.WindowDays == 180)

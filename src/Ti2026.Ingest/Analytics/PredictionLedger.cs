@@ -23,6 +23,53 @@ namespace Ti2026.Ingest.Analytics;
 public class PredictionLedger(Ti2026DbContext db, ILogger<PredictionLedger> logger)
 {
     /// <summary>
+    /// Khoá trong SeedState đánh dấu đợt dọn sổ này đã chạy. Đổi chuỗi = chạy thêm một đợt nữa.
+    /// </summary>
+    public const string PurgeKey = "prediction-purge/lineup-elo-2026-08-07";
+
+    /// <summary>
+    /// Xoá MỘT LẦN mọi dự đoán chưa chấm, vì chúng do một mô hình không còn tồn tại ghi ra.
+    ///
+    /// Bối cảnh: Elo chuyển sang chỉ tính ván mà cả hai bên đều là đội hình TI2026, rồi ngay
+    /// sau đó dữ liệu nguồn được vá (PariVision và L1GA từng mất trắng ván vì ánh xạ team_id
+    /// chết). Hai lần đó đổi Elo của gần như mọi đội, nên 211 dòng đang mở là phát biểu của
+    /// những mô hình đã bị thay thế.
+    ///
+    /// Vì sao phải XOÁ chứ không để lẫn: sổ chấm theo thứ tự ghi, mỗi ván chỉ chấm cho một dòng.
+    /// Để nguyên thì ván ĐẦU TIÊN của mỗi cặp ở TI — dữ liệu quý nhất — bị chấm cho mô hình cũ,
+    /// còn mô hình đang phục vụ trang phải đợi tới lần gặp thứ hai. Và đường hiệu chuẩn sẽ trộn
+    /// hai mô hình thành một.
+    ///
+    /// An toàn vì CHỈ xoá dòng CHƯA CHẤM: không có phép đo nào bị mất — chưa dòng nào có kết quả
+    /// (đúng 0/211). Dòng đã chấm là lịch sử, và lịch sử thì không xoá.
+    ///
+    /// Làm bằng code có test thay vì gõ SQL tay trên production: gõ tay thì không có test,
+    /// không có vết, và một lần nhầm là mất dữ liệu thật.
+    /// </summary>
+    public async Task<int> PurgeSupersededOnceAsync(DateTime now, CancellationToken ct)
+    {
+        if (await db.SeedStates.AnyAsync(s => s.Key == PurgeKey, ct)) return 0;
+
+        var stale = await db.Predictions.Where(p => p.ResolvedMatchId == null).ToListAsync(ct);
+
+        db.Predictions.RemoveRange(stale);
+        db.SeedStates.Add(new SeedState
+        {
+            Key = PurgeKey,
+            Hash = stale.Count.ToString(),
+            AppliedAt = now,
+        });
+
+        await db.SaveChangesAsync(ct);
+
+        logger.LogWarning(
+            "Dọn sổ dự đoán: xoá {Count} dòng chưa chấm do mô hình cũ ghi ra. "
+            + "Vòng này sẽ ghi lại bằng Elo đã lọc theo đội hình.", stale.Count);
+
+        return stale.Count;
+    }
+
+    /// <summary>
     /// Chụp dự đoán hiện tại cho mọi cặp đội. Trả về số dòng mới ghi.
     /// </summary>
     public async Task<int> SnapshotAsync(

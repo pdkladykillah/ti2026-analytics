@@ -1150,9 +1150,18 @@ function wireRoleChips(d) {
     const found = role ? (d.componentsByRole || []).find((r) => r.role === role) : null;
     const rows = role ? (found ? found.components : []) : (d.components || []);
 
-    list.innerHTML = rows.length
+    list.innerHTML = (rows.length
       ? rows.map(skillRow).join('')
-      : '<div class="empty">Vai trò này chưa đủ ván có phân vị để chấm.</div>';
+      : '<div class="empty">Vai trò này chưa đủ ván có phân vị để chấm.</div>')
+      // Mốc so KHÔNG đổi theo vai trò — nó luôn là mọi người chơi cùng hero đó. Không nói ra
+      // thì một cột thấp ở hỗ trợ dễ bị đọc thành "chơi hỗ trợ tệ", trong khi phần lớn chênh
+      // lệch đến từ việc hero hỗ trợ vốn farm ít hơn hero core.
+      + (role && found
+        ? `<p class="desc" style="margin-top:var(--s-3)">Đang lọc ${esc(found.label)}:
+             ${n0(found.games)} ván có nhãn replay, thắng ${fmt(found.winrate, 1, '%')}. Mốc so
+             vẫn là mọi người chơi cùng hero — không phải mọi người chơi cùng vị trí — nên hãy
+             đọc theo chiều "so với người khác dùng đúng hero này".</p>`
+        : '');
   });
 }
 

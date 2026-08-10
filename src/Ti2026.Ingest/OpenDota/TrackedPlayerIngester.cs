@@ -35,13 +35,22 @@ public class TrackedPlayerIngester(
     public const int MatchesPerSync = 500;
 
     /// <summary>
-    /// Những trường chỉ trả về khi hỏi tên. Thiếu chúng thì bảng ván chỉ có K/D/A — không đủ để
-    /// nói gì về cách chơi.
+    /// MỌI trường ta đọc, khai đủ không thiếu cái nào.
+    ///
+    /// project= là danh sách TRẮNG, không phải danh sách bổ sung: hỏi tên nào thì chỉ nhận về
+    /// tên đó. Bản đầu quên khai hero_id và start_time, và hậu quả là 500 ván vào DB với
+    /// hero_id = 0 và ngày 01/01/1970 — mất đúng hai trục mà cả trang này dựng lên: hero pool
+    /// và diễn biến theo thời gian. Không có gì báo lỗi, vì 0 và 1970 đều là giá trị hợp lệ.
+    ///
+    /// Nên: khai TẤT CẢ, kể cả những trường vốn nằm trong bộ mặc định. Một danh sách dài mà
+    /// khớp đúng bộ cột đang đọc thì đọc mã là thấy ngay; dựa vào bộ mặc định thì không.
     /// </summary>
     public static readonly string[] Projected =
     [
+        "match_id", "hero_id", "start_time", "duration", "player_slot", "radiant_win",
         "kills", "deaths", "assists", "gold_per_min", "xp_per_min", "last_hits", "denies",
-        "hero_damage", "tower_damage", "hero_healing", "lane_role", "average_rank", "party_size",
+        "hero_damage", "tower_damage", "hero_healing", "lane_role", "average_rank",
+        "party_size", "lobby_type", "game_mode",
     ];
 
     public async Task<int> IngestAsync(CancellationToken ct)
@@ -125,53 +134,66 @@ public class TrackedPlayerIngester(
 
             p.SyncNote = null;
 
-            var known = await db.TrackedPlayerMatches
-                .Where(m => m.TrackedPlayerId == p.Id)
-                .Select(m => m.MatchId)
-                .ToListAsync(ct);
+            // Nguồn đổi hợp đồng thì phải LỘ RA, không được ghi âm thầm. hero_id = 0 và
+            // start_time = 0 đều là giá trị "hợp lệ" nên không có gì đổ vỡ — chỉ có dữ liệu
+            // vô dụng nằm im trong DB cho tới khi có người mở trang ra và thấy toàn hero rỗng.
+            var broken = matches.Count(m => m.HeroId <= 0 || m.StartTime <= 0);
+            if (broken > 0)
+            {
+                p.SyncNote = $"OpenDota trả về {broken}/{matches.Count} ván thiếu hero_id hoặc "
+                           + "start_time — hợp đồng của endpoint có thể đã đổi. Kiểm lại danh "
+                           + "sách project= trong TrackedPlayerIngester.";
+                logger.LogError("{Name}: {Broken}/{Total} ván thiếu trường bắt buộc",
+                    p.DisplayName, broken, matches.Count);
+            }
 
-            var seen = known.ToHashSet();
+            // UPSERT chứ không chỉ insert. Chỉ insert thì mọi ván đã lưu sai sẽ nằm sai vĩnh
+            // viễn — sửa được lỗi ở nguồn cũng không cứu được 500 hàng đã vào DB.
+            var existing = await db.TrackedPlayerMatches
+                .Where(m => m.TrackedPlayerId == p.Id)
+                .ToDictionaryAsync(m => m.MatchId, ct);
+
             var added = 0;
 
             foreach (var m in matches)
             {
-                if (!seen.Add(m.MatchId)) continue;
+                if (m.HeroId <= 0 || m.StartTime <= 0) continue;
 
-                db.TrackedPlayerMatches.Add(new TrackedPlayerMatch
+                if (!existing.TryGetValue(m.MatchId, out var row))
                 {
-                    TrackedPlayerId = p.Id,
-                    MatchId = m.MatchId,
-                    HeroId = m.HeroId,
-                    StartTime = DateTimeOffset.FromUnixTimeSeconds(m.StartTime).UtcDateTime,
-                    DurationSeconds = m.Duration,
+                    row = new TrackedPlayerMatch { TrackedPlayerId = p.Id, MatchId = m.MatchId };
+                    db.TrackedPlayerMatches.Add(row);
+                    existing[m.MatchId] = row;
+                    added++;
+                }
 
-                    // player_slot < 128 là phe Radiant. Đây là cách DUY NHẤT biết người này
-                    // thắng hay thua — endpoint chỉ trả radiant_win cho cả ván.
-                    Won = (m.PlayerSlot < 128) == m.RadiantWin,
+                row.HeroId = m.HeroId;
+                row.StartTime = DateTimeOffset.FromUnixTimeSeconds(m.StartTime).UtcDateTime;
+                row.DurationSeconds = m.Duration;
 
-                    Kills = m.Kills ?? 0,
-                    Deaths = m.Deaths ?? 0,
-                    Assists = m.Assists ?? 0,
-                    GoldPerMin = m.GoldPerMin,
-                    XpPerMin = m.XpPerMin,
-                    LastHits = m.LastHits,
-                    Denies = m.Denies,
-                    HeroDamage = m.HeroDamage,
-                    TowerDamage = m.TowerDamage,
-                    HeroHealing = m.HeroHealing,
-                    LaneRole = m.LaneRole is int lr && lr > 0 ? lr : null,
-                    LobbyType = m.LobbyType,
-                    GameMode = m.GameMode,
-                    PartySize = m.PartySize,
-                    AverageRank = m.AverageRank,
-                });
+                // player_slot < 128 là phe Radiant. Đây là cách DUY NHẤT biết người này thắng
+                // hay thua — endpoint chỉ trả radiant_win cho cả ván.
+                row.Won = (m.PlayerSlot < 128) == m.RadiantWin;
 
-                added++;
+                row.Kills = m.Kills ?? 0;
+                row.Deaths = m.Deaths ?? 0;
+                row.Assists = m.Assists ?? 0;
+                row.GoldPerMin = m.GoldPerMin;
+                row.XpPerMin = m.XpPerMin;
+                row.LastHits = m.LastHits;
+                row.Denies = m.Denies;
+                row.HeroDamage = m.HeroDamage;
+                row.TowerDamage = m.TowerDamage;
+                row.HeroHealing = m.HeroHealing;
+                row.LaneRole = m.LaneRole is int lr && lr > 0 ? lr : null;
+                row.LobbyType = m.LobbyType;
+                row.GameMode = m.GameMode;
+                row.PartySize = m.PartySize;
+                row.AverageRank = m.AverageRank;
             }
 
-            if (added > 0)
-                logger.LogInformation("{Name}: thêm {Added} ván mới (tổng đã lấy {Total})",
-                    p.DisplayName, added, matches.Count);
+            logger.LogInformation("{Name}: {Added} ván mới, cập nhật {Total} ván",
+                p.DisplayName, added, matches.Count);
 
             return added;
         }

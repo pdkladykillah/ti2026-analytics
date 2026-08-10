@@ -45,8 +45,15 @@ public static class PlayerInsights
     /// dấu phẩy — đúng với tiếng Anh và sai với phần còn lại của trang, nơi giao diện đã dùng
     /// toLocaleString('vi-VN'). Cùng một con số hiện hai kiểu ở hai chỗ trên cùng một màn hình.
     /// </summary>
-    private static readonly System.Globalization.CultureInfo Vi =
-        System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+    /// Dựng thẳng quy tắc thay vì tra CultureInfo("vi-VN"): tra văn hoá phụ thuộc vào dữ liệu
+    /// ICU có mặt trong ảnh Docker hay không, và ảnh .NET chạy chế độ bất biến sẽ NÉM lỗi ngay
+    /// giữa endpoint. Ở đây chỉ cần đúng một quy tắc ngăn nghìn, nên tự khai là hết rủi ro.
+    private static readonly System.Globalization.NumberFormatInfo Vi = new()
+    {
+        NumberGroupSeparator = ".",
+        NumberDecimalSeparator = ",",
+        NumberGroupSizes = [3],
+    };
 
     private static string N(int value) => value.ToString("N0", Vi);
 

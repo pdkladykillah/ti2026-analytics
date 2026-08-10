@@ -1051,6 +1051,7 @@ function renderProfile(d) {
 
   const months = (d.months || []);
   const maxG = Math.max(...months.map((x) => x.games), 1);
+  const mt = d.monthTrend;
   const trend = months.length
     ? `<h3 style="margin-top:var(--s-5)">Theo tháng</h3>
        <div class="pf-months">${months.map((x) => `
@@ -1059,10 +1060,15 @@ function renderProfile(d) {
                 title="${n0(x.games)} ván"></div>
            <div class="pf-wr ${x.winrate >= 50 ? 'cal-good' : 'cal-bad'}">${fmt(x.winrate, 0, '%')}</div>
            <div class="pf-lbl">${esc(x.month.slice(5))}/${esc(x.month.slice(2, 4))}</div>
-           <div class="pf-gpm">${fmt(x.avgGpm, 0)}</div>
+           <div class="pf-gpm" title="${x.pctLastHits === null ? 'chưa đủ ván có phân vị'
+             : `phân vị ăn lính, ${n0(x.ratedGames)} ván`}">${x.pctLastHits === null ? '·' : x.pctLastHits}</div>
          </div>`).join('')}</div>
-       <p class="desc">Cột là số ván, số trên là tỷ lệ thắng, số dưới là GPM trung bình.
-         Tháng mờ là tháng dưới 10 ván — vẫn hiện để đường không bị đứt, nhưng đừng đọc nặng.</p>`
+       <p class="desc">Cột là số ván, số trên là tỷ lệ thắng, số dưới là <b>phân vị ăn lính</b>
+         của tháng đó. Dùng phân vị chứ không dùng GPM trung bình: GPM phụ thuộc nặng vào việc
+         tháng đó hay chơi hero nào — một tháng chơi nhiều hỗ trợ sẽ tụt GPM mà chẳng liên quan
+         gì tới kỹ năng. Dấu · là tháng chưa đủ 5 ván có phân vị. Tháng mờ là tháng dưới 10 ván —
+         vẫn hiện để đường không bị đứt, nhưng đừng đọc nặng.</p>
+       ${mt && mt.text ? `<p class="desc"><b>Xu hướng:</b> ${esc(mt.text)}</p>` : ''}`
     : '';
 
   body.innerHTML = head + insights + skillBlock(d) + metaBlock(d) + matesBlock(d) + eraBlock(d)

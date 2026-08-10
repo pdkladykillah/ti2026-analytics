@@ -227,19 +227,47 @@ public static class ProfileEndpoints
 
             // Diễn biến theo THÁNG. Tháng có dưới 10 ván thì vẫn hiện nhưng đánh dấu mỏng —
             // giấu đi thì đường biểu đồ có lỗ mà không ai biết vì sao.
+            //
+            // Cột thứ hai là PHÂN VỊ ăn lính, không phải GPM trung bình. Bản trước dùng GPM và
+            // nó nói dối một cách khó thấy: GPM phụ thuộc nặng vào việc tháng đó hay chơi hero
+            // nào — một tháng chơi nhiều support sẽ tụt GPM mà chẳng liên quan gì tới kỹ năng.
+            // Phân vị thì đã so với người chơi cùng hero, nên nó đo đúng người này.
             var byMonth = rows
                 .GroupBy(m => new DateTime(m.StartTime.Year, m.StartTime.Month, 1, 0, 0, 0, DateTimeKind.Utc))
                 .OrderBy(g => g.Key)
-                .Select(g => new
+                .Select(g =>
                 {
-                    month = g.Key.ToString("yyyy-MM"),
-                    games = g.Count(),
-                    winrate = Math.Round(g.Count(x => x.Won) * 100.0 / g.Count(), 1),
-                    avgGpm = Math.Round(g.Where(x => x.GoldPerMin is int)
-                        .Select(x => (double)x.GoldPerMin!.Value).DefaultIfEmpty(0).Average()),
-                    thin = g.Count() < 10,
+                    var pcts = g.Where(x => x.PctLastHits is int)
+                        .Select(x => x.PctLastHits!.Value).ToList();
+
+                    return new
+                    {
+                        month = g.Key.ToString("yyyy-MM"),
+                        games = g.Count(),
+                        winrate = Math.Round(g.Count(x => x.Won) * 100.0 / g.Count(), 1),
+
+                        // Dưới 5 ván có phân vị thì để trống thay vì vẽ một điểm gần như ngẫu
+                        // nhiên — điểm đó sẽ kéo cả đường xu hướng theo nó.
+                        pctLastHits = pcts.Count >= 5
+                            ? SkillComponents.Percentile(pcts, 50)
+                            : (int?)null,
+
+                        ratedGames = pcts.Count,
+                        thin = g.Count() < 10,
+                    };
                 })
                 .ToList();
+
+            // Xu hướng đọc trên chuỗi PHÂN VỊ, và chỉ trên những tháng đủ dày. Ngưỡng "đáng nói"
+            // đặt 5 điểm phân vị: tách được khỏi nhiễu và đáng quan tâm là hai chuyện khác nhau,
+            // và một chuỗi gần phẳng thì mọi trôi dạt đều thành nhiều lần độ nhiễu.
+            var trendSeries = byMonth
+                .Where(m => m.pctLastHits is int && !m.thin)
+                .TakeLast(24)
+                .Select(m => (double)m.pctLastHits!.Value)
+                .ToList();
+
+            var trend = TrendVerdict.Read(trendSeries, "phân vị ăn lính", notableChange: 5);
 
             return Results.Ok(new
             {
@@ -328,6 +356,14 @@ public static class ProfileEndpoints
                 }).ToList(),
 
                 months = byMonth,
+
+                monthTrend = new
+                {
+                    direction = trend.Direction,
+                    change = Math.Round(trend.Change, 1),
+                    points = trend.Points,
+                    text = trend.Text,
+                },
 
                 method = "Chỉ số lấy từ hồ sơ Dota 2 công khai qua OpenDota. Phân vị là so với "
                        + "mọi người chơi CÙNG HERO, nên nó đã trừ đi phần lệch do bạn hay chọn "

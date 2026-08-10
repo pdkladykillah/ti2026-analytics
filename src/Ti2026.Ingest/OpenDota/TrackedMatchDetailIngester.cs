@@ -42,8 +42,12 @@ public class TrackedMatchDetailIngester(
     /// </summary>
     public const int ParseWindowDays = 60;
 
-    /// <summary>Trần mỗi vòng, để một lần nạp bù không chiếm hết nhịp gọi của phần khác.</summary>
-    public const int MaxDetailsPerRun = 400;
+    /// <summary>
+    /// Trần mỗi vòng. 1500 để nạp bù cả lịch sử 5.877 ván xong trong khoảng 4 vòng (một ngày)
+    /// thay vì 15 vòng (bốn ngày) — nhưng vẫn đủ thấp để không chiếm hết nhịp gọi của phần phân
+    /// tích giải, nhất là trong những ngày TI đang diễn ra.
+    /// </summary>
+    public const int MaxDetailsPerRun = 1500;
 
     /// <summary>Trần yêu cầu parse mỗi vòng — chúng vào hàng đợi chung của OpenDota.</summary>
     public const int MaxParseRequestsPerRun = 120;

@@ -139,6 +139,8 @@ public static class PlayerInsights
                 86));
         }
 
+        AddBroadShift(components, found);
+
         // Tiến bộ đo bằng chính cửa sổ gần đây của từng mặt, chứ không bằng tỷ lệ thắng: tỷ lệ
         // thắng còn phụ thuộc 9 người khác, phân vị thì chỉ phụ thuộc người này.
         foreach (var c in components
@@ -153,6 +155,48 @@ public static class PlayerInsights
                 + $"({c.Games:N0} ván).",
                 84));
         }
+    }
+
+    /// <summary>
+    /// Dịch chuyển TRÊN TOÀN BỘ các mặt, thứ mà ngưỡng theo từng mặt bỏ sót.
+    ///
+    /// Vì sao cần. Đo trên dữ liệu thật: cả 10 mặt đều cao hơn ở 50 ván gần nhất, nhưng mặt lệch
+    /// nhiều nhất cũng chỉ +13 điểm phân vị — dưới ngưỡng <see cref="SkillComponents.NotableGap"/>
+    /// nên KHÔNG mặt nào sinh ra nhận định. Trang sẽ im lặng trước một tín hiệu rất rõ, chỉ vì
+    /// mỗi mảnh của nó nhỏ hơn ngưỡng dành cho một mảnh.
+    ///
+    /// KHÔNG NÊU XÁC SUẤT. Cám dỗ là viết "10/10 mặt đi lên, ngẫu nhiên chỉ 1/1024". Sai, vì các
+    /// mặt KHÔNG độc lập: kiếm vàng và ăn lính gần như là một, sát thương và số mạng hạ đi cùng
+    /// nhau. Mười mặt tương quan không phải mười lần tung đồng xu, nên con số 1/1024 sẽ là một
+    /// khẳng định mạnh hơn nhiều lần so với những gì dữ liệu đỡ nổi. Nêu SỐ ĐẾM và MỨC DỊCH, rồi
+    /// nói thẳng rằng chúng tương quan.
+    /// </summary>
+    private static void AddBroadShift(
+        IReadOnlyList<SkillComponent> components, List<PlayerInsight> found)
+    {
+        var withRecent = components.Where(c => c.Recent is int).ToList();
+        if (withRecent.Count < 6) return;
+
+        var up = withRecent.Count(c => c.Recent!.Value > c.Median);
+        var down = withRecent.Count(c => c.Recent!.Value < c.Median);
+
+        // Chỉ nói khi gần như TẤT CẢ cùng chiều. Đa số mong manh thì đúng là nhiễu.
+        var many = Math.Max(up, down);
+        if (many < withRecent.Count - 1) return;
+
+        var shifts = withRecent.Select(c => (double)(c.Recent!.Value - c.Median)).ToList();
+        var move = Median(shifts);
+
+        var rising = up > down;
+
+        found.Add(new PlayerInsight("dich-chuyen-chung", rising ? "good" : "warn",
+            $"{many}/{withRecent.Count} mặt kỹ năng đều {(rising ? "cao hơn" : "thấp hơn")} ở "
+            + $"{SkillComponents.RecentWindow} ván gần nhất so với toàn bộ lịch sử, dịch trung vị "
+            + $"{(move >= 0 ? "+" : "")}{move:0} điểm phân vị. Từng mặt riêng lẻ chưa đủ lớn để "
+            + "kết luận, nhưng cùng chiều gần như toàn bộ thì đáng chú ý. Lưu ý các mặt này "
+            + "tương quan với nhau (kiếm vàng và ăn lính gần như là một), nên đây là MỘT tín "
+            + "hiệu rộng chứ không phải mười tín hiệu độc lập.",
+            87));
     }
 
     /// <summary>

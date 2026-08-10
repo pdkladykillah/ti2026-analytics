@@ -115,6 +115,79 @@ public class PlayerInsightsTests
         InPool(4000, 2080, filler: 40).Should().BeFalse();
     }
 
+    // ---------- Dịch chuyển trên toàn bộ các mặt ----------
+
+    private static SkillComponent C(string key, int median, int? recent) =>
+        new(key, key, "nhóm", 500, median, median - 20, median + 20, recent, false);
+
+    /// <summary>
+    /// Đo trên dữ liệu thật: cả 10 mặt đều cao hơn ở 50 ván gần nhất, nhưng mặt lệch nhiều nhất
+    /// cũng chỉ +13 điểm phân vị — dưới ngưỡng nên KHÔNG mặt nào sinh ra nhận định. Trang sẽ im
+    /// lặng trước một tín hiệu rất rõ, chỉ vì mỗi mảnh nhỏ hơn ngưỡng dành cho một mảnh.
+    /// </summary>
+    [Fact]
+    public void Moi_mat_deu_nhich_len_it_mot_thi_van_phai_noi()
+    {
+        var games = Enumerable.Range(0, 40).Select(i => G(i % 2 == 0, dayOffset: -i)).ToList();
+
+        var comps = new List<SkillComponent>
+        {
+            C("a", 73, 80), C("b", 77, 84), C("c", 66, 74), C("d", 61, 66), C("e", 67, 69),
+            C("f", 52, 65), C("g", 55, 62), C("h", 40, 42), C("i", 53, 61), C("j", 80, 82),
+        };
+
+        var r = PlayerInsights.Read(games, [], 50, comps);
+
+        r.Should().NotContain(x => x.Kind == "tien-bo", "không mặt nào lệch đủ 15 điểm");
+
+        var broad = r.Single(x => x.Kind == "dich-chuyen-chung");
+        broad.Text.Should().Contain("10/10");
+        broad.Tone.Should().Be("good");
+    }
+
+    /// <summary>
+    /// KHÔNG được nêu xác suất. Mười mặt tương quan không phải mười lần tung đồng xu — kiếm vàng
+    /// và ăn lính gần như là một. Con số "1/1024" sẽ mạnh hơn nhiều lần so với dữ liệu đỡ nổi.
+    /// </summary>
+    [Fact]
+    public void Khong_duoc_bien_10_tren_10_thanh_mot_xac_suat()
+    {
+        var games = Enumerable.Range(0, 40).Select(i => G(true, dayOffset: -i)).ToList();
+        var comps = Enumerable.Range(0, 10).Select(i => C($"c{i}", 50, 60)).ToList();
+
+        var text = PlayerInsights.Read(games, [], 50, comps)
+            .Single(x => x.Kind == "dich-chuyen-chung").Text;
+
+        text.Should().NotContain("1024");
+        text.Should().Contain("tương quan");
+        text.Should().Contain("không phải mười tín hiệu độc lập");
+    }
+
+    [Fact]
+    public void Da_so_mong_manh_thi_khong_ket_luan()
+    {
+        var games = Enumerable.Range(0, 40).Select(i => G(true, dayOffset: -i)).ToList();
+
+        var comps = new List<SkillComponent>
+        {
+            C("a", 50, 60), C("b", 50, 60), C("c", 50, 60), C("d", 50, 60), C("e", 50, 60),
+            C("f", 50, 40), C("g", 50, 40), C("h", 50, 40), C("i", 50, 60), C("j", 50, 60),
+        };
+
+        PlayerInsights.Read(games, [], 50, comps)
+            .Should().NotContain(x => x.Kind == "dich-chuyen-chung");
+    }
+
+    [Fact]
+    public void Chua_du_mat_co_cua_so_gan_day_thi_khong_ket_luan()
+    {
+        var games = Enumerable.Range(0, 40).Select(i => G(true, dayOffset: -i)).ToList();
+        var comps = Enumerable.Range(0, 5).Select(i => C($"c{i}", 50, 70)).ToList();
+
+        PlayerInsights.Read(games, [], 50, comps)
+            .Should().NotContain(x => x.Kind == "dich-chuyen-chung");
+    }
+
     // ---------- Vai trò KHÔNG được suy từ mức farm ----------
 
     /// <summary>

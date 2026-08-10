@@ -84,6 +84,11 @@ builder.Services.AddScoped<SnapshotWriter>();
 builder.Services.AddScoped<PredictionLedger>();
 builder.Services.AddScoped<StaleTeamIdDetector>();
 builder.Services.AddScoped<BracketTeamGapDetector>();
+builder.Services.AddScoped(sp => new TrackedPlayerIngester(
+    sp.GetRequiredService<Ti2026DbContext>(),
+    sp.GetRequiredService<OpenDotaClient>(),
+    paths.EditorialDirectory,
+    sp.GetRequiredService<ILogger<TrackedPlayerIngester>>()));
 builder.Services.AddScoped<IngestOrchestrator>();
 builder.Services.AddScoped<IngestPipeline>();
 

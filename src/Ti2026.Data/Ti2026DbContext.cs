@@ -21,6 +21,8 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<SeedState> SeedStates => Set<SeedState>();
     public DbSet<Prediction> Predictions => Set<Prediction>();
     public DbSet<ScheduledSeries> ScheduledSeries => Set<ScheduledSeries>();
+    public DbSet<TrackedPlayer> TrackedPlayers => Set<TrackedPlayer>();
+    public DbSet<TrackedPlayerMatch> TrackedPlayerMatches => Set<TrackedPlayerMatch>();
     public DbSet<League> Leagues => Set<League>();
     public DbSet<DraftEvent> DraftEvents => Set<DraftEvent>();
     public DbSet<ItemPurchase> ItemPurchases => Set<ItemPurchase>();
@@ -91,6 +93,17 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<TeamOpenDotaId>()
             .HasOne(x => x.Team).WithMany(x => x.OpenDotaIds)
             .HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<TrackedPlayer>().HasIndex(x => x.AccountId).IsUnique();
+
+        // Một người + một ván là duy nhất. Chốt này biến việc nạp lại thành vô hại thay vì
+        // nhân bản lịch sử mỗi vòng.
+        b.Entity<TrackedPlayerMatch>().HasIndex(x => new { x.TrackedPlayerId, x.MatchId }).IsUnique();
+        b.Entity<TrackedPlayerMatch>().HasIndex(x => x.StartTime);
+        b.Entity<TrackedPlayerMatch>().HasIndex(x => x.HeroId);
+        b.Entity<TrackedPlayerMatch>()
+            .HasOne(x => x.TrackedPlayer).WithMany()
+            .HasForeignKey(x => x.TrackedPlayerId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<Player>().HasIndex(x => x.OpenDotaAccountId).IsUnique()
             .HasFilter("\"OpenDotaAccountId\" IS NOT NULL");

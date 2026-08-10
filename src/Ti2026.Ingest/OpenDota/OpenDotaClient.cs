@@ -31,6 +31,31 @@ public class OpenDotaClient(HttpClient http)
     public Task<List<OpenDotaTeamPlayer>> GetTeamPlayersAsync(int teamId, CancellationToken ct) =>
         GetListAsync<OpenDotaTeamPlayer>($"teams/{teamId}/players", ct);
 
+    public Task<OpenDotaWinLoss?> GetPlayerWinLossAsync(long accountId, CancellationToken ct) =>
+        GetOneAsync<OpenDotaWinLoss>($"players/{accountId}/wl", ct);
+
+    /// <summary>
+    /// Ván của một người, hỏi KÈM TÊN TRƯỜNG.
+    ///
+    /// Không có project= thì endpoint chỉ trả match_id, hero, thời gian, kết quả và K/D/A —
+    /// thiếu GPM, last hit, sát thương, tức thiếu đúng phần nói lên cách chơi. Hỏi kèm thì được
+    /// đủ ở 100% số ván, cùng một lời gọi, không tốn thêm gì.
+    /// </summary>
+    public Task<List<OpenDotaPlayerMatchRow>> GetPlayerMatchesProjectedAsync(
+        long accountId, int limit, IEnumerable<string> fields, CancellationToken ct)
+    {
+        var project = string.Join("&", fields.Select(f => "project=" + Uri.EscapeDataString(f)));
+        return GetListAsync<OpenDotaPlayerMatchRow>(
+            $"players/{accountId}/matches?limit={limit}&{project}", ct);
+    }
+
+    private async Task<T?> GetOneAsync<T>(string path, CancellationToken ct)
+    {
+        using var res = await http.GetAsync(path, ct);
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<T>(Json, ct);
+    }
+
     public Task<List<OpenDotaLeague>> GetLeaguesAsync(CancellationToken ct) =>
         GetListAsync<OpenDotaLeague>("leagues", ct);
 

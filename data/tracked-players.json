@@ -1,0 +1,20 @@
+{
+  "_huongDan": [
+    "Danh sach nguoi duoc theo doi lau dai. Them mot hoc tro = them mot dong o day roi deploy,",
+    "khong phai sua bat ky dong ma nao.",
+    "",
+    "accountId chinh la FRIEND ID hien trong Dota 2 (so 32-bit), khong phai steamID64.",
+    "isOwner: chu trang - luon hien dau tien va la nguoi mac dinh khi mo tab.",
+    "",
+    "Nguoi choi phai bat 'Expose Public Match Data' trong Dota 2, neu khong OpenDota tra ve",
+    "danh sach van RONG chu khong bao loi."
+  ],
+  "players": [
+    {
+      "accountId": 230500070,
+      "displayName": "PDK",
+      "note": "chu trang",
+      "isOwner": true
+    }
+  ]
+}

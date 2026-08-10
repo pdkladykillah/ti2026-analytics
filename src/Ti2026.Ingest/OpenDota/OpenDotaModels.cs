@@ -116,6 +116,48 @@ public class OpenDotaPlayerHero
     [JsonPropertyName("last_played")] public long? LastPlayed { get; set; }
 }
 
+/// <summary>players/{id}/wl — tổng thắng thua toàn bộ lịch sử.</summary>
+public class OpenDotaWinLoss
+{
+    [JsonPropertyName("win")] public int Win { get; set; }
+    [JsonPropertyName("lose")] public int Lose { get; set; }
+}
+
+/// <summary>
+/// Một ván trong players/{id}/matches.
+///
+/// Phần lớn các trường CHỈ có khi hỏi kèm project= — không hỏi thì endpoint chỉ trả match_id,
+/// hero_id, thời gian, kết quả và K/D/A. Riêng lane_role thì có hỏi cũng gần như không có: nó
+/// đến từ replay đã phân tích, và trên tài khoản thật chỉ 6% số ván có.
+/// </summary>
+public class OpenDotaPlayerMatchRow
+{
+    [JsonPropertyName("match_id")] public long MatchId { get; set; }
+    [JsonPropertyName("hero_id")] public int HeroId { get; set; }
+    [JsonPropertyName("start_time")] public long StartTime { get; set; }
+    [JsonPropertyName("duration")] public int Duration { get; set; }
+
+    /// <summary>&lt; 128 là phe Radiant. Kết hợp với radiant_win mới biết người này thắng hay thua.</summary>
+    [JsonPropertyName("player_slot")] public int PlayerSlot { get; set; }
+    [JsonPropertyName("radiant_win")] public bool RadiantWin { get; set; }
+
+    [JsonPropertyName("kills")] public int? Kills { get; set; }
+    [JsonPropertyName("deaths")] public int? Deaths { get; set; }
+    [JsonPropertyName("assists")] public int? Assists { get; set; }
+    [JsonPropertyName("gold_per_min")] public int? GoldPerMin { get; set; }
+    [JsonPropertyName("xp_per_min")] public int? XpPerMin { get; set; }
+    [JsonPropertyName("last_hits")] public int? LastHits { get; set; }
+    [JsonPropertyName("denies")] public int? Denies { get; set; }
+    [JsonPropertyName("hero_damage")] public int? HeroDamage { get; set; }
+    [JsonPropertyName("tower_damage")] public int? TowerDamage { get; set; }
+    [JsonPropertyName("hero_healing")] public int? HeroHealing { get; set; }
+    [JsonPropertyName("lane_role")] public int? LaneRole { get; set; }
+    [JsonPropertyName("lobby_type")] public int? LobbyType { get; set; }
+    [JsonPropertyName("game_mode")] public int? GameMode { get; set; }
+    [JsonPropertyName("party_size")] public int? PartySize { get; set; }
+    [JsonPropertyName("average_rank")] public int? AverageRank { get; set; }
+}
+
 /// <summary>players/{id} — chỉ lấy phần hiển thị, không lấy gì thêm.</summary>
 public class OpenDotaPlayerProfile
 {

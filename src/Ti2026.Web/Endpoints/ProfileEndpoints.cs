@@ -190,6 +190,26 @@ public static class ProfileEndpoints
 
             var mates = TeammateAnalysis.Read(mateGames);
 
+            // ---------- Hero pool đặt cạnh meta ----------
+            // Mốc là bậc rank CAO chứ không phải toàn bộ pub: người dùng ở Ancient, còn tỷ lệ
+            // thắng gộp cả Herald tới Immortal là một quần thể khác hẳn.
+            var metaWinrate = (await db.HeroStats.Where(s => s.HighPick > 0).ToListAsync())
+                .ToDictionary(s => s.HeroId, s => s.HighWin * 100.0 / s.HighPick);
+
+            var metaRows = HeroMetaGap.Read(
+                heroes.Select(h => (h.HeroId, h.Name, h.Games, h.Wins)), metaWinrate);
+
+            var gamesPerHero = heroes.ToDictionary(h => h.HeroId, h => h.Games);
+            var untouched = HeroMetaGap.Untouched(gamesPerHero, metaWinrate)
+                .Select(u => new
+                {
+                    heroId = u.HeroId,
+                    name = heroNames.GetValueOrDefault(u.HeroId, $"#{u.HeroId}"),
+                    metaWinrate = Math.Round(u.MetaWinrate, 1),
+                    games = gamesPerHero.GetValueOrDefault(u.HeroId),
+                })
+                .ToList();
+
             // Diễn biến theo THÁNG. Tháng có dưới 10 ván thì vẫn hiện nhưng đánh dấu mỏng —
             // giấu đi thì đường biểu đồ có lỗ mà không ai biết vì sao.
             var byMonth = rows
@@ -234,7 +254,8 @@ public static class ProfileEndpoints
                     to = rows.Count > 0 ? rows[0].StartTime : (DateTime?)null,
                 },
 
-                insights = PlayerInsights.Read(games, heroes, lifetime, components, roles, eras, mates)
+                insights = PlayerInsights
+                    .Read(games, heroes, lifetime, components, roles, eras, mates, metaRows)
                     .Select(i => new { kind = i.Kind, tone = i.Tone, text = i.Text }).ToList(),
 
                 components = components.Select(Shape).ToList(),
@@ -258,6 +279,15 @@ public static class ProfileEndpoints
                 // Ngưỡng đi kèm dữ liệu để phần hiển thị không phải viết cứng lại con số — sửa
                 // ngưỡng ở một nơi mà trang vẫn nói đúng.
                 minPartyGames = TeammateAnalysis.MinPartyGames,
+
+                meta = metaRows.Select(h => new
+                {
+                    heroId = h.HeroId, name = h.Name, games = h.Games,
+                    winrate = h.Winrate, metaWinrate = h.MetaWinrate,
+                    edge = h.Edge, notable = h.Notable,
+                }).ToList(),
+
+                metaUntouched = untouched,
 
                 teammates = mates.Select(t => new
                 {

@@ -1064,7 +1064,7 @@ function renderProfile(d) {
          Tháng mờ là tháng dưới 10 ván — vẫn hiện để đường không bị đứt, nhưng đừng đọc nặng.</p>`
     : '';
 
-  body.innerHTML = head + insights + skillBlock(d) + matesBlock(d) + eraBlock(d)
+  body.innerHTML = head + insights + skillBlock(d) + metaBlock(d) + matesBlock(d) + eraBlock(d)
     + trend + heroTable
     + `<p class="desc" style="margin-top:var(--s-4)">${esc(d.method || '')}</p>`;
 
@@ -1147,6 +1147,40 @@ function wireRoleChips(d) {
       ? rows.map(skillRow).join('')
       : '<div class="empty">Vai trò này chưa đủ ván có phân vị để chấm.</div>';
   });
+}
+
+/* --------------------------- Hero pool vs meta --------------------------- */
+
+function metaBlock(d) {
+  const rows = d.meta || [];
+  if (!rows.length) return '';
+
+  const untouched = d.metaUntouched || [];
+
+  return `<h3 style="margin-top:var(--s-5)">Hero pool so với meta</h3>
+    <p class="desc" style="margin:0 0 var(--s-3)">Mốc so ở đây là tỷ lệ thắng chung của
+      <b>chính hero đó</b> ở bậc rank cao, không phải 50%. Lý do: hero mạnh sẵn thì ai chơi cũng
+      thắng — thắng 53% với một hero có mức chung 53% là đúng bằng mọi người, còn thắng 50% với
+      một hero có mức chung 44% là hơn hẳn. Cột <b>Chênh</b> mới là thứ nói bạn giỏi tới đâu.
+      Dấu ★ là chênh lệch đã vượt ngưỡng nhiễu sau khi tính tới cả pool.</p>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">Hero</th><th scope="col">Ván</th>
+        <th scope="col">Bạn thắng</th><th scope="col">Mức chung</th><th scope="col">Chênh</th>
+      </tr></thead>
+      <tbody>${rows.map((h) => `<tr>
+        <td>${esc(h.name)}${h.notable ? ' <b title="Chênh lệch đã vượt ngưỡng nhiễu">★</b>' : ''}</td>
+        <td class="num">${n0(h.games)}</td>
+        <td class="num">${fmt(h.winrate, 1, '%')}</td>
+        <td class="num mu">${fmt(h.metaWinrate, 1, '%')}</td>
+        <td class="num ${h.edge > 0 ? 'cal-good' : h.edge < 0 ? 'cal-bad' : ''}">${signed(h.edge, 1)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    ${untouched.length ? `<p class="desc" style="margin-top:var(--s-3)">Đang mạnh trong meta mà
+      bạn gần như chưa chơi: ${untouched.map((u) =>
+        `<b>${esc(u.name)}</b> (${fmt(u.metaWinrate, 1, '%')})`).join(', ')}.
+      Cố ý không gọi đây là "nên học" — một hero mạnh ở mức chung chưa chắc hợp với vị trí hay
+      lối chơi của bạn, và trang không có cách nào biết điều đó.</p>` : ''}`;
 }
 
 /* ------------------------------- Đồng đội ------------------------------- */

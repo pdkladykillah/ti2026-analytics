@@ -65,7 +65,8 @@ public static class PlayerInsights
         IReadOnlyList<SkillComponent>? components = null,
         IReadOnlyList<RoleSlice>? roles = null,
         IReadOnlyList<RoleEra>? eras = null,
-        IReadOnlyList<TeammateLine>? mates = null)
+        IReadOnlyList<TeammateLine>? mates = null,
+        IReadOnlyList<MetaHero>? meta = null)
     {
         var found = new List<PlayerInsight>();
         if (games.Count == 0) return found;
@@ -75,6 +76,7 @@ public static class PlayerInsights
         AddRoleMix(roles, found);
         AddRoleShift(eras, found);
         AddHeroExtremes(heroes, found);
+        AddMetaGap(meta, found);
         AddProBenchmark(heroes, found);
         AddMates(mates, found);
         AddSideSplit(games, found);
@@ -193,6 +195,38 @@ public static class PlayerInsights
             + "Chỉ đếm ván có nhãn thật từ replay nên số lượng mỏng — đọc như một hướng, không "
             + "phải một phép đo.",
             76));
+    }
+
+    /// <summary>
+    /// Hero bạn chơi HƠN hoặc KÉM mức chung của chính hero đó.
+    ///
+    /// Khác hẳn <see cref="AddHeroExtremes"/> vốn so với mốc 50%: hero mạnh sẵn thì ai chơi cũng
+    /// thắng, nên thắng 53% với một hero có mức chung 53% chẳng nói lên điều gì về người chơi.
+    /// Hai mục cùng tồn tại vì chúng trả lời hai câu khác nhau — "hero nào giúp bạn thắng" và
+    /// "hero nào bạn chơi giỏi hơn người khác".
+    /// </summary>
+    private static void AddMetaGap(IReadOnlyList<MetaHero>? meta, List<PlayerInsight> found)
+    {
+        if (meta is null || meta.Count == 0) return;
+
+        foreach (var h in meta.Where(h => h.Notable && h.Edge > 0).Take(2))
+        {
+            found.Add(new PlayerInsight("hon-meta", "good",
+                $"{h.Name} là thế mạnh riêng của bạn: thắng {h.Winrate:0.0}% qua {h.Games} ván, "
+                + $"trong khi mức chung của hero này ở bậc rank cao chỉ {h.MetaWinrate:0.0}% — "
+                + $"hơn {h.Edge:0.0} điểm. Đây là chỗ bạn giỏi hơn người khác, chứ không phải chỗ "
+                + "hero tự mạnh.",
+                80));
+        }
+
+        foreach (var h in meta.Where(h => h.Notable && h.Edge < 0).OrderBy(h => h.Edge).Take(2))
+        {
+            found.Add(new PlayerInsight("kem-meta", "warn",
+                $"{h.Name}: bạn thắng {h.Winrate:0.0}% qua {h.Games} ván nhưng mức chung của hero "
+                + $"này là {h.MetaWinrate:0.0}% — kém {Math.Abs(h.Edge):0.0} điểm. Hero không có "
+                + "lỗi ở đây; đây là hero đáng học lại hoặc đáng bỏ.",
+                79));
+        }
     }
 
     private static void AddMates(IReadOnlyList<TeammateLine>? mates, List<PlayerInsight> found)

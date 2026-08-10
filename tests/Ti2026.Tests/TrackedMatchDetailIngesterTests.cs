@@ -238,6 +238,36 @@ public class TrackedMatchDetailIngesterTests : IDisposable
         (await db.TrackedMatchTeammates.CountAsync()).Should().Be(3);
     }
 
+    /// <summary>
+    /// Tải hỏng thì phải để nguyên DetailFetchedAt = null cho vòng sau thử lại. Đánh dấu đã xử
+    /// lý ở đây sẽ biến một trục trặc mạng thoáng qua thành mất dữ liệu vĩnh viễn — và trên
+    /// production đã thấy lỗi SSL rải rác đúng loại đó.
+    /// </summary>
+    [Fact]
+    public async Task Tai_hong_thi_de_van_do_lai_cho_vong_sau()
+    {
+        using var db = NewDb();
+        await SeedAsync(db);
+
+        await Ingester(db, new FailingHandler()).IngestAsync(default);
+
+        var row = await db.TrackedPlayerMatches.SingleAsync();
+        row.DetailFetchedAt.Should().BeNull();
+        (await db.TrackedMatchTeammates.CountAsync()).Should().Be(0);
+
+        // Vòng sau nguồn hồi phục thì ván đó phải được lấy lại đầy đủ.
+        await Ingester(db, new StubHandler(Payload)).IngestAsync(default);
+
+        (await db.TrackedPlayerMatches.SingleAsync()).PctGpm.Should().Be(96);
+    }
+
+    private sealed class FailingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage r, CancellationToken ct) =>
+            throw new HttpRequestException("mang chet");
+    }
+
     [Fact]
     public async Task Van_da_lay_roi_thi_khong_goi_lai()
     {

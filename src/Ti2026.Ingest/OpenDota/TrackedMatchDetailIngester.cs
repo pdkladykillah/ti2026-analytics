@@ -52,6 +52,23 @@ public class TrackedMatchDetailIngester(
     /// <summary>Trần yêu cầu parse mỗi vòng — chúng vào hàng đợi chung của OpenDota.</summary>
     public const int MaxParseRequestsPerRun = 120;
 
+    /// <summary>
+    /// Số lời gọi cùng lúc lúc tải chi tiết ván.
+    ///
+    /// VÌ SAO CẦN. Vòng lặp tuần tự có thông lượng bằng 1 chia cho ĐỘ TRỄ, không phải bằng hạn
+    /// mức. Đo trên production: hạn mức cho phép 8 lời gọi/giây nhưng thực tế chỉ đạt 0,6 —
+    /// tức mỗi lời gọi mất khoảng 1,6 giây và suốt thời gian đó không có gì khác chạy. Nạp bù
+    /// 5.877 ván ở nhịp đó mất gần ba giờ, trong khi hạn mức thừa sức làm trong mười hai phút.
+    ///
+    /// VÌ SAO KHÔNG CAO HƠN. RateLimitedHandler vẫn là trần thật — nó giãn cách mọi lời gọi bất
+    /// kể có bao nhiêu luồng, nên tăng số này chỉ giúp LẤP ĐẦY hạn mức chứ không vượt được. 8 là
+    /// đủ để lấp đầy ở độ trễ đo được, và giữ thấp thì lúc nguồn chậm cũng không dồn ứ.
+    ///
+    /// VÀ CHỈ SONG SONG PHẦN TẢI. DbContext của EF Core không an toàn nhiều luồng, nên toàn bộ
+    /// phần ghi vẫn chạy tuần tự sau khi tải xong.
+    /// </summary>
+    public const int FetchConcurrency = 8;
+
     public async Task<int> IngestAsync(CancellationToken ct)
     {
         var players = await db.TrackedPlayers.ToDictionaryAsync(p => p.Id, p => p.AccountId, ct);
@@ -98,15 +115,37 @@ public class TrackedMatchDetailIngester(
                 .ToListAsync(ct))
             .ToDictionary(t => (t.TrackedPlayerMatchId, t.AccountId));
 
+        // TẢI song song, GHI tuần tự. DbContext của EF Core không an toàn nhiều luồng, nên bước
+        // dưới chỉ thu về dữ liệu thô; mọi thao tác chạm vào thực thể đều nằm ở vòng lặp sau.
+        var loaded = new System.Collections.Concurrent.ConcurrentDictionary<long, OpenDotaMatchDetail>();
+
+        await Parallel.ForEachAsync(
+            pending,
+            new ParallelOptions { MaxDegreeOfParallelism = FetchConcurrency, CancellationToken = ct },
+            async (row, token) =>
+            {
+                try
+                {
+                    loaded[row.Id] = await client.GetMatchAsync(row.MatchId, token);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Không lấy được chi tiết ván {Match}", row.MatchId);
+                }
+            });
+
         var done = 0;
 
         foreach (var row in pending)
         {
             if (!players.TryGetValue(row.TrackedPlayerId, out var accountId)) continue;
 
+            // Ván tải hỏng thì để nguyên DetailFetchedAt = null, để vòng sau thử lại. Đánh dấu
+            // đã xử lý ở đây sẽ biến một trục trặc mạng thoáng qua thành mất dữ liệu vĩnh viễn.
+            if (!loaded.TryGetValue(row.Id, out var detail)) continue;
+
             try
             {
-                var detail = await client.GetMatchAsync(row.MatchId, ct);
                 var all = detail.Players ?? [];
 
                 var me = all.FirstOrDefault(p => p.AccountId == accountId);
@@ -142,11 +181,14 @@ public class TrackedMatchDetailIngester(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Không lấy được chi tiết ván {Match}", row.MatchId);
+                logger.LogWarning(ex, "Không đọc được chi tiết ván {Match}", row.MatchId);
             }
         }
 
-        logger.LogInformation("Lấy bối cảnh đội cho {Done}/{Total} ván", done, pending.Count);
+        logger.LogInformation(
+            "Lấy bối cảnh đội cho {Done}/{Total} ván, {Failed} ván tải hỏng sẽ thử lại vòng sau",
+            done, pending.Count, pending.Count - loaded.Count);
+
         return done;
     }
 

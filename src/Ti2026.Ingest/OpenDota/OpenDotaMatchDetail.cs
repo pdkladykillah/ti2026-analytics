@@ -54,10 +54,59 @@ public class OpenDotaPurchase
     [JsonPropertyName("key")] public string? Key { get; set; }
 }
 
+/// <summary>
+/// Một ô trong bảng benchmark: giá trị thật và phân vị của nó so với MỌI người chơi cùng hero.
+///
+/// raw đến khi thì là số nguyên (696 GPM) khi thì là số thực (8,879 last hit mỗi phút), nên phải
+/// khai double chứ không phải int — khai int thì bộ đọc JSON ném lỗi ở đúng những chỉ số tính
+/// theo phút, tức gần hết bảng.
+/// </summary>
+public class OpenDotaBenchmark
+{
+    [JsonPropertyName("raw")] public double? Raw { get; set; }
+
+    /// <summary>0..1. Xem <see cref="OpenDotaMatchPlayer.Benchmarks"/> để biết khi nào nó vô nghĩa.</summary>
+    [JsonPropertyName("pct")] public double? Pct { get; set; }
+}
+
 public class OpenDotaMatchPlayer
 {
     [JsonPropertyName("account_id")] public long? AccountId { get; set; }
     [JsonPropertyName("hero_id")] public int HeroId { get; set; }
+
+    /// <summary>Tên Steam hiển thị. null khi người đó để hồ sơ ẩn danh.</summary>
+    [JsonPropertyName("personaname")] public string? PersonaName { get; set; }
+
+    /// <summary>
+    /// Nhóm nào trong ván. Cùng số = cùng nhóm. null = đi một mình.
+    ///
+    /// Chỉ có nghĩa TRONG một ván: party_id 0 ở ván này và party_id 0 ở ván khác không liên quan
+    /// gì tới nhau. Đây là thứ duy nhất phân biệt "bạn tôi rủ đi" với "người lạ ghép ngẫu nhiên",
+    /// và party_size thì không làm được — nó chỉ nói CỠ nhóm chứ không nói AI trong nhóm.
+    /// </summary>
+    [JsonPropertyName("party_id")] public int? PartyId { get; set; }
+
+    /// <summary>Rank của riêng người này (10 = Herald 1 … 80 = Immortal). null khi hồ sơ ẩn.</summary>
+    [JsonPropertyName("rank_tier")] public int? RankTier { get; set; }
+
+    /// <summary>
+    /// Phân vị của từng chỉ số so với mọi người chơi CÙNG HERO đó. Có ở cả 10 người, kể cả ván
+    /// chưa parse — đã kiểm trên dữ liệu thật.
+    ///
+    /// Đây là thứ biến "600 GPM" thành "giỏi hơn 96% người chơi Centaur", tức là mốc so mà một
+    /// trang theo dõi cá nhân thường không có.
+    ///
+    /// HAI CÁI BẪY, phải chặn ở chỗ đọc chứ không phải chỗ hiển thị:
+    ///
+    /// 1. RAW = 0 THÌ PHÂN VỊ LÀ RÁC. Đo thật ở ván 8937662260: hero_healing_per_min raw 0 nhưng
+    ///    pct 0,93. Phần lớn người chơi hero đó cũng hồi 0 máu, nên cả khối bằng nhau đó bị xếp
+    ///    chung một bậc và OpenDota trả về mép trên của khối. Tin nó thì trang sẽ viết "bạn hồi
+    ///    máu tốt hơn 93% người chơi" cho một ván hồi đúng 0 máu.
+    ///
+    /// 2. SỐ CHẾT NGƯỢC CHIỀU. Phân vị cao của deaths_per_min nghĩa là CHẾT NHIỀU, tức tệ hơn.
+    ///    Cộng thẳng vào một điểm tổng thì càng chết nhiều điểm càng cao.
+    /// </summary>
+    [JsonPropertyName("benchmarks")] public Dictionary<string, OpenDotaBenchmark>? Benchmarks { get; set; }
     [JsonPropertyName("kills")] public int Kills { get; set; }
     [JsonPropertyName("deaths")] public int Deaths { get; set; }
     [JsonPropertyName("assists")] public int Assists { get; set; }

@@ -58,6 +58,14 @@ public class TrackedMatchDetailIngester(
         if (players.Count == 0) return 0;
 
         var touched = await FetchDetailsAsync(players, ct);
+
+        // GHI XUỐNG TRƯỚC khi sang bước xin parse. Bước sau hỏi DB "ván nào còn thiếu lane_role",
+        // và câu hỏi đó chạy thành SQL nên nó nhìn thấy trạng thái ĐÃ LƯU, không thấy những gì
+        // vừa gán trong bộ nhớ. Thiếu dòng này thì mọi ván vừa đọc được nhãn vai trò ở bước trên
+        // vẫn bị đem đi xin parse, rồi bị đặt lại DetailFetchedAt = null — tốn thêm một lời gọi
+        // cho mỗi ván, và trong lúc đó cột "đã lấy chi tiết" nói sai về chính ván vừa lấy xong.
+        await db.SaveChangesAsync(ct);
+
         touched += await RequestParsesAsync(ct);
 
         await db.SaveChangesAsync(ct);
@@ -79,6 +87,16 @@ public class TrackedMatchDetailIngester(
             .ToListAsync(ct);
 
         if (pending.Count == 0) return 0;
+
+        // Nạp trước đồng đội đã lưu của đúng những ván sắp xử lý. Một ván ĐƯỢC lấy lại nhiều lần
+        // (sau khi xin parse thì DetailFetchedAt bị đặt lại null có chủ ý), nên nếu cứ thêm mới
+        // thì số ván đã chơi cùng mỗi người sẽ tăng dần mà không ai thấy sai — bảng vẫn có thứ
+        // hạng hợp lý, chỉ là mọi con số đều phóng đại.
+        var ids = pending.Select(m => m.Id).ToList();
+        var savedMates = (await db.TrackedMatchTeammates
+                .Where(t => ids.Contains(t.TrackedPlayerMatchId))
+                .ToListAsync(ct))
+            .ToDictionary(t => (t.TrackedPlayerMatchId, t.AccountId));
 
         var done = 0;
 
@@ -115,6 +133,9 @@ public class TrackedMatchDetailIngester(
                     row.TeamFarmRank = Rank(team, me, p => p.NetWorth ?? p.GoldPerMin);
                     row.TeamXpmRank = Rank(team, me, p => p.XpPerMin);
                 }
+
+                ReadBenchmarks(row, me);
+                SaveTeammates(row, me, team, savedMates);
 
                 row.DetailFetchedAt = DateTime.UtcNow;
                 done++;
@@ -179,4 +200,92 @@ public class TrackedMatchDetailIngester(
 
     private static int Rank<T>(List<T> team, T me, Func<T, int> by) where T : class =>
         team.OrderByDescending(by).ToList().IndexOf(me) + 1;
+
+    /// <summary>
+    /// Chép bảng phân vị của OpenDota vào hàng, sau khi đã lọc những ô vô nghĩa.
+    ///
+    /// Đây là phần biến con số thô thành thứ đọc được: "696 GPM" không nói được gì nếu không
+    /// biết trên hero đó 696 là nhiều hay ít, còn "cao hơn 96% người chơi Centaur" thì có.
+    /// </summary>
+    private static void ReadBenchmarks(Data.Entities.TrackedPlayerMatch row, OpenDotaMatchPlayer me)
+    {
+        var b = me.Benchmarks;
+        if (b is null || b.Count == 0) return;
+
+        row.PctGpm = Pct(b, "gold_per_min");
+        row.PctXpm = Pct(b, "xp_per_min");
+        row.PctLastHits = Pct(b, "last_hits_per_min");
+        row.PctDenies = Pct(b, "denies_per_min");
+        row.PctKills = Pct(b, "kills_per_min");
+        row.PctDeaths = Pct(b, "deaths_per_min");
+        row.PctAssists = Pct(b, "assists_per_min");
+        row.PctHeroDamage = Pct(b, "hero_damage_per_min");
+        row.PctHeroHealing = Pct(b, "hero_healing_per_min");
+        row.PctTowerDamage = Pct(b, "tower_damage");
+    }
+
+    /// <summary>
+    /// Một ô phân vị, hoặc null nếu ô đó không đáng tin.
+    ///
+    /// PHÉP KIỂM MÂU THUẪN. Không thể vừa đạt giá trị THẤP NHẤT có thể (raw = 0) vừa đứng trên
+    /// quá nửa số người chơi — trừ khi quá nửa số người chơi cũng bằng 0, và khi đó chỉ số không
+    /// phân biệt được ai với ai nên phân vị chỉ là vị trí ngẫu nhiên trong một khối bằng nhau
+    /// khổng lồ.
+    ///
+    /// Đo thật ở ván 8937662260: hero_healing_per_min raw 0, pct 0,93 — Centaur không có kỹ năng
+    /// hồi máu nên gần như ai chơi cũng hồi 0, và OpenDota trả về mép trên của khối đó. Không
+    /// chặn thì trang sẽ viết "hồi máu tốt hơn 93% người chơi" cho một ván hồi đúng 0 máu.
+    ///
+    /// Vì sao ngưỡng đặt ở 0,5 chứ không phải chặn mọi raw = 0: với SỐ CHẾT, raw = 0 nghĩa là
+    /// không chết lần nào — thành tích thật và hiếm, nên khối bằng nhau nhỏ, phân vị nằm thấp và
+    /// hoàn toàn có nghĩa. Chặn tất cả raw = 0 sẽ vứt đi đúng những ván chơi hay nhất.
+    /// </summary>
+    public static int? Pct(Dictionary<string, OpenDotaBenchmark>? b, string key)
+    {
+        if (b is null || !b.TryGetValue(key, out var cell)) return null;
+        if (cell.Pct is not double p || p < 0 || p > 1) return null;
+        if (cell.Raw is not double raw) return null;
+        if (raw <= 0 && p > 0.5) return null;
+
+        return (int)Math.Round(p * 100);
+    }
+
+    /// <summary>
+    /// Ghi lại 4 người cùng phe, kèm việc họ có ĐI CÙNG NHÓM hay chỉ ghép trúng.
+    ///
+    /// party_id là thứ duy nhất tách được bạn bè khỏi người lạ: party_size chỉ nói CỠ nhóm chứ
+    /// không nói AI trong nhóm, nên một ván 5 người vẫn có thể gồm hai nhóm 3 và 2.
+    /// </summary>
+    private static void SaveTeammates(
+        Data.Entities.TrackedPlayerMatch row,
+        OpenDotaMatchPlayer me,
+        List<OpenDotaMatchPlayer> team,
+        Dictionary<(long, long), Data.Entities.TrackedMatchTeammate> saved)
+    {
+        foreach (var p in team)
+        {
+            // Người ẩn danh không định danh được nên không lưu: gộp mọi người ẩn danh lại thành
+            // một "đồng đội" duy nhất sẽ tạo ra một cái tên chơi cùng hàng nghìn ván.
+            if (p.AccountId is not long acc || acc <= 0 || acc == me.AccountId) continue;
+
+            // party_id null nghĩa là đi một mình, và hai người CÙNG null không phải cùng nhóm.
+            var sameParty = me.PartyId is int mine && p.PartyId == mine;
+
+            if (!saved.TryGetValue((row.Id, acc), out var mate))
+            {
+                mate = new Data.Entities.TrackedMatchTeammate
+                {
+                    TrackedPlayerMatchId = row.Id,
+                    AccountId = acc,
+                };
+                saved[(row.Id, acc)] = mate;
+                row.Teammates.Add(mate);
+            }
+
+            mate.PersonaName = p.PersonaName ?? mate.PersonaName;
+            mate.HeroId = p.HeroId;
+            mate.SameParty = sameParty;
+            mate.RankTier = p.RankTier ?? mate.RankTier;
+        }
+    }
 }

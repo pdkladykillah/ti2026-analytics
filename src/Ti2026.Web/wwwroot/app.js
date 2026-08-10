@@ -1064,8 +1064,158 @@ function renderProfile(d) {
          Tháng mờ là tháng dưới 10 ván — vẫn hiện để đường không bị đứt, nhưng đừng đọc nặng.</p>`
     : '';
 
-  body.innerHTML = head + insights + trend + heroTable
+  body.innerHTML = head + insights + skillBlock(d) + matesBlock(d) + eraBlock(d)
+    + trend + heroTable
     + `<p class="desc" style="margin-top:var(--s-4)">${esc(d.method || '')}</p>`;
+
+  wireRoleChips(d);
+}
+
+/* ---------------------- Điểm thành phần theo phân vị ---------------------- */
+
+/**
+ * Một cột kỹ năng. Thanh chạy 0→100 là phân vị so với người chơi CÙNG HERO, nên vạch 50 ở giữa
+ * là mốc "ngang người trung bình" — vẽ hẳn vạch đó ra vì không có nó thì một thanh dài 60% trông
+ * như thành tích tốt trong khi nó chỉ nhỉnh hơn trung bình chút xíu.
+ *
+ * Dải mờ là khoảng giữa ván dở (phân vị 25 của chính người này) và ván hay (phân vị 75) — thứ
+ * cho biết người này ỔN ĐỊNH hay thất thường, mà một con số trung vị đơn lẻ giấu mất.
+ */
+function skillRow(c) {
+  const tone = c.median >= 65 ? 'good' : c.median <= 35 ? 'bad' : 'mid';
+  const delta = c.recent === null || c.recent === undefined ? null : c.recent - c.median;
+
+  return `<div class="sk-row">
+    <div class="sk-name">${esc(c.label)}<small>${n0(c.games)} ván${c.inverted ? ' · đã đảo chiều' : ''}</small></div>
+    <div class="sk-track" role="img"
+         aria-label="${esc(c.label)}: phân vị ${c.median} trên 100">
+      <span class="sk-band" style="left:${c.low}%;width:${Math.max(c.high - c.low, 1)}%"></span>
+      <span class="sk-fill sk-${tone}" style="width:${c.median}%"></span>
+      <span class="sk-mark sk-${tone}" style="left:${c.median}%"></span>
+      <span class="sk-avg"></span>
+    </div>
+    <div class="sk-val txt-${tone}">${c.median}</div>
+    <div class="sk-delta">${delta === null ? ''
+      : `<span class="${delta > 0 ? 'cal-good' : delta < 0 ? 'cal-bad' : 'mu'}"
+              title="50 ván gần nhất so với toàn bộ lịch sử">${delta > 0 ? '▲' : delta < 0 ? '▼' : '·'} ${Math.abs(delta)}</span>`}</div>
+  </div>`;
+}
+
+function skillBlock(d) {
+  const all = d.components || [];
+  if (!all.length) return '';
+
+  const roles = d.componentsByRole || [];
+
+  // Số ván trên chip là số ván CÓ PHÂN VỊ, không phải tổng số ván đã lưu: mỗi cột chỉ đếm những
+  // ván có đúng chỉ số đó, và ván chưa lấy chi tiết thì không có phân vị nào cả.
+  const rated = Math.max(...all.map((c) => c.games));
+
+  const chips = [`<button type="button" class="chip on" data-role="">Tất cả<small>${n0(rated)}</small></button>`]
+    .concat(roles.map((r) => `<button type="button" class="chip" data-role="${esc(r.role)}">
+        ${esc(r.label)}<small>${n0(r.games)}</small></button>`));
+
+  return `<h3 style="margin-top:var(--s-5)">Điểm từng mặt, so với người chơi cùng hero</h3>
+    <p class="desc" style="margin:0 0 var(--s-3)">Mỗi thanh là phân vị 0→100 so với mọi người
+      chơi CÙNG hero đó, nên nó đã trừ đi phần lệch do bạn hay chọn hero nào. Vạch đứng ở giữa là
+      mức 50 — ngang người chơi trung bình. Dải mờ là khoảng từ ván dở tới ván hay của chính bạn:
+      dải hẹp là ổn định, dải rộng là thất thường. Cột "Giữ mạng" đã đảo chiều để cao luôn là tốt.</p>
+    ${roles.length ? `<div class="chips" id="pf-roles">${chips.join('')}</div>
+      <p class="desc" style="margin:var(--s-2) 0 var(--s-3)">Chỉ những vị trí có nhãn THẬT từ
+        replay mới tách riêng được. Vị trí suy đoán thì không tách — nó không phân biệt được mid
+        với offlane.</p>` : ''}
+    <div class="sk-list" id="pf-skills">${all.map(skillRow).join('')}</div>`;
+}
+
+/** Đổi chip vai trò thì vẽ lại đúng bộ cột của vai trò đó, không gọi lại máy chủ. */
+function wireRoleChips(d) {
+  const box = $('#pf-roles');
+  const list = $('#pf-skills');
+  if (!box || !list) return;
+
+  box.addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+
+    box.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === btn));
+
+    const role = btn.dataset.role;
+    const found = role ? (d.componentsByRole || []).find((r) => r.role === role) : null;
+    const rows = role ? (found ? found.components : []) : (d.components || []);
+
+    list.innerHTML = rows.length
+      ? rows.map(skillRow).join('')
+      : '<div class="empty">Vai trò này chưa đủ ván có phân vị để chấm.</div>';
+  });
+}
+
+/* ------------------------------- Đồng đội ------------------------------- */
+
+function matesBlock(d) {
+  const mates = d.teammates || [];
+  if (!mates.length) return '';
+
+  return `<h3 style="margin-top:var(--s-5)">Chơi với ai thì thắng</h3>
+    <p class="desc" style="margin:0 0 var(--s-3)">Cột quan trọng nhất là <b>Chênh</b>: tỷ lệ thắng
+      khi có người đó, trừ đi tỷ lệ thắng ở những ván VẮNG họ. Không có phép trừ này thì "thắng
+      62% khi chơi với A" chẳng nói lên điều gì — bạn có thể vẫn thắng 62% ở mọi ván khác.
+      Dấu ★ là chênh lệch đã đủ lớn để không giải thích được bằng may rủi, sau khi đã tính tới
+      việc bạn có nhiều đồng đội quen. Chỉ liệt kê người đã cùng nhóm từ
+      ${n0(d.minPartyGames)} ván trở lên — người ghép trúng ngẫu nhiên không lên bảng, vừa vì họ
+      không tự nguyện xuất hiện ở đây, vừa vì gặp lại ngẫu nhiên thì chẳng nói lên điều gì.</p>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">Đồng đội</th><th scope="col">Hạng</th>
+        <th scope="col">Ván chung</th><th scope="col">Cùng nhóm</th>
+        <th scope="col">Thắng khi có</th><th scope="col">Thắng khi vắng</th>
+        <th scope="col">Chênh</th>
+      </tr></thead>
+      <tbody>${mates.map((t) => `<tr>
+        <td>${esc(t.name)}${t.notable ? ' <b title="Chênh lệch đã vượt ngưỡng nhiễu">★</b>' : ''}</td>
+        <td class="mu">${esc(t.rank || '—')}</td>
+        <td class="num">${n0(t.games)}</td>
+        <td class="num mu">${n0(t.partyGames)}</td>
+        <td class="num">${fmt(t.winrate, 1, '%')}</td>
+        <td class="num mu">${fmt(t.withoutWinrate, 1, '%')} <small>(${n0(t.withoutGames)})</small></td>
+        <td class="num ${t.lift > 0 ? 'cal-good' : t.lift < 0 ? 'cal-bad' : ''}">${signed(t.lift, 1)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
+/* --------------------- Vai trò dịch chuyển qua các năm --------------------- */
+
+const LANE_PARTS = [
+  ['mid', 'Mid', 'era-mid'],
+  ['safe', 'Safelane', 'era-safe'],
+  ['off', 'Offlane', 'era-off'],
+  ['jungle', 'Rừng', 'era-jgl'],
+];
+
+function eraBlock(d) {
+  const eras = d.roleEras || [];
+  if (eras.length < 2) return '';
+
+  return `<h3 style="margin-top:var(--s-5)">Vai trò dịch chuyển qua các năm</h3>
+    <p class="desc" style="margin:0 0 var(--s-3)">Chỉ đếm những ván có nhãn vị trí THẬT đọc từ
+      replay — phần suy đoán không phân biệt được mid với offlane nên đưa vào đây sẽ tạo ra một
+      biểu đồ đầy đặn mà bịa. Đổi lại số ván có nhãn rất mỏng, nên mỗi năm đều ghi rõ nó dựng
+      trên bao nhiêu ván; năm mờ là năm dưới 10 ván có nhãn.</p>
+    <div class="era-list">${eras.map((e) => {
+      const parts = LANE_PARTS
+        .filter(([k]) => e[k] > 0)
+        .map(([k, label, cls]) => `<span class="era-seg ${cls}"
+            style="width:${(e[k] / e.labelled) * 100}%"
+            title="${label}: ${n0(e[k])}/${n0(e.labelled)} ván"></span>`).join('');
+
+      return `<div class="era-row${e.thin ? ' thin' : ''}">
+        <div class="era-year">${e.year}</div>
+        <div class="era-bar">${parts}</div>
+        <div class="era-n mu">${n0(e.labelled)}<small>/${n0(e.games)}</small></div>
+      </div>`;
+    }).join('')}</div>
+    <div class="era-key">${LANE_PARTS.map(([, label, cls]) =>
+      `<span><i class="${cls}"></i>${label}</span>`).join('')}
+      <span class="mu">Số bên phải: ván có nhãn / tổng ván của năm.</span></div>`;
 }
 
 /* ============================ Tier list ============================ */

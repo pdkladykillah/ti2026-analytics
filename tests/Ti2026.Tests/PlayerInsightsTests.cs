@@ -68,40 +68,66 @@ public class PlayerInsightsTests
         rong.Should().BeFalse();
     }
 
-    // ---------- Vị trí suy từ mức farm ----------
+    // ---------- Vai trò KHÔNG được suy từ mức farm ----------
 
     /// <summary>
-    /// Vị trí PHẢI suy từ chỉ số đo được. lane_role chỉ có ở 6% số ván trên tài khoản thật, nên
-    /// dựng phân tích vai trò lên nó là dựng trên 6% dữ liệu rồi trình bày như thể đủ.
+    /// Bản đầu của bộ này có mục "hồ sơ lối chơi": đọc last hit mỗi phút rồi tuyên bố người dùng
+    /// là core hay hỗ trợ. Người dùng phản bác — họ chơi offlane và mid nhưng farm ngang carry —
+    /// và số đo trên chính tài khoản đó xác nhận: last hit theo lane THẬT là 299 (safe) / 345
+    /// (mid) / 282 (off). Ba lane gần như bằng nhau, nên luật cũ xếp nhầm người chơi offlane
+    /// giỏi thành carry MỘT CÁCH CÓ HỆ THỐNG — sai lệch đều một chiều, loại khó thấy nhất.
+    ///
+    /// Bài kiểm này khoá lại điều đã học: dù farm cao tới đâu cũng không được sinh ra kết luận
+    /// vai trò nào.
     /// </summary>
     [Fact]
-    public void Farm_cao_thi_ket_luan_la_core()
+    public void Farm_cao_ngat_van_KHONG_duoc_sinh_ra_ket_luan_vai_tro()
     {
         var games = Enumerable.Range(0, 40)
             .Select(i => G(i % 2 == 0, lastHits: 300, duration: 2400, dayOffset: -i)).ToList();
 
         var r = PlayerInsights.Read(games, [], 50);
-        var farm = r.Single(x => x.Kind == "muc-farm");
 
-        farm.Text.Should().Contain("core");
-        farm.Text.Should().Contain("7.5 last hit mỗi phút");
+        r.Should().NotContain(x => x.Kind == "muc-farm");
+        r.Should().NotContain(x => x.Text.Contains("last hit mỗi phút"),
+            "mức farm không nói được vai trò, nên không được dùng làm căn cứ cho câu nào");
+    }
+
+    /// <summary>Vai trò chỉ đến từ RoleResolver, và phải khai rõ đâu là nhãn thật đâu là suy luận.</summary>
+    [Fact]
+    public void Vai_tro_lay_tu_nhan_that_thi_moi_duoc_neu_vi_tri()
+    {
+        var games = Enumerable.Range(0, 40).Select(i => G(i % 2 == 0, dayOffset: -i)).ToList();
+
+        var roles = new List<RoleSlice>
+        {
+            new("pos2", "Mid (pos 2)", 120, 70, 58.3, true),
+            new("pos3", "Offlane (pos 3)", 80, 40, 50.0, true),
+        };
+
+        var text = PlayerInsights.Read(games, [], 50, roles: roles)
+            .Single(x => x.Kind == "vai-tro").Text;
+
+        text.Should().Contain("Mid (pos 2)");
+        text.Should().Contain("nhãn vị trí thật từ replay");
     }
 
     [Fact]
-    public void Farm_thap_thi_ket_luan_la_ho_tro()
+    public void Chua_parse_thi_chi_noi_core_ho_tro_va_khai_ro_la_suy_luan()
     {
-        var games = Enumerable.Range(0, 40)
-            .Select(i => G(i % 2 == 0, lastHits: 60, duration: 2400, dayOffset: -i)).ToList();
+        var games = Enumerable.Range(0, 40).Select(i => G(i % 2 == 0, dayOffset: -i)).ToList();
 
-        PlayerInsights.Read(games, [], 50)
-            .Single(x => x.Kind == "muc-farm").Text.Should().Contain("hỗ trợ");
-    }
+        var roles = new List<RoleSlice>
+        {
+            new("core", "Core (suy từ đội hình)", 900, 470, 52.2, false),
+            new("support", "Hỗ trợ (suy từ đội hình)", 300, 150, 50.0, false),
+        };
 
-    [Fact]
-    public void Qua_it_van_thi_khong_ket_luan_ve_vi_tri()
-    {
-        var games = Enumerable.Range(0, 10).Select(i => G(true, dayOffset: -i)).ToList();
-        PlayerInsights.Read(games, [], 50).Should().NotContain(x => x.Kind == "muc-farm");
+        var text = PlayerInsights.Read(games, [], 50, roles: roles)
+            .Single(x => x.Kind == "core-ho-tro").Text;
+
+        text.Should().Contain("KHÔNG");
+        text.Should().Contain("tách được mid với offlane");
     }
 
     // ---------- Bên sân ----------

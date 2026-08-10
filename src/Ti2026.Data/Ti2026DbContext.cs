@@ -23,6 +23,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<ScheduledSeries> ScheduledSeries => Set<ScheduledSeries>();
     public DbSet<TrackedPlayer> TrackedPlayers => Set<TrackedPlayer>();
     public DbSet<TrackedPlayerMatch> TrackedPlayerMatches => Set<TrackedPlayerMatch>();
+    public DbSet<TrackedMatchTeammate> TrackedMatchTeammates => Set<TrackedMatchTeammate>();
     public DbSet<League> Leagues => Set<League>();
     public DbSet<DraftEvent> DraftEvents => Set<DraftEvent>();
     public DbSet<ItemPurchase> ItemPurchases => Set<ItemPurchase>();
@@ -104,6 +105,15 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<TrackedPlayerMatch>()
             .HasOne(x => x.TrackedPlayer).WithMany()
             .HasForeignKey(x => x.TrackedPlayerId).OnDelete(DeleteBehavior.Cascade);
+
+        // Một người trong một ván chỉ xuất hiện một lần. Không có chốt này thì mỗi lần lấy lại
+        // chi tiết ván (chuyện vẫn xảy ra sau khi xin parse) sẽ nhân đôi số ván đã chơi cùng.
+        b.Entity<TrackedMatchTeammate>()
+            .HasIndex(x => new { x.TrackedPlayerMatchId, x.AccountId }).IsUnique();
+        b.Entity<TrackedMatchTeammate>().HasIndex(x => x.AccountId);
+        b.Entity<TrackedMatchTeammate>()
+            .HasOne(x => x.Match).WithMany(x => x.Teammates)
+            .HasForeignKey(x => x.TrackedPlayerMatchId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<Player>().HasIndex(x => x.OpenDotaAccountId).IsUnique()
             .HasFilter("\"OpenDotaAccountId\" IS NOT NULL");

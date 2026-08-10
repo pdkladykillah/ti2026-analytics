@@ -107,4 +107,33 @@ public class TrackedPlayerMatch
     /// "thắng bao nhiêu".
     /// </summary>
     public int? AverageRank { get; set; }
+
+    // ---------- Phân vị so với mọi người chơi cùng hero, lấy từ matches/{id} ----------
+    //
+    // VÌ SAO ĐÁNG LƯU. "600 GPM" không nói được gì nếu không biết 600 là nhiều hay ít TRÊN HERO
+    // ĐÓ — 600 với Anti-Mage là kém, với Crystal Maiden là phi thường. Phân vị của OpenDota giải
+    // đúng chuyện đó: nó so với mọi người chơi cùng hero. Có ở cả ván chưa parse, nên phủ 100%
+    // lịch sử chứ không phải 6% như lane_role.
+    //
+    // 0..100. null nghĩa là KHÔNG ĐO ĐƯỢC, và có hai đường dẫn tới null:
+    //   • ván chưa lấy chi tiết, hoặc OpenDota không trả benchmark cho chỉ số đó;
+    //   • giá trị thật bằng 0 — lúc đó phân vị là rác, xem OpenDotaMatchPlayer.Benchmarks.
+    // Cả hai đều phải là null chứ không phải 0: 0 nghĩa là "kém hơn tất cả", khác hẳn "chưa biết".
+
+    public int? PctGpm { get; set; }
+    public int? PctXpm { get; set; }
+    public int? PctLastHits { get; set; }
+    public int? PctDenies { get; set; }
+    public int? PctKills { get; set; }
+
+    /// <summary>Phân vị CAO = chết NHIỀU = tệ. Đảo chiều trước khi gộp vào bất kỳ điểm tổng nào.</summary>
+    public int? PctDeaths { get; set; }
+
+    public int? PctAssists { get; set; }
+    public int? PctHeroDamage { get; set; }
+    public int? PctHeroHealing { get; set; }
+    public int? PctTowerDamage { get; set; }
+
+    /// <summary>4 người cùng phe. Rỗng khi ván chưa lấy chi tiết, hoặc khi cả 4 đều ẩn danh.</summary>
+    public List<TrackedMatchTeammate> Teammates { get; set; } = [];
 }

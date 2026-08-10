@@ -77,6 +77,20 @@ public static class ProfileEndpoints
                 .OrderByDescending(m => m.StartTime)
                 .ToListAsync();
 
+            // Lấy đồng đội bằng một truy vấn riêng rồi tự gộp, thay vì Include: Include sinh ra
+            // một phép nối trả về mỗi ván lặp lại 4 lần cùng toàn bộ 30 cột của nó.
+            var mateRows = await db.TrackedMatchTeammates
+                .Where(t => t.Match!.TrackedPlayerId == me.Id)
+                .Select(t => new
+                {
+                    t.TrackedPlayerMatchId, t.AccountId, t.PersonaName, t.SameParty, t.RankTier,
+                })
+                .ToListAsync();
+
+            var matesByMatch = mateRows
+                .GroupBy(t => t.TrackedPlayerMatchId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
             var heroNames = await db.Heroes.ToDictionaryAsync(h => h.Id, h => h.LocalizedName ?? h.Name);
 
             // Mốc PRO trên cùng hero, lấy từ trận đấu GIẢI đã nạp sẵn. Đây là thứ một trang theo
@@ -125,6 +139,57 @@ public static class ProfileEndpoints
                 ? me.Wins * 100.0 / (me.Wins + me.Losses)
                 : 0;
 
+            // ---------- Vai trò ----------
+            // Một chỗ duy nhất gọi RoleResolver, rồi mọi phần bên dưới dùng lại kết quả đó. Gọi
+            // rải rác thì sớm muộn sẽ có nơi tự chế một quy tắc riêng, và đó đúng là cái sai đã
+            // phải sửa một lần (suy vai trò từ mức farm).
+            var roleOf = rows.ToDictionary(
+                m => m.Id, m => RoleResolver.Resolve(m.LaneRole, m.TeamFarmRank));
+
+            var roleGames = rows
+                .Select(m => new RoleGame(m.StartTime, m.Won, m.LaneRole, m.TeamFarmRank))
+                .ToList();
+
+            var roles = RoleBreakdown.Slices(roleGames);
+            var eras = RoleBreakdown.Eras(roleGames);
+
+            // ---------- Điểm thành phần, kiểu Leetify ----------
+            var rated = rows.Select(m => new RatedGame(
+                m.StartTime, m.Won, roleOf[m.Id].Code,
+                m.PctGpm, m.PctXpm, m.PctLastHits, m.PctDenies,
+                m.PctKills, m.PctDeaths, m.PctAssists,
+                m.PctHeroDamage, m.PctHeroHealing, m.PctTowerDamage)).ToList();
+
+            var components = SkillComponents.Read(rated);
+
+            // Cùng phép tính, chạy trên từng tập con vai trò. Chỉ những vai trò có nhãn THẬT mới
+            // được tách riêng: tách theo "core/hỗ trợ suy luận" sẽ cho ra hai cột trông rất chắc
+            // chắn nhưng thực ra chỉ chia theo thứ hạng tài sản.
+            var byRole = roles
+                .Where(r => r.Exact)
+                .Select(r => new
+                {
+                    role = r.Code,
+                    label = r.Label,
+                    games = r.Games,
+                    winrate = r.Winrate,
+                    components = SkillComponents
+                        .Read(rated.Where(g => g.Role == r.Code).ToList())
+                        .Select(Shape).ToList(),
+                })
+                .Where(x => x.components.Count > 0)
+                .ToList();
+
+            // ---------- Đồng đội ----------
+            var mateGames = rows.Select(m => new MateGame(
+                m.Won,
+                matesByMatch.TryGetValue(m.Id, out var list)
+                    ? list.Select(t => new MatePresence(
+                        t.AccountId, t.PersonaName, t.SameParty, t.RankTier)).ToList()
+                    : [])).ToList();
+
+            var mates = TeammateAnalysis.Read(mateGames);
+
             // Diễn biến theo THÁNG. Tháng có dưới 10 ván thì vẫn hiện nhưng đánh dấu mỏng —
             // giấu đi thì đường biểu đồ có lỗ mà không ai biết vì sao.
             var byMonth = rows
@@ -169,8 +234,39 @@ public static class ProfileEndpoints
                     to = rows.Count > 0 ? rows[0].StartTime : (DateTime?)null,
                 },
 
-                insights = PlayerInsights.Read(games, heroes, lifetime)
+                insights = PlayerInsights.Read(games, heroes, lifetime, components, roles, eras, mates)
                     .Select(i => new { kind = i.Kind, tone = i.Tone, text = i.Text }).ToList(),
+
+                components = components.Select(Shape).ToList(),
+                componentsByRole = byRole,
+
+                roles = roles.Select(r => new
+                {
+                    code = r.Code, label = r.Label, games = r.Games,
+                    winrate = r.Winrate, exact = r.Exact,
+                }).ToList(),
+
+                // Chỉ những năm có ván mang nhãn thật mới lên biểu đồ. Năm nào cũng vẽ thì phần
+                // lớn cột sẽ là 0/0 và người xem đọc thành "năm đó không chơi".
+                roleEras = eras.Where(e => e.Labelled > 0).Select(e => new
+                {
+                    year = e.Year, games = e.Games, labelled = e.Labelled,
+                    safe = e.Safe, mid = e.Mid, off = e.Off, jungle = e.Jungle,
+                    thin = e.Labelled < RoleBreakdown.MinLabelledPerYear,
+                }).ToList(),
+
+                // Ngưỡng đi kèm dữ liệu để phần hiển thị không phải viết cứng lại con số — sửa
+                // ngưỡng ở một nơi mà trang vẫn nói đúng.
+                minPartyGames = TeammateAnalysis.MinPartyGames,
+
+                teammates = mates.Select(t => new
+                {
+                    accountId = t.AccountId, name = t.Name,
+                    games = t.Games, wins = t.Wins, winrate = t.Winrate,
+                    partyGames = t.PartyGames,
+                    withoutGames = t.WithoutGames, withoutWinrate = t.WithoutWinrate,
+                    lift = t.Lift, notable = t.Notable, rank = RankLabel(t.RankTier),
+                }).ToList(),
 
                 heroes = heroes.Select(h => new
                 {
@@ -182,13 +278,31 @@ public static class ProfileEndpoints
 
                 months = byMonth,
 
-                method = "Chỉ số lấy từ hồ sơ Dota 2 công khai qua OpenDota. Vị trí suy từ mức "
-                       + "farm chứ không từ vai trò khai báo — Dota chỉ ghi lại vai trò ở khoảng "
-                       + "6% số ván, quá ít để kết luận. Hero được gọi là mạnh/yếu chỉ khi cách "
-                       + "biệt còn đứng vững sau khi tính tới việc bạn chơi hàng chục hero.",
+                method = "Chỉ số lấy từ hồ sơ Dota 2 công khai qua OpenDota. Phân vị là so với "
+                       + "mọi người chơi CÙNG HERO, nên nó đã trừ đi phần lệch do bạn hay chọn "
+                       + "hero nào — 600 GPM là kém với Anti-Mage và phi thường với Crystal "
+                       + "Maiden. Cột số chết đã đảo chiều để mọi cột cùng đọc theo hướng cao là "
+                       + "tốt. Vị trí chính xác chỉ lấy từ nhãn replay, không suy từ mức farm: "
+                       + "đo trên chính tài khoản này thì last hit ở safelane, mid và offlane "
+                       + "lần lượt là 299 / 345 / 282, gần như bằng nhau. Hero hay đồng đội được "
+                       + "gọi là hợp/khắc chỉ khi cách biệt còn đứng vững sau khi tính tới việc "
+                       + "bạn có hàng chục hero và hàng chục người chơi cùng. Cố ý KHÔNG có điểm "
+                       + "tổng: trọng số giữa farm và sát thương là do người viết chọn chứ không "
+                       + "có trong dữ liệu.",
             });
         });
     }
+
+    /// <summary>
+    /// Một cột điểm thành phần, đưa ra JSON. <c>inverted</c> đi kèm ra tận giao diện để chỗ hiển
+    /// thị nói được "đã đảo chiều" thay vì để người xem tự đoán vì sao chết nhiều lại điểm thấp.
+    /// </summary>
+    private static object Shape(SkillComponent c) => new
+    {
+        key = c.Key, label = c.Label, group = c.Group, games = c.Games,
+        median = c.Median, low = c.Low, high = c.High,
+        recent = c.Recent, inverted = c.Inverted,
+    };
 
     private static string? RankLabel(int? tier)
     {

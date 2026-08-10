@@ -27,9 +27,11 @@ public readonly record struct PlayerInsight(string Kind, string Tone, string Tex
 ///    bằng ngưỡng dành cho một phép so duy nhất thì gần như hero nào cũng "xuất sắc" hoặc "tệ" —
 ///    lỗi so sánh bội. Phải hiệu chỉnh, xem <see cref="Notable"/>.
 ///
-/// 3. VỊ TRÍ suy từ mức farm, KHÔNG từ lane_role: đo trên tài khoản thật thì lane_role chỉ có ở
-///    6% số ván. Dựng phân tích vai trò trên 6% dữ liệu rồi trình bày như thể đủ là cách nhanh
-///    nhất để cả trang mất đáng tin.
+/// 3. VAI TRÒ CHỈ ĐẾN TỪ <see cref="RoleResolver"/>, không bao giờ từ mức farm. Bản đầu của bộ
+///    này có một mục "hồ sơ lối chơi" đọc last hit mỗi phút rồi tuyên bố người dùng là core hay
+///    hỗ trợ. Người dùng phản bác và họ đúng: đo trên chính tài khoản đó, last hit theo lane
+///    thật là 299 (safe) / 345 (mid) / 282 (off) — ba lane gần như bằng nhau, nên một người
+///    chơi offlane tốt sẽ bị xếp thành carry MỘT CÁCH CÓ HỆ THỐNG.
 /// </summary>
 public static class PlayerInsights
 {
@@ -38,12 +40,6 @@ public static class PlayerInsights
 
     /// <summary>Cỡ pool giả định khi hiệu chỉnh so sánh bội — số hero thường xuyên chơi.</summary>
     public const int TypicalPoolSize = 40;
-
-    /// <summary>Last hit mỗi phút từ mức này trở lên là lối chơi ăn farm (core).</summary>
-    public const double CoreLastHitsPerMin = 5.0;
-
-    /// <summary>Dưới mức này là lối chơi nhường farm (hỗ trợ).</summary>
-    public const double SupportLastHitsPerMin = 2.5;
 
     /// <summary>
     /// Thành tích trên một hero có ĐÁNG NÓI không, sau khi đã tính tới việc ta đang xét cả pool.
@@ -65,21 +61,155 @@ public static class PlayerInsights
     public static List<PlayerInsight> Read(
         IReadOnlyList<PlayerGame> games,
         IReadOnlyList<HeroLine> heroes,
-        double lifetimeWinrate)
+        double lifetimeWinrate,
+        IReadOnlyList<SkillComponent>? components = null,
+        IReadOnlyList<RoleSlice>? roles = null,
+        IReadOnlyList<RoleEra>? eras = null,
+        IReadOnlyList<TeammateLine>? mates = null)
     {
         var found = new List<PlayerInsight>();
         if (games.Count == 0) return found;
 
         AddOverall(games, lifetimeWinrate, found);
-        AddFarmProfile(games, found);
+        AddSkillProfile(components, found);
+        AddRoleMix(roles, found);
+        AddRoleShift(eras, found);
         AddHeroExtremes(heroes, found);
         AddProBenchmark(heroes, found);
+        AddMates(mates, found);
         AddSideSplit(games, found);
         AddParty(games, found);
         AddGameLength(games, found);
         AddPoolWidth(heroes, games, found);
 
         return found.OrderByDescending(x => x.Strength).ToList();
+    }
+
+    /// <summary>
+    /// Mặt mạnh và mặt yếu, đo bằng phân vị so với người chơi CÙNG HERO.
+    ///
+    /// Đây là mục thay cho "hồ sơ lối chơi" cũ vốn suy vai trò từ mức farm. Khác biệt căn bản:
+    /// mục này không nói người dùng chơi vị trí nào, nó nói họ làm tốt việc gì — và câu đó thì
+    /// phân vị trả lời được cho 100% số ván.
+    /// </summary>
+    private static void AddSkillProfile(
+        IReadOnlyList<SkillComponent>? components, List<PlayerInsight> found)
+    {
+        if (components is null || components.Count == 0) return;
+
+        var (strong, weak) = SkillComponents.Extremes(components);
+
+        foreach (var c in strong.Take(2))
+        {
+            found.Add(new PlayerInsight("manh-mat", "good",
+                $"{c.Label}: bạn ở phân vị {c.Median} so với mọi người chơi CÙNG HERO, qua "
+                + $"{c.Games:N0} ván. Tức trong 100 người chơi những hero bạn hay dùng, khoảng "
+                + $"{c.Median} người làm việc này kém hơn bạn.",
+                88));
+        }
+
+        foreach (var c in weak.Take(2))
+        {
+            found.Add(new PlayerInsight("yeu-mat", "warn",
+                $"{c.Label} là mặt yếu nhất: phân vị {c.Median} qua {c.Games:N0} ván — dưới mức "
+                + "trung bình của những người chơi cùng hero. Đây là chỗ đáng sửa nhất vì nó đã "
+                + "so trên cùng hero, tức không phải do bạn hay chọn hero khó.",
+                86));
+        }
+
+        // Tiến bộ đo bằng chính cửa sổ gần đây của từng mặt, chứ không bằng tỷ lệ thắng: tỷ lệ
+        // thắng còn phụ thuộc 9 người khác, phân vị thì chỉ phụ thuộc người này.
+        foreach (var c in components
+                     .Where(c => c.Recent is int r && Math.Abs(r - c.Median) >= SkillComponents.NotableGap)
+                     .OrderByDescending(c => Math.Abs(c.Recent!.Value - c.Median))
+                     .Take(2))
+        {
+            var up = c.Recent!.Value > c.Median;
+            found.Add(new PlayerInsight("tien-bo", up ? "good" : "warn",
+                $"{c.Label} {(up ? "đang lên" : "đang xuống")}: {SkillComponents.RecentWindow} ván "
+                + $"gần nhất ở phân vị {c.Recent}, so với {c.Median} tính trên toàn bộ lịch sử "
+                + $"({c.Games:N0} ván).",
+                84));
+        }
+    }
+
+    /// <summary>
+    /// Tỷ trọng và hiệu quả từng vai trò. Phải nói rõ phần nào là nhãn thật, phần nào là suy
+    /// luận — vì hai loại đó khác nhau về độ chắc chứ không chỉ khác nhau về tên gọi.
+    /// </summary>
+    private static void AddRoleMix(IReadOnlyList<RoleSlice>? roles, List<PlayerInsight> found)
+    {
+        if (roles is null || roles.Count == 0) return;
+
+        var exact = roles.Where(r => r.Exact).ToList();
+        if (exact.Count >= 2)
+        {
+            var total = exact.Sum(r => r.Games);
+            var top = exact.OrderByDescending(r => r.Games).First();
+            var best = exact.OrderByDescending(r => r.Winrate).First();
+
+            found.Add(new PlayerInsight("vai-tro", "flat",
+                $"Trong {total:N0} ván có nhãn vị trí thật từ replay, bạn chơi nhiều nhất là "
+                + $"{top.Label} ({top.Games} ván, {top.Winrate:0.0}%), còn hiệu quả nhất là "
+                + $"{best.Label} ({best.Games} ván, {best.Winrate:0.0}%).",
+                82));
+        }
+
+        var inferred = roles.Where(r => !r.Exact).ToList();
+        if (inferred.Count >= 2)
+        {
+            var core = inferred.FirstOrDefault(r => r.Code == "core");
+            var sup = inferred.FirstOrDefault(r => r.Code == "support");
+            if (core.Games > 0 && sup.Games > 0)
+            {
+                found.Add(new PlayerInsight("core-ho-tro", "flat",
+                    $"Trên toàn bộ lịch sử, {core.Games:N0} ván đi core (thắng {core.Winrate:0.0}%) "
+                    + $"và {sup.Games:N0} ván đi hỗ trợ (thắng {sup.Winrate:0.0}%). Cách chia này "
+                    + "suy từ thứ hạng tài sản trong đội — chắc ở mức core/hỗ trợ, nhưng KHÔNG "
+                    + "tách được mid với offlane.",
+                    72));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Vai trò dịch chuyển qua nhiều năm. Chỉ dùng ván có nhãn thật, và phải nêu số ván có nhãn
+    /// mỗi năm — một năm 3 ván mà vẽ thành "100% mid" thì con số đúng còn câu chuyện thì sai.
+    /// </summary>
+    private static void AddRoleShift(IReadOnlyList<RoleEra>? eras, List<PlayerInsight> found)
+    {
+        if (eras is null) return;
+        if (RoleBreakdown.Shift(eras) is not var (first, last)) return;
+
+        var midThen = first.Mid * 100.0 / first.Labelled;
+        var midNow = last.Mid * 100.0 / last.Labelled;
+        if (Math.Abs(midNow - midThen) < 20) return;
+
+        found.Add(new PlayerInsight("doi-vai-tro", "flat",
+            $"Vai trò đã dịch chuyển: năm {first.Year}, {midThen:0}% số ván có nhãn là đi mid "
+            + $"({first.Mid}/{first.Labelled}); tới năm {last.Year} còn {midNow:0}% "
+            + $"({last.Mid}/{last.Labelled}). "
+            + $"{(midNow < midThen ? "Từ mid thuần sang chơi được nhiều vị trí." : "Đang dồn dần về mid.")} "
+            + "Chỉ đếm ván có nhãn thật từ replay nên số lượng mỏng — đọc như một hướng, không "
+            + "phải một phép đo.",
+            76));
+    }
+
+    private static void AddMates(IReadOnlyList<TeammateLine>? mates, List<PlayerInsight> found)
+    {
+        if (mates is null || mates.Count == 0) return;
+
+        foreach (var m in mates.Where(m => m.Notable)
+                     .OrderByDescending(m => Math.Abs(m.Lift)).Take(2))
+        {
+            found.Add(new PlayerInsight(m.Lift > 0 ? "dong-doi-hop" : "dong-doi-lech",
+                m.Lift > 0 ? "good" : "warn",
+                $"Chơi cùng {m.Name}: thắng {m.Winrate:0.0}% qua {m.Games:N0} ván, so với "
+                + $"{m.WithoutWinrate:0.0}% ở {m.WithoutGames:N0} ván vắng người này — chênh "
+                + $"{(m.Lift > 0 ? "+" : "")}{m.Lift:0.0} điểm. Cách biệt này đứng vững kể cả sau "
+                + "khi tính tới việc bạn có nhiều đồng đội quen.",
+                74));
+        }
     }
 
     private static void AddOverall(
@@ -102,30 +232,6 @@ public static class PlayerInsights
                 : $"{games.Count} ván gần đây thắng {wr:0.0}%, sát với tỷ lệ cả đời "
                   + $"{lifetime:0.0}%. Phong độ đang ổn định.",
             real ? 90 : 40));
-    }
-
-    /// <summary>
-    /// Vị trí suy từ MỨC FARM. lane_role chỉ có ở 6% số ván nên không dùng được; last hit mỗi
-    /// phút thì có ở 100% và nói đúng thứ cần biết: người này ăn farm hay nhường farm.
-    /// </summary>
-    private static void AddFarmProfile(IReadOnlyList<PlayerGame> games, List<PlayerInsight> found)
-    {
-        var withLh = games.Where(g => g.LastHits is int && g.DurationSeconds > 0).ToList();
-        if (withLh.Count < 20) return;
-
-        var lhpm = withLh.Average(g => g.LastHits!.Value / (g.DurationSeconds / 60.0));
-        var gpm = games.Where(g => g.GoldPerMin is int).Select(g => (double)g.GoldPerMin!.Value)
-            .DefaultIfEmpty(0).Average();
-
-        var (label, tone) = lhpm >= CoreLastHitsPerMin ? ("core ăn farm", "flat")
-            : lhpm <= SupportLastHitsPerMin ? ("hỗ trợ nhường farm", "flat")
-            : ("linh hoạt, giữa core và hỗ trợ", "flat");
-
-        found.Add(new PlayerInsight("muc-farm", tone,
-            $"Hồ sơ lối chơi: {label} — trung bình {lhpm:0.0} last hit mỗi phút và {gpm:0} GPM "
-            + $"qua {withLh.Count} ván. Suy từ chỉ số đo được, không phải từ vai trò khai báo "
-            + "(Dota chỉ ghi lại vai trò ở một phần rất nhỏ số ván).",
-            85));
     }
 
     private static void AddHeroExtremes(IReadOnlyList<HeroLine> heroes, List<PlayerInsight> found)

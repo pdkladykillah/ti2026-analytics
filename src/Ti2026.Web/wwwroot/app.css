@@ -830,6 +830,86 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .pf-lbl { font-size: 11px; color: var(--muted); }
 .pf-gpm { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+/* ---------------------- Điểm từng mặt, theo phân vị ---------------------- */
+
+/* Thang LUÔN là 0→100 và không bao giờ co theo dữ liệu. Cắt trục là cách nhanh nhất để một
+   chênh lệch 4 điểm trông như vực thẳm — mà ở đây 4 điểm phân vị đúng nghĩa là không đáng kể. */
+
+.chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.chips .chip { cursor: pointer; font-family: inherit; }
+.chips .chip small { color: var(--muted); font-size: 11px; margin-left: 5px; }
+.chips .chip:hover { border-color: var(--accent); }
+.chips .chip.on {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600;
+}
+.chips .chip.on small { color: var(--ink-2); }
+
+.sk-list { display: grid; gap: 9px; }
+.sk-row {
+  display: grid; grid-template-columns: 11.5rem 1fr 2.4rem 2.9rem;
+  gap: var(--s-3); align-items: center;
+}
+.sk-name { font-size: 13px; display: flex; flex-direction: column; line-height: 1.25; }
+.sk-name small { color: var(--muted); font-size: 11px; }
+
+.sk-track {
+  position: relative; height: 15px; border-radius: var(--r-pill);
+  background: var(--surface-2); border: 1px solid var(--border); overflow: hidden;
+}
+/* Dải giữa ván dở và ván hay của CHÍNH người này — hẹp là ổn định, rộng là thất thường. */
+.sk-band { position: absolute; inset-block: 0; background: var(--ink); opacity: .09; }
+.sk-fill { position: absolute; inset-block: 0; left: 0; opacity: .5; }
+.sk-mark { position: absolute; inset-block: -1px; width: 3px; margin-left: -1.5px; border-radius: 2px; }
+/* Vạch 50: mốc "ngang người chơi trung bình". Không vẽ ra thì thanh 60% trông như thành tích. */
+.sk-avg {
+  position: absolute; left: 50%; inset-block: 0; width: 1px;
+  background: var(--ink-2); opacity: .55;
+}
+/* Chỉ tô nền — số bên cạnh dùng lớp màu chữ riêng, để một lớp không phải kiêm hai việc. */
+.sk-good { background: var(--pos); }
+.sk-bad { background: var(--neg); }
+.sk-mid { background: var(--accent); }
+
+.sk-val { font-size: 14px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.sk-val.txt-good { color: var(--pos); }
+.sk-val.txt-bad { color: var(--neg); }
+.sk-val.txt-mid { color: var(--ink-2); }
+.sk-delta { font-size: 11.5px; text-align: right; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 620px) {
+  .sk-row { grid-template-columns: 1fr 2.4rem 2.9rem; row-gap: 3px; }
+  .sk-name { grid-column: 1 / -1; }
+}
+
+/* ------------------- Vai trò dịch chuyển qua các năm ------------------- */
+
+.era-list { display: grid; gap: 6px; }
+.era-row {
+  display: grid; grid-template-columns: 3rem 1fr 4.2rem;
+  gap: var(--s-3); align-items: center;
+}
+.era-row.thin { opacity: .5; }
+.era-year { font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.era-bar {
+  display: flex; height: 15px; border-radius: var(--r-pill); overflow: hidden;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.era-seg { display: block; }
+.era-n { font-size: 11.5px; text-align: right; font-variant-numeric: tabular-nums; }
+.era-n small { opacity: .7; }
+
+.era-mid { background: var(--accent); }
+.era-safe { background: var(--pos); }
+.era-off { background: var(--warn); }
+.era-jgl { background: var(--ink-2); }
+
+.era-key {
+  display: flex; flex-wrap: wrap; gap: var(--s-3);
+  margin-top: var(--s-2); font-size: 11.5px; color: var(--muted);
+}
+.era-key span { display: inline-flex; align-items: center; gap: 5px; }
+.era-key i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
 /* ============================ Nhận định theo đội ============================ */
 
 .insight-grid { display: grid; gap: var(--s-3); }

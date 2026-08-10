@@ -92,33 +92,31 @@ public class RoleResolverTests
         RoleResolver.Resolve(9, null).Code.Should().Be("khong-biet");
     }
 
-    // ---------- Hiệu chuẩn ----------
+    // ---------- Bảng chéo, KHÔNG phải độ chính xác ----------
 
     /// <summary>
-    /// Một cách phân loại không kèm độ chính xác thì không phân biệt được với phỏng đoán, nên
-    /// phải đo được và phải đo bằng chính ván có nhãn thật.
+    /// Bản đầu của bộ này có hàm Calibrate so "core/hỗ trợ suy ra" với một "nhãn thật" mà chính
+    /// nó cũng định nghĩa bằng hạng farm — LẶP VÒNG. Nó báo 98,5% trên dữ liệu thật trong khi
+    /// thực chất chỉ kiểm được đúng một ca. Bài kiểm này khoá lại điều đã học: chỉ trả bảng chéo
+    /// để người đọc tự thấy, không gắn phần trăm cho thứ không đo được.
     /// </summary>
     [Fact]
-    public void Do_duoc_do_chinh_xac_cua_buoc_suy_luan()
+    public void Chi_tra_bang_cheo_chu_khong_bia_ra_do_chinh_xac()
     {
-        var labelled = new (int?, int?)[]
-        {
-            (1, 1),   // pos1, suy ra core -> đúng
-            (1, 5),   // pos5, suy ra support -> đúng
-            (3, 4),   // pos4, suy ra support -> đúng
-            (2, 2),   // pos2, suy ra core -> đúng
-            (3, 1),   // pos3, suy ra core -> đúng
-        };
+        var t = RoleResolver.CrossTab([(1, 1), (1, 1), (2, 2), (3, 4), (1, 5)]);
 
-        var (n, ok) = RoleResolver.Calibrate(labelled);
-        n.Should().Be(5);
-        ok.Should().Be(5);
+        t[1][1].Should().Be(2, "hai ván hạng farm 1 ở safelane");
+        t[2][2].Should().Be(1);
+        t[4][3].Should().Be(1);
+        t[5][1].Should().Be(1);
+
+        typeof(RoleResolver).GetMethod("Calibrate")
+            .Should().BeNull("phép hiệu chuẩn lặp vòng đã bị bỏ, đừng dựng lại");
     }
 
     [Fact]
-    public void Van_thieu_nhan_hoac_thieu_hang_thi_khong_tinh_vao_hieu_chuan()
+    public void Van_thieu_nhan_hoac_thieu_hang_thi_khong_vao_bang()
     {
-        var (n, _) = RoleResolver.Calibrate([(null, 2), (1, null), (0, 3)]);
-        n.Should().Be(0);
+        RoleResolver.CrossTab([(null, 2), (1, null), (0, 3), (9, 9)]).Should().BeEmpty();
     }
 }

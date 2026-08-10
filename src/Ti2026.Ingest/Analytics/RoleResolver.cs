@@ -86,32 +86,37 @@ public static class RoleResolver
     }
 
     /// <summary>
-    /// Đo độ chính xác của bước suy luận, bằng chính những ván CÓ nhãn thật.
+    /// Bảng chéo giữa hạng farm trong đội và lane thật — thứ DUY NHẤT kiểm được, và cố ý KHÔNG
+    /// gọi là "độ chính xác".
     ///
-    /// Chỉ đo phần suy luận core/support — phần lane thì không có gì để đo vì nó lấy thẳng từ
-    /// replay. Con số này phải được hiển thị cho người dùng: một cách phân loại không kèm độ
-    /// chính xác thì không phân biệt được với phỏng đoán.
+    /// VÌ SAO KHÔNG ĐO ĐƯỢC ĐỘ CHÍNH XÁC. Bản đầu của hàm này so kết luận "core hay hỗ trợ" suy
+    /// từ hạng farm với một "nhãn thật" mà chính nó cũng định nghĩa bằng hạng farm — lặp vòng,
+    /// và cho ra 98,5% trong khi thực chất chỉ kiểm được đúng một ca (ván mid có hạng farm ≥4).
+    /// Suýt nữa thì con số bịa đó lên thẳng trang.
+    ///
+    /// Sự thật: OpenDota KHÔNG có nhãn độc lập cho vị trí 1..5. lane_role chỉ cho biết LANE, mà
+    /// safelane chứa cả pos1 lẫn pos5. Việc chia core/hỗ trợ theo hạng farm đứng được bằng CƠ
+    /// CHẾ — pos5 theo định nghĩa là người farm ít nhất đội — chứ không bằng phép đo.
+    ///
+    /// Nên trang phải nói đúng thế: nêu bảng chéo để người đọc tự thấy, và không gắn cho nó một
+    /// con số phần trăm mà nó không đỡ nổi.
     /// </summary>
-    public static (int Checked, int Correct) Calibrate(
+    public static Dictionary<int, Dictionary<int, int>> CrossTab(
         IEnumerable<(int? LaneRole, int? TeamFarmRank)> labelled)
     {
-        var n = 0;
-        var ok = 0;
+        var table = new Dictionary<int, Dictionary<int, int>>();
 
         foreach (var (lane, rank) in labelled)
         {
-            if (lane is not int l || l is < 1 or > 3 || rank is null) continue;
+            if (lane is not int l || l is < 1 or > 3) continue;
+            if (rank is not int r || r is < 1 or > 5) continue;
 
-            var truth = Resolve(l, rank);
-            var guess = Resolve(null, rank);
+            if (!table.TryGetValue(r, out var row))
+                table[r] = row = new Dictionary<int, int>();
 
-            var truthIsSupport = truth.Code is "pos4" or "pos5";
-            var guessIsSupport = guess.Code == "support";
-
-            n++;
-            if (truthIsSupport == guessIsSupport) ok++;
+            row[l] = row.GetValueOrDefault(l) + 1;
         }
 
-        return (n, ok);
+        return table;
     }
 }

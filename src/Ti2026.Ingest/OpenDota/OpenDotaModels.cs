@@ -69,6 +69,20 @@ public class OpenDotaLeagueMatch
     [JsonPropertyName("dire_team_id")] public int? DireTeamId { get; set; }
 }
 
+/// <summary>
+/// GET /teams/{id}/players — roster theo OpenDota.
+///
+/// Dùng để TRẢ LỜI câu "team_id lạ này là đội nào của ta", bằng cách so account_id với đội hình
+/// đang hiệu lực. So theo tên là vô dụng ở đây: tên chính là thứ đã đổi.
+/// </summary>
+public class OpenDotaTeamPlayer
+{
+    [JsonPropertyName("account_id")] public long? AccountId { get; set; }
+    [JsonPropertyName("name")] public string? Name { get; set; }
+    [JsonPropertyName("games_played")] public int GamesPlayed { get; set; }
+    [JsonPropertyName("is_current_team_member")] public bool? IsCurrentTeamMember { get; set; }
+}
+
 /// <summary>GET /leagues — dùng để lọc trận nào được tính vào Elo.</summary>
 public class OpenDotaLeague
 {

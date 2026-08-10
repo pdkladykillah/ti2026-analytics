@@ -17,6 +17,7 @@ public class IngestPipeline(
     SnapshotWriter snapshots,
     PredictionLedger ledger,
     StaleTeamIdDetector staleTeamIds,
+    BracketTeamGapDetector bracketGaps,
     Ti2026DbContext db,
     IngestSchedule schedule,
     IngestGate gate,
@@ -159,6 +160,15 @@ public class IngestPipeline(
         await orchestrator.RunSourceAsync(
             "stale-team-id",
             async c => (await staleTeamIds.FindAsync(DateTime.UtcNow, c)).Count,
+            SanityKind.None, ct);
+
+        // Dò id lạ NGAY TRONG BẢNG ĐẤU. Bộ dò ở trên chỉ soi ván đã đá nên chỉ báo sau khi
+        // đã mất dữ liệu; bảng đấu nêu tên đủ 16 đội TRƯỚC trận đầu tiên, và đó là cơ hội duy
+        // nhất phát hiện trước khi mất. L1GA TEAM đăng ký TI2026 dưới bản ghi HULIGANI mà bộ
+        // dò cũ không thể thấy, vì họ chưa đá ván nào dưới id đó.
+        await orchestrator.RunSourceAsync(
+            "bracket-team-gap",
+            async c => (await bracketGaps.FindAsync(c)).Count,
             SanityKind.None, ct);
 
         // Sổ theo dõi dự đoán. Đặt SAU snapshot vì nó đọc Elo vừa tính xong — ghi trước thì

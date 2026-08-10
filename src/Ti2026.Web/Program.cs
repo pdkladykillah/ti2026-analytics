@@ -83,6 +83,7 @@ builder.Services.AddScoped<ProPubIngester>();
 builder.Services.AddScoped<SnapshotWriter>();
 builder.Services.AddScoped<PredictionLedger>();
 builder.Services.AddScoped<StaleTeamIdDetector>();
+builder.Services.AddScoped<BracketTeamGapDetector>();
 builder.Services.AddScoped<IngestOrchestrator>();
 builder.Services.AddScoped<IngestPipeline>();
 

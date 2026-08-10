@@ -70,6 +70,16 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         // Khoá tự nhiên của một nút bảng đấu là (giải, node_id) — Valve đánh số nút lại từ đầu
         // cho mỗi giải. Unique để nạp lại nhiều lần chỉ cập nhật chứ không nhân bản bảng đấu.
         b.Entity<ScheduledSeries>().HasIndex(x => new { x.LeagueId, x.NodeId }).IsUnique();
+
+        // KHAI KHOÁ NGOẠI TƯỜNG MINH. Quy ước của EF tìm cột tên "Team1Id" cho navigation
+        // "Team1"; tên của ta là "TeamId1" nên nó KHÔNG khớp, và EF lặng lẽ tạo thêm một cột
+        // bóng Team1Id rồi để .Include đọc cột đó. Hậu quả: ingest ghi đúng vào TeamId1, còn
+        // trang đọc Team1 thì luôn rỗng — bảng đấu hiện "#9247354" thay vì "Team Falcons", và
+        // vì đó đúng bằng cách hiển thị dành cho đội chưa ánh xạ được nên nhìn như tính năng.
+        b.Entity<ScheduledSeries>()
+            .HasOne(x => x.Team1).WithMany().HasForeignKey(x => x.TeamId1);
+        b.Entity<ScheduledSeries>()
+            .HasOne(x => x.Team2).WithMany().HasForeignKey(x => x.TeamId2);
         b.Entity<TeamAlias>()
             .HasOne(x => x.Team).WithMany(x => x.Aliases)
             .HasForeignKey(x => x.TeamId).OnDelete(DeleteBehavior.Cascade);

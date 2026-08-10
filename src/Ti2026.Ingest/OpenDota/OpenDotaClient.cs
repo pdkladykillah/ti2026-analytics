@@ -27,6 +27,10 @@ public class OpenDotaClient(HttpClient http)
         long accountId, int limit, CancellationToken ct) =>
         GetListAsync<OpenDotaPlayerMatch>("players/" + accountId + "/matches?limit=" + limit, ct);
 
+    /// <summary>Roster của một đội theo OpenDota — dùng để nhận diện team_id lạ.</summary>
+    public Task<List<OpenDotaTeamPlayer>> GetTeamPlayersAsync(int teamId, CancellationToken ct) =>
+        GetListAsync<OpenDotaTeamPlayer>($"teams/{teamId}/players", ct);
+
     public Task<List<OpenDotaLeague>> GetLeaguesAsync(CancellationToken ct) =>
         GetListAsync<OpenDotaLeague>("leagues", ct);
 

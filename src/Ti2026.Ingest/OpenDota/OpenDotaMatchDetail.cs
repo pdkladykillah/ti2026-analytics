@@ -90,6 +90,7 @@ public class OpenDotaMatchPlayer
     [JsonPropertyName("last_hits")] public int? LastHits { get; set; }
     [JsonPropertyName("denies")] public int? Denies { get; set; }
     [JsonPropertyName("net_worth")] public int? NetWorth { get; set; }
+    [JsonPropertyName("level")] public int? Level { get; set; }
     [JsonPropertyName("hero_damage")] public int? HeroDamage { get; set; }
     [JsonPropertyName("tower_damage")] public int? TowerDamage { get; set; }
     [JsonPropertyName("obs_placed")] public int? ObserversPlaced { get; set; }

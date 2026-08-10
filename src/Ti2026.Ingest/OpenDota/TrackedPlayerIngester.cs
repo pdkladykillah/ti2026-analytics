@@ -31,8 +31,16 @@ public class TrackedPlayerIngester(
     Ti2026DbContext db, OpenDotaClient client, string editorialDirectory,
     ILogger<TrackedPlayerIngester> logger)
 {
-    /// <summary>Số ván lấy mỗi lần. 500 phủ khoảng 5 tháng với người chơi đều.</summary>
-    public const int MatchesPerSync = 500;
+    /// <summary>
+    /// Số ván lấy mỗi lần — lấy TOÀN BỘ lịch sử, không cắt cửa sổ.
+    ///
+    /// Vẫn đúng MỘT lời gọi dù xin bao nhiêu ván, nên cắt xuống 500 chẳng tiết kiệm được gì mà
+    /// mất hai thứ: (1) phần "tiến bộ qua nhiều năm" vốn là lý do chính của trang này, và
+    /// (2) tập ván CÓ lane_role thật — thứ duy nhất dùng để đo xem cách suy vai trò có đúng
+    /// không. Trong 500 ván gần nhất chỉ có 36 ván như vậy, quá ít để kiểm; trên toàn bộ lịch
+    /// sử thì có khoảng 360.
+    /// </summary>
+    public const int MatchesPerSync = 10000;
 
     /// <summary>
     /// MỌI trường ta đọc, khai đủ không thiếu cái nào.

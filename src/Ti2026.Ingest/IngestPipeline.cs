@@ -19,6 +19,7 @@ public class IngestPipeline(
     StaleTeamIdDetector staleTeamIds,
     BracketTeamGapDetector bracketGaps,
     TrackedPlayerIngester trackedPlayers,
+    TrackedMatchDetailIngester trackedDetails,
     Ti2026DbContext db,
     IngestSchedule schedule,
     IngestGate gate,
@@ -176,6 +177,11 @@ public class IngestPipeline(
         // giải — hỏng ở đây không được ảnh hưởng gì tới 16 đội.
         await orchestrator.RunSourceAsync(
             "tracked-players", trackedPlayers.IngestAsync, SanityKind.None, ct);
+
+        // Bối cảnh cả đội + xin parse để có VAI TRÒ THẬT. Phải nằm sau bước trên: nó chỉ xử lý
+        // những ván bước trên vừa ghi vào.
+        await orchestrator.RunSourceAsync(
+            "tracked-match-detail", trackedDetails.IngestAsync, SanityKind.None, ct);
 
         // Sổ theo dõi dự đoán. Đặt SAU snapshot vì nó đọc Elo vừa tính xong — ghi trước thì
         // sổ luôn chậm một vòng so với mô hình đang phục vụ trang.

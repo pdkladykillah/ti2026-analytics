@@ -56,6 +56,21 @@ public class OpenDotaClient(HttpClient http)
         return await res.Content.ReadFromJsonAsync<T>(Json, ct);
     }
 
+    /// <summary>
+    /// Xin OpenDota phân tích replay của một ván.
+    ///
+    /// Cần thiết vì OpenDota KHÔNG tự parse ván pub — đo thật: 0/25 ván gần nhất của một tài
+    /// khoản có sẵn. Chỉ có ván đã parse mới lộ ra lane_role, tức vai trò THẬT thay vì suy đoán.
+    ///
+    /// Chỉ đặt hàng, kết quả về sau khoảng 30 giây. Replay hết hạn sau khoảng 2 tháng nên xin
+    /// cho ván cũ hơn thế là vô ích.
+    /// </summary>
+    public async Task RequestParseAsync(long matchId, CancellationToken ct)
+    {
+        using var res = await http.PostAsync($"request/{matchId}", content: null, ct);
+        res.EnsureSuccessStatusCode();
+    }
+
     public Task<List<OpenDotaLeague>> GetLeaguesAsync(CancellationToken ct) =>
         GetListAsync<OpenDotaLeague>("leagues", ct);
 

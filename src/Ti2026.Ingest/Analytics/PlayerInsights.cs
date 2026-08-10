@@ -1,4 +1,4 @@
-namespace Ti2026.Ingest.Analytics;
+﻿namespace Ti2026.Ingest.Analytics;
 
 /// <summary>Một ván của người được theo dõi, rút gọn còn đúng những gì cần để suy luận.</summary>
 public readonly record struct PlayerGame(
@@ -23,9 +23,9 @@ public readonly record struct PlayerInsight(string Kind, string Tone, string Tex
 /// 1. Mỗi câu phải nêu CON SỐ và MỐC ĐỂ SO. "Bạn chơi Void Spirit tốt" là lời khen, không phải
 ///    phân tích.
 ///
-/// 2. Chọn hero tốt nhất/tệ nhất trong một pool 40 hero là lấy CỰC TRỊ của 40 phép so. Chấm nó
-///    bằng ngưỡng dành cho một phép so duy nhất thì gần như hero nào cũng "xuất sắc" hoặc "tệ" —
-///    lỗi so sánh bội. Phải hiệu chỉnh, xem <see cref="Notable"/>.
+/// 2. Chọn hero tốt nhất/tệ nhất trong một pool hàng trăm hero là lấy CỰC TRỊ của hàng trăm phép
+///    so. Chấm nó bằng ngưỡng dành cho một phép so duy nhất thì gần như hero nào cũng "xuất sắc"
+///    hoặc "tệ" — lỗi so sánh bội. Phải hiệu chỉnh, xem <see cref="NotableSet"/>.
 ///
 /// 3. VAI TRÒ CHỈ ĐẾN TỪ <see cref="RoleResolver"/>, không bao giờ từ mức farm. Bản đầu của bộ
 ///    này có một mục "hồ sơ lối chơi" đọc last hit mỗi phút rồi tuyên bố người dùng là core hay
@@ -37,6 +37,18 @@ public static class PlayerInsights
 {
     /// <summary>Dưới ngần này ván trên một hero thì mọi tỷ lệ đều là nhiễu.</summary>
     public const int MinGamesPerHero = 8;
+
+    /// <summary>
+    /// Số nguyên có dấu ngăn nghìn KIỂU VIỆT: 5.877, không phải 5,877.
+    ///
+    /// Phải nêu văn hoá rõ ràng. Mặc định của tiến trình là văn hoá bất biến, nên "{x:N0}" cho ra
+    /// dấu phẩy — đúng với tiếng Anh và sai với phần còn lại của trang, nơi giao diện đã dùng
+    /// toLocaleString('vi-VN'). Cùng một con số hiện hai kiểu ở hai chỗ trên cùng một màn hình.
+    /// </summary>
+    private static readonly System.Globalization.CultureInfo Vi =
+        System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+
+    private static string N(int value) => value.ToString("N0", Vi);
 
     /// <summary>Chênh dưới ngần này điểm phần trăm so với 50% thì không đáng gắn nhãn.</summary>
     public const double MinWinrateGap = 5.0;
@@ -125,7 +137,7 @@ public static class PlayerInsights
         {
             found.Add(new PlayerInsight("manh-mat", "good",
                 $"{c.Label}: bạn ở phân vị {c.Median} so với mọi người chơi CÙNG HERO, qua "
-                + $"{c.Games:N0} ván. Tức trong 100 người chơi những hero bạn hay dùng, khoảng "
+                + $"{N(c.Games)} ván. Tức trong 100 người chơi những hero bạn hay dùng, khoảng "
                 + $"{c.Median} người làm việc này kém hơn bạn.",
                 88));
         }
@@ -133,7 +145,7 @@ public static class PlayerInsights
         foreach (var c in weak.Take(2))
         {
             found.Add(new PlayerInsight("yeu-mat", "warn",
-                $"{c.Label} là mặt yếu nhất: phân vị {c.Median} qua {c.Games:N0} ván — dưới mức "
+                $"{c.Label} là mặt yếu nhất: phân vị {c.Median} qua {N(c.Games)} ván — dưới mức "
                 + "trung bình của những người chơi cùng hero. Đây là chỗ đáng sửa nhất vì nó đã "
                 + "so trên cùng hero, tức không phải do bạn hay chọn hero khó.",
                 86));
@@ -152,7 +164,7 @@ public static class PlayerInsights
             found.Add(new PlayerInsight("tien-bo", up ? "good" : "warn",
                 $"{c.Label} {(up ? "đang lên" : "đang xuống")}: {SkillComponents.RecentWindow} ván "
                 + $"gần nhất ở phân vị {c.Recent}, so với {c.Median} tính trên toàn bộ lịch sử "
-                + $"({c.Games:N0} ván).",
+                + $"({N(c.Games)} ván).",
                 84));
         }
     }
@@ -223,7 +235,7 @@ public static class PlayerInsights
                 .FirstOrDefault();
 
             found.Add(new PlayerInsight("vai-tro", "flat",
-                $"Trong {total:N0} ván có nhãn vị trí thật từ replay, bạn chơi nhiều nhất là "
+                $"Trong {N(total)} ván có nhãn vị trí thật từ replay, bạn chơi nhiều nhất là "
                 + $"{top.Label} ({top.Games} ván, {top.Winrate:0.0}%)."
                 + (best.Games >= MinGamesForBestRole
                     ? $" Hiệu quả nhất trong số các vai trò đủ mẫu là {best.Label} "
@@ -241,8 +253,8 @@ public static class PlayerInsights
             if (core.Games > 0 && sup.Games > 0)
             {
                 found.Add(new PlayerInsight("core-ho-tro", "flat",
-                    $"Trên toàn bộ lịch sử, {core.Games:N0} ván đi core (thắng {core.Winrate:0.0}%) "
-                    + $"và {sup.Games:N0} ván đi hỗ trợ (thắng {sup.Winrate:0.0}%). Cách chia này "
+                    $"Trên toàn bộ lịch sử, {N(core.Games)} ván đi core (thắng {core.Winrate:0.0}%) "
+                    + $"và {N(sup.Games)} ván đi hỗ trợ (thắng {sup.Winrate:0.0}%). Cách chia này "
                     + "suy từ thứ hạng tài sản trong đội — chắc ở mức core/hỗ trợ, nhưng KHÔNG "
                     + "tách được mid với offlane.",
                     72));
@@ -314,8 +326,8 @@ public static class PlayerInsights
         {
             found.Add(new PlayerInsight(m.Lift > 0 ? "dong-doi-hop" : "dong-doi-lech",
                 m.Lift > 0 ? "good" : "warn",
-                $"Chơi cùng {m.Name}: thắng {m.Winrate:0.0}% qua {m.Games:N0} ván, so với "
-                + $"{m.WithoutWinrate:0.0}% ở {m.WithoutGames:N0} ván vắng người này — chênh "
+                $"Chơi cùng {m.Name}: thắng {m.Winrate:0.0}% qua {N(m.Games)} ván, so với "
+                + $"{m.WithoutWinrate:0.0}% ở {N(m.WithoutGames)} ván vắng người này — chênh "
                 + $"{(m.Lift > 0 ? "+" : "")}{m.Lift:0.0} điểm. Cách biệt này đứng vững kể cả sau "
                 + "khi tính tới việc bạn có nhiều đồng đội quen.",
                 74));

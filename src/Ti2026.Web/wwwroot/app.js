@@ -944,6 +944,130 @@ function renderSchedule(d) {
     <p class="desc" style="margin-top:var(--s-4)">${esc(d.source || '')}</p>`;
 }
 
+
+/* ============================ Hồ sơ cá nhân ============================ */
+
+let profileReady = false;
+
+async function setupProfile() {
+  const sel = $('#profile-who');
+  if (!sel) return;
+
+  if (!profileReady) {
+    try {
+      const d = await getJson('api/profile/people');
+      sel.innerHTML = (d.people || []).map((p) =>
+        `<option value="${esc(String(p.accountId))}">${esc(p.name)}${p.note ? ` — ${esc(p.note)}` : ''}</option>`).join('');
+      sel.onchange = () => loadProfile(sel.value);
+      enhanceSelect(sel, 'Gõ để tìm người…');
+      profileReady = true;
+    } catch (err) {
+      $('#profile-body').innerHTML =
+        `<div class="error">Không tải được danh sách người theo dõi.<br><small>${esc(err.message)}</small></div>`;
+      return;
+    }
+  }
+
+  loadProfile(sel.value);
+}
+
+async function loadProfile(accountId) {
+  const body = $('#profile-body');
+  body.innerHTML = '<div class="skeleton" style="height:260px"></div>';
+
+  try {
+    renderProfile(await getJson('api/profile' + (accountId ? `?player=${encodeURIComponent(accountId)}` : '')));
+  } catch (err) {
+    body.innerHTML = `<div class="error">Không tải được <code>api/profile</code>.<br>
+      <small>${esc(err.message)}</small></div>`;
+  }
+}
+
+function renderProfile(d) {
+  const body = $('#profile-body');
+  if (!d.ready) {
+    body.innerHTML = `<div class="empty">${esc(d.note || d.syncNote || 'Chưa có dữ liệu.')}</div>`;
+    return;
+  }
+
+  const m = d.me;
+  const wr = m.lifetimeWinrate;
+
+  const head = `
+    <div class="pf-head">
+      ${m.avatar
+        ? `<img class="pf-avatar" src="${esc(m.avatar)}" alt="" loading="lazy">`
+        : `<span class="pf-avatar logo-fallback">${esc((m.name || '?').charAt(0))}</span>`}
+      <div class="pf-id">
+        <strong>${esc(m.name)}</strong>
+        <div class="pf-sub">${esc(m.persona || '')}${m.note ? ` · ${esc(m.note)}` : ''}</div>
+      </div>
+      <div class="pf-kpis">
+        <div><span class="pf-num">${esc(m.rank || '—')}</span><small>hạng</small></div>
+        <div><span class="pf-num">${fmt(wr, 1, '%')}</span><small>thắng cả đời</small></div>
+        <div><span class="pf-num">${n0(m.wins + m.losses)}</span><small>ván cả đời</small></div>
+        <div><span class="pf-num">${n0(m.storedGames)}</span><small>ván đã lưu</small></div>
+      </div>
+    </div>
+    <p class="desc">Lịch sử đã lưu: ${m.from ? esc(m.from.slice(0, 10)) : '—'} →
+      ${m.to ? esc(m.to.slice(0, 10)) : '—'}. Mọi bảng bên dưới tính trên khoảng này, không phải
+      trên toàn bộ ${n0(m.wins + m.losses)} ván cả đời.</p>`;
+
+  const insights = (d.insights || []).length
+    ? `<h3 style="margin-top:var(--s-5)">Hệ thống đọc được gì</h3>
+       <div class="insight-card"><ul>${d.insights.map((i) => `
+         <li class="tone-${esc(i.tone)}">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">${TONE_ICON[i.tone] || TONE_ICON.flat}</svg>
+           <span>${esc(i.text)}</span>
+         </li>`).join('')}</ul></div>`
+    : '';
+
+  // Cột "so với pro" chỉ có nghĩa khi hero đó pro cũng chơi đủ nhiều — thiếu thì để "—" chứ
+  // không điền 0, vì 0 GPM là một khẳng định sai chứ không phải một ô trống.
+  const heroes = (d.heroes || []).filter((h) => h.games >= 5);
+  const heroTable = heroes.length
+    ? `<h3 style="margin-top:var(--s-5)">Hero pool</h3>
+       <p class="desc" style="margin:0 0 var(--s-3)">Dấu ★ là hero mà cách biệt thắng/thua đã đủ
+         lớn để không giải thích được bằng may rủi — đã tính tới việc bạn chơi rất nhiều hero.</p>
+       <div class="table-scroll"><table>
+         <thead><tr>
+           <th scope="col">Hero</th><th scope="col">Ván</th><th scope="col">Thắng</th>
+           <th scope="col">GPM</th><th scope="col">Pro</th>
+           <th scope="col">LH/phút</th><th scope="col">KDA</th>
+         </tr></thead>
+         <tbody>${heroes.map((h) => `<tr>
+           <td>${esc(h.name)}${h.notable ? ' <b title="Cách biệt đã vượt ngưỡng nhiễu">★</b>' : ''}</td>
+           <td class="num">${n0(h.games)}</td>
+           <td class="num ${h.winrate >= 55 ? 'cal-good' : h.winrate <= 45 ? 'cal-bad' : ''}">${fmt(h.winrate, 1, '%')}</td>
+           <td class="num">${fmt(h.gpm, 0)}</td>
+           <td class="num mu">${h.proGpm === null ? '—' : fmt(h.proGpm, 0)}</td>
+           <td class="num">${fmt(h.lastHitsPerMin, 1)}</td>
+           <td class="num">${fmt(h.kda, 2)}</td>
+         </tr>`).join('')}</tbody>
+       </table></div>`
+    : '';
+
+  const months = (d.months || []);
+  const maxG = Math.max(...months.map((x) => x.games), 1);
+  const trend = months.length
+    ? `<h3 style="margin-top:var(--s-5)">Theo tháng</h3>
+       <div class="pf-months">${months.map((x) => `
+         <div class="pf-month${x.thin ? ' thin' : ''}">
+           <div class="pf-bar" style="height:${Math.max((x.games / maxG) * 100, 6)}%"
+                title="${n0(x.games)} ván"></div>
+           <div class="pf-wr ${x.winrate >= 50 ? 'cal-good' : 'cal-bad'}">${fmt(x.winrate, 0, '%')}</div>
+           <div class="pf-lbl">${esc(x.month.slice(5))}/${esc(x.month.slice(2, 4))}</div>
+           <div class="pf-gpm">${fmt(x.avgGpm, 0)}</div>
+         </div>`).join('')}</div>
+       <p class="desc">Cột là số ván, số trên là tỷ lệ thắng, số dưới là GPM trung bình.
+         Tháng mờ là tháng dưới 10 ván — vẫn hiện để đường không bị đứt, nhưng đừng đọc nặng.</p>`
+    : '';
+
+  body.innerHTML = head + insights + trend + heroTable
+    + `<p class="desc" style="margin-top:var(--s-4)">${esc(d.method || '')}</p>`;
+}
+
 /* ============================ Tier list ============================ */
 
 function setupTiers() {
@@ -3264,6 +3388,7 @@ function setupTabs() {
       // Lịch thì nạp LẠI mỗi lần mở, không nhớ như các tab kia: nó có đồng hồ đếm ngược và
       // trạng thái đang-diễn-ra, mà dữ liệu cũ từ nửa tiếng trước thì hai thứ đó đều sai.
       if (view === 'schedule') loadSchedule();
+      if (view === 'profile') setupProfile();
 
       if (view === 'learn' && !loadedViews.has('learn')) {
         loadedViews.add('learn');

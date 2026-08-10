@@ -58,6 +58,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
       Lịch thi đấu
     </button>
+    <button role="tab" type="button" data-view="profile" aria-selected="false" aria-controls="view-profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      Hồ sơ cá nhân
+    </button>
     <button role="tab" type="button" data-view="table" aria-selected="false" aria-controls="view-table">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18M9 10v10"></path></svg>
       Bảng chỉ số
@@ -129,6 +133,22 @@
             tự đọc từ ván thật ngay khi trận đá xong.</p>
         </header>
         <div id="schedule-body" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ===== Hồ sơ cá nhân ===== -->
+    <section class="view" id="view-profile" role="tabpanel" aria-labelledby="tab-profile" hidden>
+      <div class="card" data-sec="Hồ sơ cá nhân">
+        <header>
+          <h2>Hồ sơ người chơi</h2>
+          <p class="desc">Dữ liệu được lưu lại theo thời gian nên đọc được cả tiến bộ, không chỉ
+            trạng thái hiện tại. Mọi chỉ số lấy từ hồ sơ Dota 2 công khai.</p>
+        </header>
+        <div class="controls" id="profile-controls">
+          <label class="sr-only" for="profile-who">Chọn người</label>
+          <select id="profile-who"></select>
+        </div>
+        <div id="profile-body" aria-live="polite"></div>
       </div>
     </section>
 

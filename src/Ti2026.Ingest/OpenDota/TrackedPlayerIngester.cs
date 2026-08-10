@@ -173,7 +173,8 @@ public class TrackedPlayerIngester(
 
                 // player_slot < 128 là phe Radiant. Đây là cách DUY NHẤT biết người này thắng
                 // hay thua — endpoint chỉ trả radiant_win cho cả ván.
-                row.Won = (m.PlayerSlot < 128) == m.RadiantWin;
+                row.IsRadiant = m.PlayerSlot < 128;
+                row.Won = row.IsRadiant == m.RadiantWin;
 
                 row.Kills = m.Kills ?? 0;
                 row.Deaths = m.Deaths ?? 0;

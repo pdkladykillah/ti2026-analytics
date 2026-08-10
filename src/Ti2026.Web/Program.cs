@@ -173,6 +173,7 @@ app.MapH2hEndpoints();
 app.MapTrendEndpoints();
 app.MapInsightEndpoints();
 app.MapScheduleEndpoints();
+app.MapProfileEndpoints();
 app.MapAnalyticsEndpoints();
 app.MapLearnEndpoints();
 app.MapTierListEndpoints();

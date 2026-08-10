@@ -28,6 +28,16 @@ public class TrackedPlayerMatch
 
     public bool Won { get; set; }
 
+    /// <summary>
+    /// true = phe Radiant, suy từ player_slot &lt; 128.
+    ///
+    /// Lưu hẳn thành cột chứ không suy lại lúc đọc: ta không lưu player_slot, nên nếu không có
+    /// cột này thì phần phân tích lệch bên sân không có gì để dựa vào — và cám dỗ lúc đó là
+    /// bịa ra một quy tắc trông hợp lý. Trên tài khoản thật, chênh lệch Radiant/Dire là 7,7
+    /// điểm phần trăm qua gần 6.000 ván, tức hoàn toàn có thật và đáng đo.
+    /// </summary>
+    public bool IsRadiant { get; set; }
+
     public int Kills { get; set; }
     public int Deaths { get; set; }
     public int Assists { get; set; }

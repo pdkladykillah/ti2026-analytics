@@ -193,7 +193,12 @@ public static class ProfileEndpoints
             // ---------- Hero pool đặt cạnh meta ----------
             // Mốc là bậc rank CAO chứ không phải toàn bộ pub: người dùng ở Ancient, còn tỷ lệ
             // thắng gộp cả Herald tới Immortal là một quần thể khác hẳn.
-            var metaWinrate = (await db.HeroStats.Where(s => s.HighPick > 0).ToListAsync())
+            //
+            // Đòi tối thiểu 1.000 ván ở bậc cao thì mốc mới đủ chắc để làm chuẩn. Hiện hero ít
+            // mẫu nhất cũng có 2.109 ván nên điều kiện này không loại ai — nó ở đây cho lúc có
+            // hero MỚI ra: vài trăm ván đầu tiên của một hero mới là tỷ lệ hoàn toàn không ổn
+            // định, và dùng nó làm mốc sẽ khiến cả bảng lệch theo mà không có gì báo.
+            var metaWinrate = (await db.HeroStats.Where(s => s.HighPick >= 1000).ToListAsync())
                 .ToDictionary(s => s.HeroId, s => s.HighWin * 100.0 / s.HighPick);
 
             var metaRows = HeroMetaGap.Read(

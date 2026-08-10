@@ -27,45 +27,92 @@ public class PlayerInsightsTests
     private static HeroLine Hero(string name, int games, int wins, double gpm = 500,
         double? proGpm = null, int proGames = 0) =>
         new(1, name, games, wins, wins * 100.0 / games, gpm, 6.0, 3.0, proGpm, proGames,
-            PlayerInsights.Notable(games, wins));
+            PlayerInsights.NotableSet([(games, wins)])[0]);
+
+    /// <summary>Chấm một hero khi nó nằm giữa <paramref name="filler"/> hero chơi đúng mức 50%.</summary>
+    private static bool InPool(int games, int wins, int filler)
+    {
+        var pool = new List<(int, int)> { (games, wins) };
+        for (var i = 0; i < filler; i++) pool.Add((100, 50));
+
+        return PlayerInsights.NotableSet(pool)[0];
+    }
 
     // ---------- So sánh bội trên hero pool ----------
 
     /// <summary>
-    /// Bài kiểm quan trọng nhất. Thắng 7/10 nghe rất ấn tượng, nhưng trong một pool 40 hero thì
-    /// chuyện đó xảy ra thường xuyên chỉ do may rủi. Không hiệu chỉnh thì trang sẽ khen nhầm
-    /// hàng loạt hero, và mọi lời khen mất giá.
+    /// Thắng 7/10 nghe rất ấn tượng, nhưng trong một pool hàng chục hero thì chuyện đó xảy ra
+    /// thường xuyên chỉ do may rủi. Không hiệu chỉnh thì trang khen nhầm hàng loạt hero.
     /// </summary>
     [Fact]
     public void Thang_7_tren_10_van_KHONG_du_de_goi_la_hero_manh()
     {
-        PlayerInsights.Notable(games: 10, wins: 7).Should().BeFalse();
-        PlayerInsights.Notable(games: 12, wins: 9).Should().BeFalse();
+        InPool(10, 7, filler: 40).Should().BeFalse();
+        InPool(12, 9, filler: 40).Should().BeFalse();
     }
 
     [Fact]
     public void Cach_biet_du_lon_va_du_van_thi_moi_dang_ke()
     {
-        PlayerInsights.Notable(games: 40, wins: 32).Should().BeTrue();
-        PlayerInsights.Notable(games: 60, wins: 15).Should().BeTrue("thua nhiều cũng là tín hiệu");
+        InPool(40, 32, filler: 40).Should().BeTrue();
+        InPool(60, 15, filler: 40).Should().BeTrue("thua nhiều cũng là tín hiệu");
     }
 
     [Fact]
     public void Duoi_nguong_so_van_thi_khong_bao_gio_dang_ke()
     {
-        PlayerInsights.Notable(games: PlayerInsights.MinGamesPerHero - 1, wins: 7)
-            .Should().BeFalse();
+        InPool(PlayerInsights.MinGamesPerHero - 1, 7, filler: 5).Should().BeFalse();
     }
 
     [Fact]
     public void Pool_cang_rong_thi_nguong_cang_chat()
     {
-        // Cùng một thành tích, xét trong pool lớn hơn thì phải khó được gọi là đáng kể hơn
-        var hep = PlayerInsights.Notable(games: 20, wins: 16, poolSize: 1);
-        var rong = PlayerInsights.Notable(games: 20, wins: 16, poolSize: 200);
+        InPool(20, 16, filler: 0).Should().BeTrue();
+        InPool(20, 16, filler: 400).Should().BeFalse();
+    }
 
-        hep.Should().BeTrue();
-        rong.Should().BeFalse();
+    /// <summary>
+    /// Dữ liệu THẬT của người dùng, rút gọn: 125 hero, hero lệch nhất là Razor 55 thắng/84 ván
+    /// (p = 0,006) và Invoker 9/34 (p = 0,009). Nghe thì ấn tượng, nhưng trong 125 phép so hoàn
+    /// toàn ngẫu nhiên thì p nhỏ nhất trung bình đã vào khoảng 1/126 ≈ 0,008 — tức những con số
+    /// này là chuyện BÌNH THƯỜNG với cực trị của 125 phép so.
+    ///
+    /// Nên kết luận đúng là KHÔNG hero nào nổi bật, và bài kiểm này khoá lại điều đó. Cám dỗ ở
+    /// đây là nới ngưỡng cho tới khi có thứ gì sáng lên — đúng thứ phải không làm.
+    /// </summary>
+    [Fact]
+    public void Pool_that_125_hero_thi_khong_hero_nao_dang_ke_va_the_la_dung()
+    {
+        var pool = new List<(int, int)> { (84, 55), (34, 9) };
+        for (var i = 0; i < 123; i++) pool.Add((40, 20));
+
+        PlayerInsights.NotableSet(pool).Should().OnlyContain(x => x == false);
+    }
+
+    /// <summary>
+    /// Nhưng khi tín hiệu ĐỦ MẠNH thì vẫn phải bắt được — nếu không thì phép kiểm chỉ là một
+    /// cách im lặng cho sang.
+    /// </summary>
+    [Fact]
+    public void Tin_hieu_du_manh_thi_van_bat_duoc_trong_pool_lon()
+    {
+        var pool = new List<(int, int)> { (300, 200) };
+        for (var i = 0; i < 124; i++) pool.Add((40, 20));
+
+        var flags = PlayerInsights.NotableSet(pool);
+
+        flags[0].Should().BeTrue("200/300 là 66,7% — quá xa 50% để giải thích bằng may rủi");
+        flags.Skip(1).Should().OnlyContain(x => x == false);
+    }
+
+    /// <summary>
+    /// Chỉ "tách được khỏi nhiễu" là chưa đủ. Ở 4.000 ván, 52% qua được mọi phép kiểm nhưng
+    /// không đáng để trang gọi là hero mạnh.
+    /// </summary>
+    [Fact]
+    public void Mau_rat_lon_ma_chenh_nho_thi_van_khong_gan_nhan()
+    {
+        InPool(4000, 2080, filler: 40).Should().BeFalse();
     }
 
     // ---------- Vai trò KHÔNG được suy từ mức farm ----------

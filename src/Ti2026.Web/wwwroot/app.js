@@ -1030,6 +1030,7 @@ function renderProfile(d) {
     ? `<h3 style="margin-top:var(--s-5)">Hero pool</h3>
        <p class="desc" style="margin:0 0 var(--s-3)">Dấu ★ là hero mà cách biệt thắng/thua đã đủ
          lớn để không giải thích được bằng may rủi — đã tính tới việc bạn chơi rất nhiều hero.</p>
+       ${noStarNote(d, heroes)}
        <div class="table-scroll"><table>
          <thead><tr>
            <th scope="col">Hero</th><th scope="col">Ván</th><th scope="col">Thắng</th>
@@ -1151,6 +1152,27 @@ function wireRoleChips(d) {
 
 /* --------------------------- Hero pool vs meta --------------------------- */
 
+/**
+ * Vì sao có thể không hero nào được đánh dấu ★.
+ *
+ * Một bảng toàn ô trống mà im lặng sẽ bị đọc thành "hệ thống hỏng" hoặc, tệ hơn, thành "vậy là
+ * mình chơi hero nào cũng như nhau". Sự thật khác hẳn: mẫu mỗi hero còn quá mỏng so với mức
+ * nhiễu, và câu này nói rõ cần bao nhiêu ván thì mới kết luận được.
+ */
+function noStarNote(d, rows) {
+  if (rows.some((r) => r.notable)) return '';
+
+  const need = d.noticeNeedsGames;
+  const pool = d.noticePoolSize;
+  if (!need || !pool) return '';
+
+  return `<p class="desc" style="margin:0 0 var(--s-3)"><b>Chưa hero nào được đánh dấu ★ — và
+    đó là kết luận, không phải lỗi.</b> Bạn chơi ${n0(pool)} hero, nên hero "nổi bật nhất" là cực
+    trị của ${n0(pool)} phép so; chỉ riêng may rủi đã đủ tạo ra vài hero trông rất chênh. Để một
+    cách biệt 15 điểm phần trăm đứng vững ở cỡ pool này cần khoảng <b>${n0(need)} ván trên cùng
+    một hero</b>. Các con số trong bảng vẫn thật và vẫn đáng xem — chỉ là chưa đủ để tuyên bố.</p>`;
+}
+
 function metaBlock(d) {
   const rows = d.meta || [];
   if (!rows.length) return '';
@@ -1163,6 +1185,7 @@ function metaBlock(d) {
       thắng — thắng 53% với một hero có mức chung 53% là đúng bằng mọi người, còn thắng 50% với
       một hero có mức chung 44% là hơn hẳn. Cột <b>Chênh</b> mới là thứ nói bạn giỏi tới đâu.
       Dấu ★ là chênh lệch đã vượt ngưỡng nhiễu sau khi tính tới cả pool.</p>
+    ${noStarNote(d, rows)}
     <div class="table-scroll"><table>
       <thead><tr>
         <th scope="col">Hero</th><th scope="col">Ván</th>

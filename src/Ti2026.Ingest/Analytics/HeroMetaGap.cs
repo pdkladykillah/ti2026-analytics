@@ -18,8 +18,11 @@ public readonly record struct MetaHero(
 ///
 /// Nên phép kiểm ở đây là nhị thức với p₀ = tỷ lệ thắng chung của hero, chứ không phải p₀ = 0,5.
 ///
-/// VẪN LÀ SO SÁNH BỘI. Chọn hero "bạn chơi hơn người" trong một pool 40 hero là lấy cực trị của
-/// 40 phép so, nên ngưỡng phải chia cho cỡ pool — giống hệt <see cref="PlayerInsights.Notable"/>.
+/// VẪN LÀ SO SÁNH BỘI, NHƯNG HIỆU CHỈNH BẰNG BENJAMINI–HOCHBERG chứ không phải Bonferroni. Đo
+/// trên pool thật 125 hero: Bonferroni cho ngưỡng 0,0004, và Invoker 9 thắng/34 ván so với mức
+/// chung 51,9% — lệch hơn ba lần sai số chuẩn — vẫn trượt. Không hero nào bật, tức cột "đáng kể"
+/// vô dụng ngang với không có. Xem <see cref="MultipleTests"/> để biết vì sao hai câu hỏi khác
+/// nhau cần hai phép hiệu chỉnh khác nhau.
 ///
 /// GIỚI HẠN PHẢI NÓI RA: mốc chung lấy ở bậc rank cao của OpenDota, gộp mọi vị trí và mọi bản
 /// game gần đây. Nó KHÔNG khớp chính xác với bậc rank của người dùng, và một hero đổi mạnh yếu
@@ -45,17 +48,22 @@ public static class HeroMetaGap
         var rows = pool.Where(h => h.Games >= MinGames && metaWinrate.ContainsKey(h.HeroId)).ToList();
         if (rows.Count == 0) return [];
 
-        var alpha = 0.05 / rows.Count;
+        var tails = rows
+            .Select(h => TwoSidedTail(h.Games, h.Wins, metaWinrate[h.HeroId] / 100.0))
+            .ToList();
+
+        var discovered = MultipleTests.BenjaminiHochberg(tails);
 
         return rows
-            .Select(h =>
+            .Select((h, i) =>
             {
                 var meta = metaWinrate[h.HeroId];
                 var mine = h.Wins * 100.0 / h.Games;
                 var edge = mine - meta;
 
-                var tail = TwoSidedTail(h.Games, h.Wins, meta / 100.0);
-                var notable = tail < alpha && Math.Abs(edge) >= MinEdge;
+                // Cần CẢ hai: tách được khỏi nhiễu, VÀ đủ lớn để đáng nói. Ở vài trăm ván, 1,5
+                // điểm phần trăm có thể qua được phép kiểm mà chẳng có nghĩa gì với người đọc.
+                var notable = discovered[i] && Math.Abs(edge) >= MinEdge;
 
                 return new MetaHero(
                     h.HeroId, h.Name, h.Games, h.Wins,
@@ -84,46 +92,7 @@ public static class HeroMetaGap
             .ToList();
     }
 
-    /// <summary>
-    /// Xác suất hai phía của việc lệch khỏi p₀ ít nhất bằng mức đã quan sát, theo nhị thức chính xác.
-    ///
-    /// TÍNH TRONG KHÔNG GIAN LOGARIT. Cách viết thẳng — bắt đầu từ (1−p)ⁿ rồi nhân dần — tràn số
-    /// xuống 0 ngay khi n vài trăm, và điều nguy hiểm là nó tràn ÂM THẦM: mọi số hạng sau đó đều
-    /// bằng 0, tổng bằng 0, và bằng 0 thì luôn "đáng nói". Tức là ở đúng những hero chơi nhiều
-    /// nhất — nơi có nhiều dữ liệu nhất — hàm sẽ tuyên bố mọi thứ đều có ý nghĩa.
-    /// </summary>
-    public static double TwoSidedTail(int n, int k, double p)
-    {
-        if (n <= 0) return 1;
-        if (p <= 0) return k > 0 ? 0 : 1;
-        if (p >= 1) return k < n ? 0 : 1;
-
-        var logs = new double[n + 1];
-        var logP = Math.Log(p);
-        var logQ = Math.Log(1 - p);
-
-        logs[0] = n * logQ;
-        for (var i = 0; i < n; i++)
-            logs[i + 1] = logs[i] + Math.Log((double)(n - i) / (i + 1)) + logP - logQ;
-
-        // Mọi kết cục KHÔNG có khả năng xảy ra cao hơn kết cục đã quan sát. Đây là định nghĩa
-        // hai phía của Fisher — đúng cả khi phân phối lệch, khác với lối nhân đôi một phía.
-        var observed = logs[k] + 1e-9;
-        var acc = double.NegativeInfinity;
-
-        for (var i = 0; i <= n; i++)
-            if (logs[i] <= observed)
-                acc = LogAdd(acc, logs[i]);
-
-        return Math.Min(1, Math.Exp(acc));
-    }
-
-    private static double LogAdd(double a, double b)
-    {
-        if (double.IsNegativeInfinity(a)) return b;
-        if (double.IsNegativeInfinity(b)) return a;
-
-        var hi = Math.Max(a, b);
-        return hi + Math.Log(1 + Math.Exp(-Math.Abs(a - b)));
-    }
+    /// <summary>Nhị thức hai phía. Chỉ là lối vào của <see cref="MultipleTests.BinomialTwoSided"/>.</summary>
+    public static double TwoSidedTail(int n, int k, double p) =>
+        MultipleTests.BinomialTwoSided(n, k, p);
 }

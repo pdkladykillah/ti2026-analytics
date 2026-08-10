@@ -107,9 +107,19 @@ public static class ProfileEndpoints
                 m.Kills, m.Deaths, m.Assists, m.GoldPerMin, m.LastHits,
                 m.PartySize, m.AverageRank, m.IsRadiant)).ToList();
 
+            // Chấm "đáng kể" cho CẢ POOL cùng lúc: phép hiệu chỉnh so sánh bội cần biết có bao
+            // nhiêu phép so thực sự, và con số đó chỉ có khi đã gom đủ hero. Người dùng này có
+            // 125 hero đạt ngưỡng số ván — gấp ba lần cỡ pool mà bản trước giả định.
+            var pool = rows
+                .GroupBy(m => m.HeroId)
+                .Select(g => (Games: g.Count(), Wins: g.Count(x => x.Won)))
+                .ToList();
+
+            var poolNotable = PlayerInsights.NotableSet(pool);
+
             var heroes = rows
                 .GroupBy(m => m.HeroId)
-                .Select(g =>
+                .Select((g, idx) =>
                 {
                     var wins = g.Count(x => x.Won);
                     var gpm = g.Where(x => x.GoldPerMin is int).Select(x => (double)x.GoldPerMin!.Value)
@@ -130,7 +140,7 @@ public static class ProfileEndpoints
                                    / (double)Math.Max(deaths, 1), 2),
                         p.Games >= 10 ? Math.Round(p.Gpm) : null,
                         p.Games,
-                        PlayerInsights.Notable(g.Count(), wins));
+                        poolNotable[idx]);
                 })
                 .OrderByDescending(h => h.Games)
                 .ToList();
@@ -284,6 +294,12 @@ public static class ProfileEndpoints
                 // Ngưỡng đi kèm dữ liệu để phần hiển thị không phải viết cứng lại con số — sửa
                 // ngưỡng ở một nơi mà trang vẫn nói đúng.
                 minPartyGames = TeammateAnalysis.MinPartyGames,
+
+                // Vì sao bảng hero có thể KHÔNG đánh dấu hero nào. Một bảng toàn ô trống mà im
+                // lặng sẽ bị đọc thành "hệ thống hỏng", trong khi sự thật là mẫu mỗi hero còn
+                // quá mỏng so với mức nhiễu — và con số dưới đây nói rõ cần bao nhiêu.
+                noticeNeedsGames = MultipleTests.GamesNeeded(pool.Count, 15),
+                noticePoolSize = pool.Count,
 
                 meta = metaRows.Select(h => new
                 {

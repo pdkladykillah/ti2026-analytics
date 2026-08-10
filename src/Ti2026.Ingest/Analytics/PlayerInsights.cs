@@ -38,24 +38,44 @@ public static class PlayerInsights
     /// <summary>Dưới ngần này ván trên một hero thì mọi tỷ lệ đều là nhiễu.</summary>
     public const int MinGamesPerHero = 8;
 
-    /// <summary>Cỡ pool giả định khi hiệu chỉnh so sánh bội — số hero thường xuyên chơi.</summary>
-    public const int TypicalPoolSize = 40;
+    /// <summary>Chênh dưới ngần này điểm phần trăm so với 50% thì không đáng gắn nhãn.</summary>
+    public const double MinWinrateGap = 5.0;
 
     /// <summary>
-    /// Thành tích trên một hero có ĐÁNG NÓI không, sau khi đã tính tới việc ta đang xét cả pool.
-    ///
-    /// Dùng nhị thức chính xác rồi chia ngưỡng cho cỡ pool. Không hiệu chỉnh thì với 40 hero,
-    /// chỉ riêng may rủi đã đủ tạo ra vài hero "thắng 75%" và trang sẽ khen nhầm.
+    /// Số ván tối thiểu để một vai trò được gọi là "hiệu quả nhất". Ở 21 ván, sai số chuẩn của
+    /// tỷ lệ thắng đã là 11 điểm phần trăm — đủ để bất kỳ vai trò nào cũng có thể ngẫu nhiên
+    /// đứng đầu bảng.
     /// </summary>
-    public static bool Notable(int games, int wins, int poolSize = TypicalPoolSize)
+    public const int MinGamesForBestRole = 60;
+
+    /// <summary>
+    /// Hero nào trong pool có thành tích ĐÁNG NÓI, xét CẢ POOL cùng lúc.
+    ///
+    /// PHẢI LÀ HÀM TRÊN CẢ TẬP, không phải hàm trên từng hero. Bản đầu nhận (số ván, số thắng)
+    /// của một hero rồi chia ngưỡng cho một cỡ pool GIẢ ĐỊNH là 40. Hai chỗ sai:
+    ///
+    /// • Cỡ pool giả định không khớp thực tế — người dùng thật có 125 hero đạt ngưỡng số ván.
+    /// • Bonferroni khống chế xác suất mắc DÙ CHỈ MỘT sai lầm, quá chặt cho câu hỏi thăm dò
+    ///   "hero nào nổi bật". Đo trên dữ liệu thật: với 125 hero, KHÔNG hero nào bật — kể cả
+    ///   những hero lệch hơn ba lần sai số chuẩn. Một cột không bao giờ bật thì vô dụng.
+    ///
+    /// Nay dùng Benjamini–Hochberg trên đúng số phép so thực tế. Xem <see cref="MultipleTests"/>.
+    /// </summary>
+    public static bool[] NotableSet(
+        IReadOnlyList<(int Games, int Wins)> pool, double q = MultipleTests.DefaultQ)
     {
-        if (games < MinGamesPerHero) return false;
+        var tails = pool
+            .Select(h => h.Games < MinGamesPerHero
+                ? 1.0
+                : MultipleTests.BinomialTwoSided(h.Games, h.Wins, 0.5))
+            .ToList();
 
-        var tail = wins * 2 >= games
-            ? UpperTailAtHalf(games, wins)
-            : LowerTailAtHalf(games, wins);
+        var discovered = MultipleTests.BenjaminiHochberg(tails, q);
 
-        return tail < 0.05 / Math.Max(poolSize, 1);
+        return pool
+            .Select((h, i) => discovered[i]
+                && Math.Abs(h.Wins * 100.0 / Math.Max(h.Games, 1) - 50) >= MinWinrateGap)
+            .ToArray();
     }
 
     public static List<PlayerInsight> Read(
@@ -148,12 +168,24 @@ public static class PlayerInsights
         {
             var total = exact.Sum(r => r.Games);
             var top = exact.OrderByDescending(r => r.Games).First();
-            var best = exact.OrderByDescending(r => r.Winrate).First();
+
+            // "Vai trò hiệu quả nhất" chỉ được nêu khi vai trò đó có ĐỦ VÁN. Trên dữ liệu thật,
+            // bản đầu chọn pos4 với 21 ván thắng 61,9% và gọi đó là vai trò mạnh nhất — trong khi
+            // ở 21 ván, sai số chuẩn của tỷ lệ thắng đã là 11 điểm phần trăm. Đó là nhiễu được
+            // trình bày như một phát hiện, và tệ hơn là nó khuyên người đọc đi chơi vị trí đó.
+            var best = exact
+                .Where(r => r.Games >= MinGamesForBestRole)
+                .OrderByDescending(r => r.Winrate)
+                .FirstOrDefault();
 
             found.Add(new PlayerInsight("vai-tro", "flat",
                 $"Trong {total:N0} ván có nhãn vị trí thật từ replay, bạn chơi nhiều nhất là "
-                + $"{top.Label} ({top.Games} ván, {top.Winrate:0.0}%), còn hiệu quả nhất là "
-                + $"{best.Label} ({best.Games} ván, {best.Winrate:0.0}%).",
+                + $"{top.Label} ({top.Games} ván, {top.Winrate:0.0}%)."
+                + (best.Games >= MinGamesForBestRole
+                    ? $" Hiệu quả nhất trong số các vai trò đủ mẫu là {best.Label} "
+                      + $"({best.Games} ván, {best.Winrate:0.0}%)."
+                    : $" Chưa vai trò nào đủ {MinGamesForBestRole} ván có nhãn để so hiệu quả — "
+                      + "phần lớn lịch sử chưa được parse nên chưa có vị trí chính xác."),
                 82));
         }
 
@@ -410,12 +442,4 @@ public static class PlayerInsights
         return s.Count % 2 == 1 ? s[m] : (s[m - 1] + s[m]) / 2;
     }
 
-    private static double LowerTailAtHalf(int n, int k)
-    {
-        double total = 0, c = 1;
-        for (var i = 0; i <= k; i++) { total += c; c = c * (n - i) / (i + 1); }
-        return total / Math.Pow(2, n);
-    }
-
-    private static double UpperTailAtHalf(int n, int k) => LowerTailAtHalf(n, n - k);
 }

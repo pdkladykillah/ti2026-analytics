@@ -359,6 +359,15 @@ nav button[aria-selected="true"] {
   font-size: 46px; font-weight: 700;
   line-height: 1.05; margin: var(--s-2) 0 var(--s-1); letter-spacing: -.03em;
 }
+/* TÊN NGƯỜI KHÔNG PHẢI SỐ.
+   Font đơn cách tồn tại để cột số thẳng hàng; ép nó lên một cái tên thì ra một chuỗi
+   giãn đều trông như mã máy — "Whitemon" ở cỡ 46px bằng JetBrains Mono đọc ra sai
+   hẳn giọng. Mọi ô chỉ số chứa CHỮ phải mang thêm lớp này. */
+.kpi-value.word {
+  font-family: var(--font-head); font-weight: 800; letter-spacing: -.02em;
+  font-variant-numeric: normal;
+}
+
 .kpi-team { font-size: 15px; font-weight: 700; }
 .kpi-note { font-size: 14px; opacity: .85; line-height: 1.45; }
 
@@ -396,29 +405,37 @@ nav button[aria-selected="true"] {
    --------------------------------------------------------------------------- */
 .why { margin: var(--s-2) 0 0; }
 
-/* NÚT CHỮ, KHÔNG PHẢI VIÊN THUỐC TÔ MÀU.
-   Bản trước làm nó thành một viên thuốc nền vàng viền vàng, và vì nó là thứ DUY
-   NHẤT còn lại khi khối đã gấp nên cả trang đầy những chấm vàng đòi chú ý — trong
-   khi nội dung nó dẫn tới lại là phần phụ. Một nút chữ có gạch chân chấm thì vẫn
-   đọc ra "bấm được" mà không tranh chỗ với con số. */
+/* DẤU HỎI TRÒN + CHỮ MỜ. Không nền, không viền, không gạch chân chấm.
+   Ba lần thử trước đều sai theo cùng một hướng: viên thuốc vàng, rồi viên thuốc
+   nhạt, rồi chữ gạch chân chấm — cái nào cũng là một MẢNG đòi chú ý cho phần phụ
+   nhất trên trang. Gạch chân chấm còn tệ riêng: mắt đọc nó ra "chữ sai chính tả".
+
+   Dấu "?" tròn nhỏ là quy ước ai cũng hiểu, chiếm đúng 18px, và tự nó nói "bấm vào
+   đây để biết thêm" mà không cần một chữ nào phải to lên. Khi mở thì nó thành "×" —
+   cùng một chỗ, cùng một kích thước, nên không có gì nhảy. */
 .why > summary {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 7px;
   cursor: pointer; list-style: none;
-  font-family: var(--font-body); font-size: 14.5px; font-weight: 700;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
   color: var(--muted);
-  border-bottom: 1px dotted currentColor;
-  padding: 2px 0; min-height: 28px; width: fit-content;
+  padding: 3px 0; min-height: 26px; width: fit-content;
   transition: color .15s var(--ease);
 }
 .why > summary::-webkit-details-marker { display: none; }
 .why > summary::marker { content: ""; }
-.why > summary:hover { color: var(--accent-ink); }
 
-/* Mũi tên xoay — dấu hiệu duy nhất cho biết khối này còn mở ra được nữa. */
-.why > summary::after {
-  content: "▾"; font-size: 11px; transition: transform .18s var(--ease);
+.why > summary::before {
+  content: "?";
+  display: inline-grid; place-items: center; flex: none;
+  width: 19px; height: 19px; border-radius: 50%;
+  background: var(--surface-2); color: var(--ink-2);
+  font-size: 12px; font-weight: 800; line-height: 1;
+  transition: background .15s var(--ease), color .15s var(--ease);
 }
-.why[open] > summary::after { transform: rotate(180deg); }
+.why[open] > summary::before { content: "\00d7"; }
+
+.why > summary:hover { color: var(--ink); }
+.why > summary:hover::before { background: var(--accent); color: var(--on-accent); }
 .why[open] > summary { color: var(--ink-2); }
 
 .why-body {
@@ -636,8 +653,13 @@ select, input[type="search"], input[type="text"] {
    lên (5,18:1, đã kiểm), không phải một vòng viền vàng bao quanh — vòng viền chính
    là thứ vừa bị chê nặng nét. Cả trang chỉ nên có MỘT chỗ được đối xử như vậy.
    --------------------------------------------------------------------------- */
-.idhead { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); flex-wrap: wrap; }
-.idhead .desc { flex: 1 1 18rem; }
+/* XẾP DỌC, KHÔNG DÀN NGANG.
+   Bản trước dùng space-between nên phần giải thích bị đẩy lên nằm ngang hàng với ô
+   chọn người — một mảnh trôi nổi cạnh điều khiển chính, không gắn với thứ gì và
+   tranh chỗ với đúng thứ quan trọng nhất. Nhãn → ô chọn → giải thích, theo đúng
+   thứ tự đọc và đúng thứ tự quan trọng. */
+.idhead { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+.idhead .desc { margin: 0; }
 
 .idpick { display: flex; flex-direction: column; gap: 5px; }
 
@@ -1212,7 +1234,43 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .idol-block h3 .desc { text-transform: none; letter-spacing: 0; }
 
 .idol-diffs { margin: 0 0 var(--s-4); padding-left: 1.1rem; display: grid; gap: 6px; }
-.idol-diffs li { font-size: 13.5px; color: var(--ink-2); }
+.idol-diffs li { font-size: 15px; color: var(--ink-2); }
+
+/* ---- Hero pool: một hàng mỗi người, không phải một bảng mỗi người ----
+   Xem ghi chú ở idolHeroes() trong app.js: 12 bảng dọc là khoảng 100 dòng phải cuộn
+   qua để trả lời một câu hỏi vốn nhìn là ra. */
+.pool-list { display: grid; gap: var(--s-3); }
+
+.pool-row {
+  display: grid; grid-template-columns: minmax(9rem, 13rem) 1fr;
+  gap: var(--s-4); align-items: center;
+  padding-bottom: var(--s-3);
+}
+.pool-row + .pool-row { border-top: 1px solid var(--border); padding-top: var(--s-3); }
+
+.pool-who { display: grid; gap: 1px; min-width: 0; }
+.pool-who b { font-size: 17px; }
+.pool-who .desc { font-size: 13px; margin: 0; line-height: 1.35; }
+
+.pool-heroes { display: flex; gap: 7px; flex-wrap: wrap; }
+
+.pool-hero { position: relative; display: inline-flex; line-height: 0; }
+.pool-hero img { border-radius: 7px; }
+
+/* Số ván ĐÈ LÊN góc ảnh thay vì thành một cột riêng — cột riêng thì buộc phải có
+   bảng, mà bảng chính là thứ đang gây cuộn. */
+.pool-n {
+  position: absolute; right: 2px; bottom: 2px;
+  font-family: var(--font-num); font-size: 11px; font-weight: 700; line-height: 1;
+  background: var(--surface); color: var(--ink-2);
+  padding: 2px 4px; border-radius: 5px;
+  box-shadow: var(--shadow-sm);
+}
+.pool-n.top { background: var(--accent); color: var(--on-accent); }
+
+@media (max-width: 620px) {
+  .pool-row { grid-template-columns: 1fr; gap: var(--s-2); }
+}
 
 /* Dòng người gần nhất. Tô nền CHỨ KHÔNG chỉ in đậm: bảng đã có nhiều số in đậm sẵn nên đậm thêm
    một dòng không nổi lên được. Kèm viền trái để còn phân biệt khi nền bị chủ đề làm nhạt. */

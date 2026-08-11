@@ -2938,7 +2938,7 @@ async function loadSchedule() {
       <div class="bento">
         <article class="kpi p2">
           <div class="kpi-label">Trạng thái</div>
-          <div class="kpi-value"><span class="run-dot ${state[1]}" aria-hidden="true"></span>${state[0]}</div>
+          <div class="kpi-value word"><span class="run-dot ${state[1]}" aria-hidden="true"></span>${state[0]}</div>
           <div class="kpi-note">${esc(state[2])}</div>
         </article>
         <article class="kpi p3">
@@ -3673,7 +3673,7 @@ function idolMeBlock(d) {
   return `<div class="bento">
       <article class="kpi p4">
         <div class="kpi-label">Gần bạn nhất ở ${esc(ROLE_VN[closest.role] || closest.role)}</div>
-        <div class="kpi-value">${esc(near ? near.name : '—')}</div>
+        <div class="kpi-value word">${esc(near ? near.name : '—')}</div>
         <div class="kpi-note">khoảng cách ${fmt(closest.distance, 2)} trên ${closest.sharedAxes} trục
           chung — càng nhỏ càng giống</div>
       </article>
@@ -3695,19 +3695,39 @@ function idolMeBlock(d) {
       hoàn toàn đứng ngang hàng với cùng con số đó ở dòng &ldquo;thi đấu&rdquo;.</p>`;
 }
 
+/**
+ * Hero pool: MỘT HÀNG mỗi người, ảnh hero xếp ngang.
+ *
+ * Bản trước dựng 12 cái bảng dọc, mỗi bảng 8 dòng ba cột — tức khoảng 100 dòng phải
+ * cuộn qua để trả lời một câu hỏi vốn nhìn là ra. Sai ở chỗ chọn dạng trình bày:
+ * hero là thứ TRỰC QUAN, người ta nhận ra bằng hình chứ không đọc tên; và câu hỏi
+ * thật là "pool của người này rộng hay hẹp, gồm những gì" — một dải ảnh trả lời
+ * được ngay, còn bảng thì bắt đọc tuần tự.
+ *
+ * Số ván nằm đè góc mỗi ảnh thay vì thành một cột riêng: cột riêng buộc phải có
+ * bảng, mà bảng chính là thứ đang gây cuộn.
+ */
 function idolHeroes(d) {
-  return d.idols.map((x) => `<div class="idol-block">
-    <h3>${esc(x.name)} <span class="desc">— ${n0(x.heroPool.covering80)} hero phủ 80% của
-      ${n0(x.window.games)} ván</span></h3>
-    <div class="table-scroll"><table>
-      <thead><tr><th>Hero</th><th class="num">Ván</th><th class="num">Thắng</th></tr></thead>
-      <tbody>${x.heroPool.top.map((h) => `<tr>
-        <td class="hero-cell">${heroImg(h.image)}<span>${esc(h.name)}</span></td>
-        <td class="num">${n0(h.games)}</td>
-        <td class="num">${h.games >= 5 ? fmt((100 * h.wins) / h.games, 0) + '%' : '—'}</td>
-      </tr>`).join('')}</tbody>
-    </table></div>
-  </div>`).join('');
+  return `<div class="pool-list">${d.idols.map((x) => {
+    const role = x.role ? (ROLE_VN[x.role.role] || x.role.role) : '';
+    const max = Math.max(...x.heroPool.top.map((h) => h.games), 1);
+
+    return `<div class="pool-row">
+      <div class="pool-who">
+        <b>${esc(x.name)}</b>
+        <span class="desc">${esc(role)}</span>
+        <span class="desc"><b>${n0(x.heroPool.covering80)}</b> hero phủ 80%
+          · ${n0(x.heroPool.distinct)} hero khác nhau</span>
+      </div>
+      <div class="pool-heroes">${x.heroPool.top.map((h) => {
+        const wr = h.games >= 5 ? Math.round((100 * h.wins) / h.games) + '%' : 'ít ván';
+        return `<span class="pool-hero" title="${esc(h.name)} — ${n0(h.games)} ván, thắng ${wr}">
+          ${heroImg(h.image, 52, 29)}
+          <span class="pool-n${h.games === max ? ' top' : ''}">${n0(h.games)}</span>
+        </span>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 async function loadIdols(accountId) {
@@ -4074,7 +4094,7 @@ const getOptimize = () => (optimizeOnce ??= getJson('api/fantasy/optimize'));
 function rosterCard(p) {
   return `<article class="kpi p3">
     <div class="kpi-label">${esc(p.positionName || p.slot)}</div>
-    <div class="kpi-value">${esc(p.nick)}</div>
+    <div class="kpi-value word">${esc(p.nick)}</div>
     <div class="kpi-note">${esc(p.teamName || '—')}<br>${p.bannerPoints} điểm banner · ${p.matches} trận
       ${p.banner ? `<br><span style="font-size:.9em">${bannerSlots(p.banner)}</span>` : ''}</div>
   </article>`;
@@ -4594,8 +4614,12 @@ function foldExplanations() {
     // một lỗ. Chỉ nhận khi đoạn văn bắt đầu đúng bằng nó, và đủ ngắn để làm nhãn.
     const lead = el.querySelector('b');
     const leadText = lead ? lead.textContent.trim() : '';
+    // 64 ký tự, không phải 42. Với kiểu "dấu ? tròn + chữ mờ" thì một nhãn dài đọc ra
+    // như một câu có dấu hỏi đứng trước, hoàn toàn ổn — còn cắt ở 42 thì những câu mở
+    // đầu hữu ích nhất ("Mọi con số ở đây là tỉ số, không phải số thô") bị rơi về
+    // "vì sao?", và người đọc mất đúng phần cho biết bên trong là gì.
     const isOpening = leadText.length > 0
-      && leadText.length <= 42
+      && leadText.length <= 64
       && (el.textContent || '').trim().startsWith(leadText);
 
     const label = isOpening ? leadText.replace(/[.:]$/, '') : 'vì sao?';

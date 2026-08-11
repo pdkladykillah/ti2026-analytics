@@ -215,7 +215,8 @@ public static class ProfileEndpoints
             var trade = DeathTrade.Read(rows.Select(m => new TradeGame(
                 m.FightsDied, m.FightsDiedAhead, m.FightSwingDied,
                 m.FightsSurvived, m.FightSwingSurvived,
-                m.TradeMyGold, m.TradeFoeGold, m.TradeFoeDeaths)));
+                m.TradeMyGold, m.TradeFoeGold, m.TradeFoeDeaths,
+                roleOf[m.Id].Code, roleOf[m.Id].Label)));
 
             // ---------- Hero pool đặt cạnh meta ----------
             // Mốc là bậc rank CAO chứ không phải toàn bộ pub: người dùng ở Ancient, còn tỷ lệ
@@ -351,6 +352,11 @@ public static class ProfileEndpoints
                     trades = trade.Value.Trades,
                     minTrades = DeathTrade.MinTrades,
                     text = trade.Value.Text,
+                    byRole = trade.Value.ByRole.Select(r => new
+                    {
+                        role = r.Role, label = r.Label, trades = r.Trades,
+                        myGold = r.MyGold, foeGold = r.FoeGold, goldEdge = r.GoldEdge,
+                    }).ToList(),
                 },
 
                 roles = roles.Select(r => new

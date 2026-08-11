@@ -15,8 +15,52 @@ public class DeathTradeTests
 {
     private static TradeGame G(
         int died, int ahead, int swingDied, int survived = 10, int swingSurvived = 0,
-        int myGold = 0, int foeGold = 0, int foeDeaths = 0) =>
-        new(died, ahead, swingDied, survived, swingSurvived, myGold, foeGold, foeDeaths);
+        int myGold = 0, int foeGold = 0, int foeDeaths = 0, string role = "") =>
+        new(died, ahead, swingDied, survived, swingSurvived, myGold, foeGold, foeDeaths,
+            role, role);
+
+    /// <summary>
+    /// Chênh độ giàu khi đổi mạng gần như HOÀN TOÀN do vai trò quyết định — đo trên dữ liệu thật
+    /// thì carry −4.027 / mid −2.410 / pos4 +931 / pos5 +2.603, và người thứ hai ra cùng một
+    /// hình. Hỗ trợ vốn nghèo hơn theo định nghĩa nên chết rẻ là đương nhiên, không phải thành
+    /// tích. Con số gộp vì thế đo "hay chơi vai trò nào" chứ không đo "cái chết có đáng không",
+    /// và bảng tách theo vai trò là thứ duy nhất đọc được.
+    /// </summary>
+    [Fact]
+    public void Tach_duoc_doi_chac_theo_vai_tro()
+    {
+        var games = new List<TradeGame>();
+
+        // Core: chết đắt. Hỗ trợ: chết rẻ. Cùng một người, hai vai trò.
+        for (var i = 0; i < 20; i++)
+            games.Add(G(died: 5, ahead: 1, swingDied: 0,
+                myGold: 24_000, foeGold: 18_000, foeDeaths: 2, role: "pos1"));
+        for (var i = 0; i < 20; i++)
+            games.Add(G(died: 5, ahead: 2, swingDied: 0,
+                myGold: 10_000, foeGold: 18_000, foeDeaths: 2, role: "pos5"));
+
+        var by = DeathTrade.Read(games)!.Value.ByRole.ToDictionary(r => r.Role);
+
+        by["pos1"].GoldEdge.Should().Be(-3_000, "carry chết đắt");
+        by["pos5"].GoldEdge.Should().Be(4_000, "hỗ trợ chết rẻ");
+        by["pos1"].Trades.Should().Be(40);
+    }
+
+    [Fact]
+    public void Vai_tro_qua_it_luot_doi_thi_khong_dung_rieng_thanh_dong()
+    {
+        var games = Enumerable.Repeat(
+            G(died: 10, ahead: 5, swingDied: 0, myGold: 5_000, foeGold: 9_000,
+              foeDeaths: 1, role: "pos4"), 10).ToList();
+        games.AddRange(Enumerable.Repeat(
+            G(died: 10, ahead: 5, swingDied: 0, myGold: 50_000, foeGold: 90_000,
+              foeDeaths: 10, role: "pos2"), 10));
+
+        var by = DeathTrade.Read(games)!.Value.ByRole;
+
+        by.Should().ContainSingle().Which.Role.Should().Be("pos2",
+            "pos4 mới có 10 lượt đổi, dưới ngưỡng 30");
+    }
 
     [Fact]
     public void Ty_le_pha_van_loi_tinh_tren_so_pha_co_ta_chet()

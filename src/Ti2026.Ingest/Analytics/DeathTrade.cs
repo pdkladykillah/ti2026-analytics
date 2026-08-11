@@ -1,10 +1,16 @@
 namespace Ti2026.Ingest.Analytics;
 
 /// <summary>Phần đổi chác giao tranh của một ván đã parse.</summary>
+/// <param name="Role">Mã vai trò của ván đó, để tách bảng — xem <see cref="RoleResolver"/>.</param>
 public readonly record struct TradeGame(
     int? FightsDied, int? FightsDiedAhead, int? FightSwingDied,
     int? FightsSurvived, int? FightSwingSurvived,
-    int? TradeMyGold, int? TradeFoeGold, int? TradeFoeDeaths);
+    int? TradeMyGold, int? TradeFoeGold, int? TradeFoeDeaths,
+    string Role = "", string RoleLabel = "");
+
+/// <summary>Đổi chác của riêng một vai trò.</summary>
+public readonly record struct TradeByRole(
+    string Role, string Label, int Trades, int MyGold, int FoeGold, int GoldEdge);
 
 /// <param name="AheadShare">Tỷ lệ pha có ta chết mà đội VẪN lời vàng, tính theo phần trăm.</param>
 /// <param name="SwingDied">Chênh lệch vàng trung bình mỗi pha có ta chết. Dương = đội vẫn lời.</param>
@@ -13,7 +19,8 @@ public readonly record struct TradeGame(
 /// <param name="FoeGold">Độ giàu trung bình của kẻ địch chết trong CHÍNH những pha đó.</param>
 public readonly record struct TradeReading(
     int Matches, int Fights, double AheadShare, int SwingDied, int SwingSurvived,
-    int MyGold, int FoeGold, int GoldEdge, int Trades, string Text);
+    int MyGold, int FoeGold, int GoldEdge, int Trades, string Text,
+    List<TradeByRole> ByRole);
 
 /// <summary>
 /// CÁI CHẾT CỦA TA ĐỔI ĐƯỢC GÌ, đo ở mức TỪNG PHA GIAO TRANH.
@@ -72,7 +79,40 @@ public static class DeathTrade
         return new TradeReading(
             g.Count, fights, Math.Round(share, 1), swingDied, swingSurv,
             myGold, foeGold, foeGold - myGold, trades,
-            Describe(fights, share, swingDied, swingSurv, trades, myGold, foeGold));
+            Describe(fights, share, swingDied, swingSurv, trades, myGold, foeGold),
+            ByRole(g));
+    }
+
+    /// <summary>
+    /// Tách đổi chác theo VAI TRÒ — và đây là lát cắt duy nhất đọc được của phần này.
+    ///
+    /// Đo trên dữ liệu thật, chênh độ giàu khi đổi mạng gần như HOÀN TOÀN do vai trò quyết định,
+    /// giống hệt nhau ở cả hai người được theo dõi:
+    ///
+    ///   carry −4.027 / −1.928   mid −2.410 / −1.003   pos4 +931 / +2.765   pos5 +2.603 / +2.351
+    ///
+    /// Nghĩa là con số gộp không đo "cái chết của người này có đáng không" — nó đo "người này hay
+    /// chơi vai trò nào". Hỗ trợ vốn nghèo hơn theo định nghĩa nên chết rẻ là chuyện đương nhiên,
+    /// không phải thành tích.
+    ///
+    /// Vẫn hiện bảng vì tách ra thì nó nói đúng điều nó đo được; và ghi rõ giới hạn đó ngay cạnh,
+    /// thay vì để con số gộp một mình gợi ra một kết luận nó không đỡ nổi.
+    /// </summary>
+    private static List<TradeByRole> ByRole(List<TradeGame> games)
+    {
+        return games
+            .Where(x => (x.TradeFoeDeaths ?? 0) > 0 && !string.IsNullOrEmpty(x.Role))
+            .GroupBy(x => (x.Role, x.RoleLabel))
+            .Select(g =>
+            {
+                var n = g.Sum(x => x.TradeFoeDeaths!.Value);
+                var my = g.Sum(x => x.TradeMyGold ?? 0) / n;
+                var foe = g.Sum(x => x.TradeFoeGold ?? 0) / n;
+                return new TradeByRole(g.Key.Role, g.Key.RoleLabel, n, my, foe, foe - my);
+            })
+            .Where(r => r.Trades >= MinTrades)
+            .OrderByDescending(r => r.Trades)
+            .ToList();
     }
 
     private static string Describe(

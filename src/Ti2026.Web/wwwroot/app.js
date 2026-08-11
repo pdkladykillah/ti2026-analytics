@@ -1178,9 +1178,26 @@ function tradeBlock(d) {
             `mới ${n0(t.trades)}/${n0(t.minTrades)} lượt đổi, chưa đủ để nói`)}
     </div>
     <p class="desc" style="margin-top:var(--s-3)">${esc(t.text)}</p>
-    <p class="desc">Vẫn là <b>tương quan</b>: pha bạn chết mà đội lời cũng có thể là pha đội vốn
-      đã mạnh hơn, chứ không phải nhờ cái chết. Và replay của Valve hết hạn sau khoảng hai tháng
-      nên phần lịch sử xa sẽ không bao giờ có dữ liệu này.</p>`;
+    ${(t.byRole || []).length ? `
+      <p class="desc" style="margin:var(--s-3) 0 var(--s-2)"><b>Nhưng chênh độ giàu ở trên gần
+        như chỉ phản ánh VAI TRÒ, không phải chất lượng cái chết.</b> Hỗ trợ vốn nghèo hơn theo
+        định nghĩa nên chết rẻ là đương nhiên, không phải thành tích. Tách ra thì thấy ngay:</p>
+      <div class="table-scroll"><table>
+        <thead><tr>
+          <th scope="col">Vai trò</th><th scope="col">Lượt đổi</th>
+          <th scope="col">Bạn có</th><th scope="col">Kẻ chết cùng pha</th><th scope="col">Chênh</th>
+        </tr></thead>
+        <tbody>${t.byRole.map((r) => `<tr>
+          <td>${esc(r.label)}</td>
+          <td class="num mu">${n0(r.trades)}</td>
+          <td class="num">${n0(r.myGold)}</td>
+          <td class="num">${n0(r.foeGold)}</td>
+          <td class="num ${r.goldEdge > 0 ? 'cal-good' : 'cal-bad'}">${signed(r.goldEdge)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : ''}
+    <p class="desc" style="margin-top:var(--s-3)">Vẫn là <b>tương quan</b>: pha bạn chết mà đội
+      lời cũng có thể là pha đội vốn đã mạnh hơn, chứ không phải nhờ cái chết. Và replay của Valve
+      hết hạn sau khoảng hai tháng nên phần lịch sử xa sẽ không bao giờ có dữ liệu này.</p>`;
 }
 
 /* --------------------------------- Hero --------------------------------- */

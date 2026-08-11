@@ -124,6 +124,8 @@ public class TrackedPlayerIngester(
             var wl = await client.GetPlayerWinLossAsync(p.AccountId, ct);
             if (wl is not null) { p.Wins = wl.Win; p.Losses = wl.Lose; }
 
+            await SyncHeroesAsync(p, ct);
+
             var matches = await client.GetPlayerMatchesProjectedAsync(
                 p.AccountId, MatchesPerSync, Projected, ct);
 
@@ -212,6 +214,52 @@ public class TrackedPlayerIngester(
             logger.LogWarning(ex, "Không đồng bộ được {Name} ({Id})", p.DisplayName, p.AccountId);
             p.SyncNote = $"Lần đồng bộ gần nhất lỗi: {ex.Message}";
             return 0;
+        }
+    }
+
+    /// <summary>
+    /// Thành tích theo từng hero, gồm cả phần ĐỐI ĐẦU.
+    ///
+    /// Một lời gọi cho mỗi người, thay cho việc lấy lại chi tiết gần mười nghìn ván chỉ để đếm
+    /// xem đã gặp hero nào bao nhiêu lần. OpenDota đã đếm sẵn.
+    ///
+    /// Hỏng ở đây KHÔNG được làm hỏng cả vòng đồng bộ: phần này là tính năng phụ, còn danh sách
+    /// ván mới là phần chính.
+    /// </summary>
+    private async Task SyncHeroesAsync(TrackedPlayer p, CancellationToken ct)
+    {
+        try
+        {
+            var rows = await client.GetPlayerHeroesAsync(p.AccountId, ct);
+            if (rows.Count == 0) return;
+
+            var existing = await db.TrackedPlayerHeroes
+                .Where(h => h.TrackedPlayerId == p.Id)
+                .ToDictionaryAsync(h => h.HeroId, ct);
+
+            foreach (var r in rows)
+            {
+                if (r.HeroId <= 0) continue;
+
+                if (!existing.TryGetValue(r.HeroId, out var row))
+                {
+                    row = new TrackedPlayerHero { TrackedPlayerId = p.Id, HeroId = r.HeroId };
+                    db.TrackedPlayerHeroes.Add(row);
+                    existing[r.HeroId] = row;
+                }
+
+                row.Games = r.Games;
+                row.Wins = r.Win;
+                row.WithGames = r.WithGames;
+                row.WithWins = r.WithWin;
+                row.AgainstGames = r.AgainstGames;
+                row.AgainstWins = r.AgainstWin;
+                row.FetchedAt = DateTime.UtcNow;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Không lấy được thành tích theo hero của {Name}", p.DisplayName);
         }
     }
 

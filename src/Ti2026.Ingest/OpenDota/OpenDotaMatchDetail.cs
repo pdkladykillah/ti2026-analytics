@@ -45,6 +45,15 @@ public class OpenDotaMatchDetail
     /// đội giết được đứa giàu" TỰ NẰM trong con số vàng — không phải ước lượng thêm.
     /// </summary>
     [JsonPropertyName("teamfights")] public List<OpenDotaTeamfight>? Teamfights { get; set; }
+
+    /// <summary>
+    /// Chênh lệch vàng Radiant trừ Dire, theo TỪNG PHÚT. Chỉ có ở ván đã parse.
+    ///
+    /// Đây là thứ trả lời "ván hỏng từ phút nào". Dấu là theo góc nhìn Radiant, nên phải đảo khi
+    /// người được theo dõi đứng phe Dire — quên đảo thì mọi ván Dire sẽ đọc ngược hoàn toàn, và
+    /// không có gì đổ vỡ để báo.
+    /// </summary>
+    [JsonPropertyName("radiant_gold_adv")] public List<int>? RadiantGoldAdv { get; set; }
 }
 
 public class OpenDotaTeamfight

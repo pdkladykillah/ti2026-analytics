@@ -35,6 +35,17 @@ public class OpenDotaClient(HttpClient http)
         GetOneAsync<OpenDotaWinLoss>($"players/{accountId}/wl", ct);
 
     /// <summary>
+    /// Thành tích theo từng hero: tự chơi, chơi CÙNG phe, và ĐỐI ĐẦU.
+    ///
+    /// Endpoint này là cách rẻ đến bất ngờ để trả lời "hero nào khắc chế tôi". Cách hiển nhiên là
+    /// lưu danh sách hero phe địch của từng ván rồi tự đếm — nhưng thế là phải lấy lại chi tiết
+    /// cả gần mười nghìn ván. Ở đây OpenDota đã đếm sẵn: MỘT lời gọi cho mỗi người, trả về đủ
+    /// 127 hero kèm số ván đối đầu và số ván thắng.
+    /// </summary>
+    public Task<List<OpenDotaPlayerHero>> GetPlayerHeroesAsync(long accountId, CancellationToken ct) =>
+        GetListAsync<OpenDotaPlayerHero>($"players/{accountId}/heroes", ct);
+
+    /// <summary>
     /// Ván của một người, hỏi KÈM TÊN TRƯỜNG.
     ///
     /// Không có project= thì endpoint chỉ trả match_id, hero, thời gian, kết quả và K/D/A —
@@ -101,17 +112,10 @@ public class OpenDotaClient(HttpClient http)
     }
 
     /// <summary>
-    /// constants/items trả về đối tượng khoá theo tên item, không phải mảng — nên không dùng
-    /// được <see cref="GetListAsync{T}"/>.
-    /// </summary>
-    /// <summary>
     /// Hồ sơ công khai của một người chơi. Ném <see cref="HttpRequestException"/> khi hồ sơ để
     /// riêng tư hoặc id không tồn tại — tầng trên phải phân biệt được hai chuyện đó với "gọi
     /// được nhưng người này chưa chơi hero nào".
     /// </summary>
-    public Task<List<OpenDotaPlayerHero>> GetPlayerHeroesAsync(long accountId, CancellationToken ct) =>
-        GetListAsync<OpenDotaPlayerHero>($"players/{accountId}/heroes", ct);
-
     public async Task<OpenDotaPlayerProfile?> GetPlayerAsync(long accountId, CancellationToken ct)
     {
         using var res = await http.GetAsync($"players/{accountId}", ct);
@@ -119,6 +123,10 @@ public class OpenDotaClient(HttpClient http)
         return await res.Content.ReadFromJsonAsync<OpenDotaPlayerProfile>(Json, ct);
     }
 
+    /// <summary>
+    /// constants/items trả về đối tượng khoá theo tên item, không phải mảng — nên không dùng
+    /// được <see cref="GetListAsync{T}"/>.
+    /// </summary>
     public async Task<Dictionary<string, OpenDotaItem>> GetItemsAsync(CancellationToken ct)
     {
         using var res = await http.GetAsync("constants/items", ct);

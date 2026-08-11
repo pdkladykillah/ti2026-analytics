@@ -218,6 +218,34 @@ public static class ProfileEndpoints
                 m.TradeMyGold, m.TradeFoeGold, m.TradeFoeDeaths,
                 roleOf[m.Id].Code, roleOf[m.Id].Label)));
 
+            // ---------- Chơi lúc nào thì hay ----------
+            // Chạy trên dữ liệu ĐÃ CÓ, không thêm một lời gọi nào, và phủ toàn bộ lịch sử chứ
+            // không riêng phần đã parse.
+            var habits = PlayHabits.Read(rows
+                .Select(m => new HabitGame(
+                    m.StartTime, m.DurationSeconds, m.Won, m.PctLastHits, m.PctDeaths))
+                .ToList());
+
+            // ---------- Giai đoạn lane ----------
+            var lane = LanePhase.Read(rows
+                .Select(m => new LaneGame(
+                    m.Won, roleOf[m.Id].Code, roleOf[m.Id].Label,
+                    m.LaneEfficiency, m.GoldAdv10, m.GoldAdv20, m.GoldAdv30))
+                .ToList());
+
+            // ---------- Hero nào khắc chế ----------
+            // Số liệu đối đầu lấy từ players/{id}/heroes — MỘT lời gọi, thay cho việc lấy lại
+            // chi tiết gần mười nghìn ván chỉ để đếm hero phe địch.
+            var facedRows = await db.TrackedPlayerHeroes
+                .Where(h => h.TrackedPlayerId == me.Id && h.AgainstGames > 0)
+                .ToListAsync();
+
+            var nemesis = NemesisHeroes.Read(
+                facedRows.Select(h => new FacedHero(
+                    h.HeroId, heroNames.GetValueOrDefault(h.HeroId, $"#{h.HeroId}"),
+                    h.AgainstGames, h.AgainstWins)),
+                lifetime);
+
             // ---------- Hero pool đặt cạnh meta ----------
             // Mốc là bậc rank CAO chứ không phải toàn bộ pub: người dùng ở Ancient, còn tỷ lệ
             // thắng gộp cả Herald tới Immortal là một quần thể khác hẳn.
@@ -372,6 +400,55 @@ public static class ProfileEndpoints
                     year = e.Year, games = e.Games, labelled = e.Labelled,
                     safe = e.Safe, mid = e.Mid, off = e.Off, jungle = e.Jungle,
                     thin = e.Labelled < RoleBreakdown.MinLabelledPerYear,
+                }).ToList(),
+
+                habits = habits is null ? null : new
+                {
+                    sessions = habits.Value.Sessions,
+                    gamesPerSession = habits.Value.GamesPerSession,
+                    rated = habits.Value.Rated,
+                    breakMinutes = PlayHabits.SessionBreakMinutes,
+                    tilt = habits.Value.Tilt is not TiltReading t ? null : new
+                    {
+                        gamesAfterWin = t.GamesAfterWin, gamesAfterLoss = t.GamesAfterLoss,
+                        farmAfterWin = t.FarmAfterWin, farmAfterLoss = t.FarmAfterLoss,
+                        farmGap = t.FarmGap, farmP = Math.Round(t.FarmP, 5),
+                        surviveAfterWin = t.SurviveAfterWin, surviveAfterLoss = t.SurviveAfterLoss,
+                        surviveGap = t.SurviveGap, surviveP = Math.Round(t.SurviveP, 5),
+                        minGap = PlayHabits.MinGap,
+                    },
+                    byPosition = habits.Value.ByPosition.Select(r => new
+                    {
+                        position = r.Position, isTail = r.IsTail, games = r.Games,
+                        farm = r.Farm, survive = r.Survive, winrate = r.Winrate,
+                    }).ToList(),
+                    byHour = habits.Value.ByHour.Select(r => new
+                    {
+                        hour = r.Hour, games = r.Games,
+                        farm = r.Farm, survive = r.Survive, winrate = r.Winrate,
+                    }).ToList(),
+                },
+
+                lanePhase = lane is null ? null : new
+                {
+                    games = lane.Value.Games,
+                    verdict = lane.Value.Verdict,
+                    text = lane.Value.Text,
+                    sides = lane.Value.Sides.Select(s => new
+                    {
+                        outcome = s.Outcome, games = s.Games, efficiency = s.Efficiency,
+                        adv10 = s.Adv10, adv20 = s.Adv20, adv30 = s.Adv30,
+                    }).ToList(),
+                    byRole = lane.Value.ByRole.Select(r => new
+                    {
+                        role = r.Role, label = r.Label, games = r.Games, efficiency = r.Efficiency,
+                    }).ToList(),
+                },
+
+                nemesis = nemesis.Select(n => new
+                {
+                    heroId = n.HeroId, name = n.Name, games = n.Games,
+                    winrate = n.Winrate, edge = n.Edge, notable = n.Notable,
                 }).ToList(),
 
                 // Ngưỡng đi kèm dữ liệu để phần hiển thị không phải viết cứng lại con số — sửa

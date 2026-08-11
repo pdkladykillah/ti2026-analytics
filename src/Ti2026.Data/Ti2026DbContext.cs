@@ -24,6 +24,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<TrackedPlayer> TrackedPlayers => Set<TrackedPlayer>();
     public DbSet<TrackedPlayerMatch> TrackedPlayerMatches => Set<TrackedPlayerMatch>();
     public DbSet<TrackedMatchTeammate> TrackedMatchTeammates => Set<TrackedMatchTeammate>();
+    public DbSet<TrackedPlayerHero> TrackedPlayerHeroes => Set<TrackedPlayerHero>();
     public DbSet<League> Leagues => Set<League>();
     public DbSet<DraftEvent> DraftEvents => Set<DraftEvent>();
     public DbSet<ItemPurchase> ItemPurchases => Set<ItemPurchase>();
@@ -103,6 +104,13 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<TrackedPlayerMatch>().HasIndex(x => x.StartTime);
         b.Entity<TrackedPlayerMatch>().HasIndex(x => x.HeroId);
         b.Entity<TrackedPlayerMatch>()
+            .HasOne(x => x.TrackedPlayer).WithMany()
+            .HasForeignKey(x => x.TrackedPlayerId).OnDelete(DeleteBehavior.Cascade);
+
+        // Một người + một hero là duy nhất. Thiếu chốt này thì mỗi vòng ingest lại thêm 127 dòng
+        // mới và bảng phình lên mà mọi con số vẫn "đúng" ở dòng mới nhất.
+        b.Entity<TrackedPlayerHero>().HasIndex(x => new { x.TrackedPlayerId, x.HeroId }).IsUnique();
+        b.Entity<TrackedPlayerHero>()
             .HasOne(x => x.TrackedPlayer).WithMany()
             .HasForeignKey(x => x.TrackedPlayerId).OnDelete(DeleteBehavior.Cascade);
 

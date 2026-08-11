@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace Ti2026.Ingest.OpenDota;
 
@@ -114,6 +114,17 @@ public class OpenDotaPlayerHero
     [JsonPropertyName("games")] public int Games { get; set; }
     [JsonPropertyName("win")] public int Win { get; set; }
     [JsonPropertyName("last_played")] public long? LastPlayed { get; set; }
+
+    /// <summary>Số ván có hero này CÙNG PHE, do đồng đội cầm.</summary>
+    [JsonPropertyName("with_games")] public int WithGames { get; set; }
+    [JsonPropertyName("with_win")] public int WithWin { get; set; }
+
+    /// <summary>
+    /// Số ván ĐỐI ĐẦU hero này. Đây là mẫu số của câu "hero nào khắc chế tôi" — thiếu nó thì
+    /// hero phổ biến sẽ luôn đứng đầu bảng chỉ vì gặp nhiều, chứ không phải vì khắc chế.
+    /// </summary>
+    [JsonPropertyName("against_games")] public int AgainstGames { get; set; }
+    [JsonPropertyName("against_win")] public int AgainstWin { get; set; }
 }
 
 /// <summary>players/{id}/wl — tổng thắng thua toàn bộ lịch sử.</summary>

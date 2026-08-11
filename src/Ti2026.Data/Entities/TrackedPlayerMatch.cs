@@ -205,6 +205,27 @@ public class TrackedPlayerMatch
     /// <summary>Số kẻ địch đã chết trong những pha đó — mẫu số cho <see cref="TradeFoeGold"/>.</summary>
     public int? TradeFoeDeaths { get; set; }
 
+    // ---------- Giai đoạn lane, CHỈ có ở ván đã parse ----------
+    //
+    // VÌ SAO PHẦN NÀY ĐẶC BIỆT SẠCH. Mọi chỉ số khác trên trang đều đo lúc ván đã kết thúc, nên
+    // so giữa ván thắng và ván thua luôn vướng vòng nhân quả: thắng thì chỉ số nào cũng đẹp.
+    // Còn hiệu suất lane và chênh lệch vàng ở phút 10 được đo TRƯỚC KHI ván ngã ngũ — nên so
+    // giữa thắng và thua ở mốc đó nói được điều thật: bạn thua từ lane, hay thắng lane rồi mất.
+
+    /// <summary>
+    /// lane_efficiency_pct của OpenDota: phần tài nguyên lane thực sự lấy được, tính theo phần trăm.
+    /// </summary>
+    public int? LaneEfficiency { get; set; }
+
+    /// <summary>Chênh lệch vàng hai phe ở phút 10, theo góc nhìn PHE TA. Dương = ta dẫn.</summary>
+    public int? GoldAdv10 { get; set; }
+
+    /// <summary>Như trên, ở phút 20.</summary>
+    public int? GoldAdv20 { get; set; }
+
+    /// <summary>Như trên, ở phút 30. null khi ván kết thúc trước đó.</summary>
+    public int? GoldAdv30 { get; set; }
+
     /// <summary>4 người cùng phe. Rỗng khi ván chưa lấy chi tiết, hoặc khi cả 4 đều ẩn danh.</summary>
     public List<TrackedMatchTeammate> Teammates { get; set; } = [];
 }

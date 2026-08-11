@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Ti2026.Data;
 
@@ -10,9 +11,11 @@ using Ti2026.Data;
 namespace Ti2026.Data.Migrations
 {
     [DbContext(typeof(Ti2026DbContext))]
-    partial class Ti2026DbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811072701_AddTrackedPlayerHeroes")]
+    partial class AddTrackedPlayerHeroes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
@@ -1107,15 +1110,6 @@ namespace Ti2026.Data.Migrations
                     b.Property<int?>("GameMode")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("GoldAdv10")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("GoldAdv20")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("GoldAdv30")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int?>("GoldPerMin")
                         .HasColumnType("INTEGER");
 
@@ -1132,9 +1126,6 @@ namespace Ti2026.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Kills")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("LaneEfficiency")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("LaneRole")

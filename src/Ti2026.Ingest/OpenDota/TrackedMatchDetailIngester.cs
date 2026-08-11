@@ -176,6 +176,7 @@ public class TrackedMatchDetailIngester(
                 ReadBenchmarks(row, me);
                 ReadTeamEconomy(row, me, all);
                 ReadFights(row, detail, me, all);
+                ReadLanePhase(row, detail, me);
                 SaveTeammates(row, me, team, savedMates);
 
                 row.DetailFetchedAt = DateTime.UtcNow;
@@ -416,6 +417,36 @@ public class TrackedMatchDetailIngester(
         row.TradeMyGold = myGold;
         row.TradeFoeGold = foeGold;
         row.TradeFoeDeaths = foeDeaths;
+    }
+
+    /// <summary>
+    /// Giai đoạn lane: hiệu suất lane, và chênh lệch vàng hai phe ở phút 10, 20, 30.
+    ///
+    /// PHẦN NÀY SẠCH HƠN MỌI CHỈ SỐ KHÁC TRÊN TRANG, và lý do đáng ghi lại: mọi thứ khác đo lúc
+    /// ván đã kết thúc nên so giữa thắng và thua luôn vướng vòng nhân quả — thắng thì chỉ số nào
+    /// cũng đẹp. Mốc phút 10 thì đo TRƯỚC KHI ván ngã ngũ, nên chênh lệch giữa ván thắng và ván
+    /// thua ở đó nói được điều thật: thua từ lane, hay thắng lane rồi mất về sau.
+    ///
+    /// DẤU PHẢI ĐẢO KHI Ở PHE DIRE. radiant_gold_adv là Radiant trừ Dire; quên đảo thì mọi ván
+    /// Dire đọc ngược hoàn toàn — và vì gần nửa số ván là Dire, kết quả sẽ trung hoà về 0 mà
+    /// trông vẫn hợp lý.
+    /// </summary>
+    private static void ReadLanePhase(
+        Data.Entities.TrackedPlayerMatch row, OpenDotaMatchDetail detail, OpenDotaMatchPlayer me)
+    {
+        if (me.LaneEfficiencyPct is double eff)
+            row.LaneEfficiency = (int)Math.Round(eff);
+
+        var adv = detail.RadiantGoldAdv;
+        if (adv is null || adv.Count == 0) return;
+
+        var sign = me.PlayerSlot < 128 ? 1 : -1;
+
+        int? At(int minute) => minute < adv.Count ? adv[minute] * sign : null;
+
+        row.GoldAdv10 = At(10);
+        row.GoldAdv20 = At(20);
+        row.GoldAdv30 = At(30);
     }
 
     /// <summary>Vàng tích luỹ của một người tại giây <paramref name="seconds"/>, hoặc null.</summary>

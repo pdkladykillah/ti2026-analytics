@@ -974,11 +974,21 @@ async function setupProfile() {
   loadProfile(sel.value);
 }
 
+/**
+ * Mọi khung của trang hồ sơ, khai MỘT chỗ.
+ *
+ * Trước đây danh sách này được viết lại ở hai nơi, và thêm một mục con là phải nhớ sửa cả hai —
+ * quên một chỗ thì khung mới không được xoá khi đổi người, và người xem thấy dữ liệu của người
+ * trước nằm lại trong đúng mục đó.
+ */
+const PROFILE_PANES =
+  ['overview', 'roles', 'lane', 'heroes', 'habits', 'mates', 'months', 'insights'];
+
 async function loadProfile(accountId) {
   // Khung xương đặt ở mục ĐANG MỞ, không phải luôn ở mục đầu: người dùng có thể đang đứng ở
   // "Đồng đội" rồi đổi người, và nếu chỉ mục Tổng quan báo đang tải thì họ nhìn vào một bảng
   // cũ của người cũ mà tưởng đó là dữ liệu mới.
-  ['overview', 'roles', 'heroes', 'mates', 'months', 'insights'].forEach((k) => {
+  PROFILE_PANES.forEach((k) => {
     const el = $('#profile-' + k);
     if (el) el.innerHTML = '<div class="skeleton" style="height:220px"></div>';
   });
@@ -1000,8 +1010,7 @@ function renderProfile(d) {
   if (!d.ready) {
     pane('head').innerHTML =
       `<div class="empty">${esc(d.note || d.syncNote || 'Chưa có dữ liệu.')}</div>`;
-    ['overview', 'roles', 'heroes', 'mates', 'months', 'insights']
-      .forEach((k) => { pane(k).innerHTML = ''; });
+    PROFILE_PANES.forEach((k) => { const el = pane(k); if (el) el.innerHTML = ''; });
     return;
   }
 
@@ -1031,7 +1040,9 @@ function renderProfile(d) {
 
   pane('overview').innerHTML = headlines(d) + skillBlock(d);
   pane('roles').innerHTML = roleBlock(d) + deathBlock(d) + eraBlock(d);
-  pane('heroes').innerHTML = heroBlock(d);
+  pane('lane').innerHTML = laneBlock(d);
+  pane('heroes').innerHTML = heroBlock(d) + nemesisBlock(d);
+  pane('habits').innerHTML = habitBlock(d);
   pane('mates').innerHTML = matesBlock(d);
   pane('months').innerHTML = monthBlock(d);
 
@@ -1200,6 +1211,126 @@ function tradeBlock(d) {
       hết hạn sau khoảng hai tháng nên phần lịch sử xa sẽ không bao giờ có dữ liệu này.</p>`;
 }
 
+/* ------------------------------ Giai đoạn lane ------------------------------ */
+
+const LANE_VERDICT = {
+  'thua-tu-lane': ['warn', 'Ván thua của bạn lệch ngay từ lane'],
+  'mat-ve-sau': ['flat', 'Bạn KHÔNG thua từ lane — chênh lệch mở ra ở đoạn sau'],
+  'khong-du-du-lieu': ['flat', 'Chưa đủ ván đã parse để so'],
+};
+
+/**
+ * Giai đoạn lane — mục sạch nhất trang, và lý do đáng nói ra.
+ *
+ * Mọi chỉ số khác đo lúc ván đã kết thúc nên so giữa thắng và thua luôn vướng vòng nhân quả:
+ * thắng thì cái gì cũng đẹp. Mốc phút 10 đo TRƯỚC khi ván ngã ngũ, nên chênh lệch ở đó nói được
+ * điều thật.
+ */
+function laneBlock(d) {
+  const l = d.lanePhase;
+  if (!l) {
+    return `<div class="empty">Chưa có ván nào đã parse. Chỉ ván còn trong cửa sổ replay
+      (~2 tháng) mới có dữ liệu giai đoạn lane.</div>`;
+  }
+
+  const [tone, headline] = LANE_VERDICT[l.verdict] || LANE_VERDICT['khong-du-du-lieu'];
+
+  return `<h3 style="margin-top:0">Bạn thua từ lane, hay thắng lane rồi mất?</h3>
+    <p class="desc" style="margin:0 0 var(--s-3)">Đây là mục <b>ít nhiễu nhất</b> trong cả trang.
+      Mọi chỉ số khác đo lúc ván đã xong, nên so giữa ván thắng và ván thua thì thắng cái gì cũng
+      đẹp — vòng nhân quả đó đã lật kết luận bốn lần ở các mục khác. Còn hiệu suất lane và chênh
+      vàng ở phút 10 được đo <b>trước khi ván ngã ngũ</b>. Chỉ tính ${n0(l.games)} ván đã parse.</p>
+    <div class="insight-card"><ul><li class="tone-${esc(tone)}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round">${TONE_ICON[tone] || TONE_ICON.flat}</svg>
+      <span>${esc(headline)}</span>
+    </li></ul></div>
+    ${l.sides.length ? `<div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">Nhóm ván</th><th scope="col">Ván</th><th scope="col">Hiệu suất lane</th>
+        <th scope="col">Vàng phút 10</th><th scope="col">Phút 20</th><th scope="col">Phút 30</th>
+      </tr></thead>
+      <tbody>${l.sides.map((s) => `<tr>
+        <td>${esc(s.outcome)}</td>
+        <td class="num mu">${n0(s.games)}</td>
+        <td class="num">${n0(s.efficiency)}%</td>
+        <td class="num ${s.adv10 > 0 ? 'cal-good' : s.adv10 < 0 ? 'cal-bad' : ''}">${s.adv10 === null ? '—' : signed(s.adv10)}</td>
+        <td class="num ${s.adv20 > 0 ? 'cal-good' : s.adv20 < 0 ? 'cal-bad' : ''}">${s.adv20 === null ? '—' : signed(s.adv20)}</td>
+        <td class="num ${s.adv30 > 0 ? 'cal-good' : s.adv30 < 0 ? 'cal-bad' : ''}">${s.adv30 === null ? '—' : signed(s.adv30)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>` : ''}
+    <p class="desc" style="margin-top:var(--s-3)">${esc(l.text)}</p>
+    ${l.byRole.length ? `<h4 style="margin:var(--s-5) 0 var(--s-2)">Hiệu suất lane theo vai trò</h4>
+      <p class="desc" style="margin:0 0 var(--s-2)">Hỗ trợ vốn lấy được ít tài nguyên lane hơn
+        theo định nghĩa, nên chỉ so trong cùng một vai trò mới có nghĩa.</p>
+      <div class="table-scroll"><table>
+        <thead><tr><th scope="col">Vai trò</th><th scope="col">Ván</th>
+          <th scope="col">Hiệu suất lane</th></tr></thead>
+        <tbody>${l.byRole.map((r) => `<tr>
+          <td>${esc(r.label)}</td><td class="num mu">${n0(r.games)}</td>
+          <td class="num">${n0(r.efficiency)}%</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : ''}`;
+}
+
+/* ------------------------------- Nhịp chơi ------------------------------- */
+
+function habitBlock(d) {
+  const h = d.habits;
+  if (!h) return '<div class="empty">Chưa đủ ván để đọc nhịp chơi.</div>';
+
+  const t = h.tilt;
+  const tiltCard = !t ? '' : (() => {
+    const real = Math.abs(t.farmGap) >= t.minGap && t.farmP < 0.05;
+    const tone = !real ? 'flat' : t.farmGap < 0 ? 'warn' : 'good';
+    const text = real
+      ? `Sau khi THUA, phân vị ăn lính của bạn ${t.farmGap < 0 ? 'tụt' : 'tăng'}
+         ${Math.abs(t.farmGap)} điểm (${t.farmAfterLoss} so với ${t.farmAfterWin} sau khi thắng),
+         qua ${n0(t.gamesAfterLoss)} ván. Chênh này đã khớp theo VÁN THỨ MẤY trong phiên, nên nó
+         không phải là phần mỏi.`
+      : `Sau khi thua bạn chơi gần như không khác: ${t.farmAfterLoss} so với ${t.farmAfterWin}.
+         Không có dấu hiệu tilt.`;
+    return `<div class="insight-card"><ul><li class="tone-${tone}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round">${TONE_ICON[tone] || TONE_ICON.flat}</svg>
+      <span>${esc(text.replace(/\s+/g, ' ').trim())}</span>
+    </li></ul></div>`;
+  })();
+
+  const table = (title, rows, label) => !rows.length ? '' : `
+    <h4 style="margin:var(--s-5) 0 var(--s-2)">${esc(title)}</h4>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">${esc(label)}</th><th scope="col">Ván</th>
+        <th scope="col">Ăn lính</th><th scope="col">Giữ mạng</th><th scope="col">Thắng</th>
+      </tr></thead>
+      <tbody>${rows.map((r) => `<tr>
+        <td>${esc(r.name)}</td>
+        <td class="num mu">${n0(r.games)}</td>
+        <td class="num ${r.farm >= 60 ? 'cal-good' : r.farm <= 40 ? 'cal-bad' : ''}">${r.farm}</td>
+        <td class="num ${r.survive >= 60 ? 'cal-good' : r.survive <= 40 ? 'cal-bad' : ''}">${r.survive}</td>
+        <td class="num mu">${fmt(r.winrate, 1, '%')}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+
+  return `<h3 style="margin-top:0">Bạn chơi hay nhất lúc nào</h3>
+    <p class="desc" style="margin:0 0 var(--s-3)">Đo bằng <b>phân vị</b>, không đo bằng tỷ lệ
+      thắng — hệ thống ghép trận ghim tỷ lệ thắng quanh 50% bất kể chơi hay hay dở, nên hỏi bằng
+      nó thì câu trả lời luôn là "không có gì". Phiên chơi = các ván cách nhau dưới
+      ${n0(h.breakMinutes)} phút; con số đó lấy từ chính phân bố khoảng nghỉ của bạn, nơi có một
+      khe rất rõ giữa "chơi liền tay" và "nghỉ hẳn". Tổng ${n0(h.sessions)} phiên, trung bình
+      ${fmt(h.gamesPerSession, 2)} ván mỗi phiên.</p>
+    ${tiltCard}
+    ${table('Ván thứ mấy trong phiên',
+        h.byPosition.map((r) => ({ ...r, name: r.isTail ? `ván ${r.position} trở đi` : `ván ${r.position}` })),
+        'Thứ tự')}
+    ${table('Giờ trong ngày',
+        h.byHour.map((r) => ({ ...r, name: `${String(r.hour).padStart(2, '0')}–${String(r.hour + 3).padStart(2, '0')}h` })),
+        'Khung giờ')}
+    <p class="desc" style="margin-top:var(--s-3)">Giờ theo múi giờ Việt Nam. Gộp thành khối 4
+      tiếng chứ không tách từng giờ: 24 giờ là 24 phép so, vừa mỏng vừa dính lỗi so sánh bội.</p>`;
+}
+
 /* --------------------------------- Hero --------------------------------- */
 
 /**
@@ -1248,6 +1379,55 @@ function heroBlock(d) {
         `<b>${esc(u.name)}</b> (${fmt(u.metaWinrate, 1, '%')})`).join(', ')}.
       Cố ý không gọi đây là "nên học" — một hero mạnh ở mức chung chưa chắc hợp với vị trí hay
       lối chơi của bạn, và trang không có cách nào biết điều đó.</p>` : ''}`;
+}
+
+/**
+ * Hero nào khắc chế bạn — ĐỐI ĐẦU, không phải tự cầm.
+ *
+ * Cái bẫy là đếm số lần bị giết: nó chỉ đo hero nào PHỔ BIẾN. Gặp Pudge 400 lần thì tất nhiên
+ * Pudge giết bạn nhiều hơn hero bạn chỉ gặp 40 lần. Mẫu số mới là thứ quan trọng, và OpenDota
+ * đã đếm sẵn nên không tốn thêm lời gọi nào.
+ */
+function nemesisBlock(d) {
+  const rows = d.nemesis || [];
+  if (!rows.length) return '';
+
+  const worst = rows.slice(0, 8);
+  const best = rows.slice(-8).reverse();
+
+  const table = (title, list, note) => `
+    <h4 style="margin:var(--s-5) 0 var(--s-2)">${esc(title)}</h4>
+    <p class="desc" style="margin:0 0 var(--s-2)">${note}</p>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">Hero</th><th scope="col">Ván gặp</th>
+        <th scope="col">Bạn thắng</th><th scope="col">So với nền</th>
+      </tr></thead>
+      <tbody>${list.map((h) => `<tr>
+        <td>${esc(h.name)}${h.notable ? ' <b title="Chênh lệch đã vượt ngưỡng nhiễu">★</b>' : ''}</td>
+        <td class="num mu">${n0(h.games)}</td>
+        <td class="num">${fmt(h.winrate, 1, '%')}</td>
+        <td class="num ${h.edge > 0 ? 'cal-good' : h.edge < 0 ? 'cal-bad' : ''}">${signed(h.edge, 1)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+
+  const anyStar = rows.some((h) => h.notable);
+
+  return `<h3 style="margin-top:var(--s-6)">Khi bạn ĐỐI ĐẦU hero này</h3>
+    <p class="desc" style="margin:0 0 var(--s-3)">Khác hẳn bảng trên — bảng trên là hero bạn tự
+      cầm, bảng này là hero <b>phe địch</b>. Cột cuối là tỷ lệ thắng khi gặp hero đó trừ đi tỷ lệ
+      thắng nền của bạn (${fmt(d.me.lifetimeWinrate, 1, '%')}), chứ không phải trừ 50% — người
+      thắng 55% mà gặp hero X chỉ thắng 52% thì hero đó vẫn đang khắc họ.
+      ${anyStar ? 'Dấu ★ là chênh lệch đã vượt ngưỡng nhiễu sau khi tính tới cả 127 hero.'
+        : '<b>Chưa hero nào vượt ngưỡng ★</b> — 127 hero là 127 phép so, nên cần cách biệt rất lớn mới kết luận được. Các con số dưới đây vẫn thật, chỉ là chưa đủ để tuyên bố.'}</p>
+    ${table('Khắc bạn nhất', worst,
+      'Xếp theo chênh lệch, khắc nhất lên đầu.')}
+    ${table('Bạn dễ thở nhất', best,
+      'Mặt còn lại của cùng một bảng.')}
+    <p class="desc" style="margin-top:var(--s-3)">Số ván đối đầu lấy từ toàn bộ lịch sử theo
+      OpenDota, nên không khớp tuyệt đối với các bảng khác vốn tính trên phần đã lưu. Và đây là
+      ĐỐI ĐẦU, không phải nhân quả: một hero khắc bạn có thể chỉ vì bản thân nó đang mạnh ở bậc
+      rank này — đặt cạnh cột "Mức chung" ở bảng hero pool để tách hai chuyện đó.</p>`;
 }
 
 /* ---------------------------- Theo thời gian ---------------------------- */

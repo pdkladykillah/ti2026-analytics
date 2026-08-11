@@ -89,10 +89,18 @@ public class StaticAssetTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
         var profile = html[html.IndexOf("id=\"view-profile\"", StringComparison.Ordinal)..];
         profile = profile[..profile.IndexOf("</section>", StringComparison.Ordinal)];
 
-        foreach (var sec in new[] { "Tổng quan", "Vai trò", "Hero", "Đồng đội", "Theo thời gian", "Nhận định" })
+        foreach (var sec in new[]
+                 {
+                     "Tổng quan", "Vai trò", "Giai đoạn lane", "Hero", "Nhịp chơi",
+                     "Đồng đội", "Theo thời gian", "Nhận định",
+                 })
             profile.Should().Contain($"data-sec=\"{sec}\"", $"mục con '{sec}' đã biến mất");
 
-        foreach (var id in new[] { "head", "overview", "roles", "heroes", "mates", "months", "insights" })
+        foreach (var id in new[]
+                 {
+                     "head", "overview", "roles", "lane", "heroes", "habits",
+                     "mates", "months", "insights",
+                 })
             profile.Should().Contain($"id=\"profile-{id}\"", $"khung profile-{id} đã biến mất");
     }
 }

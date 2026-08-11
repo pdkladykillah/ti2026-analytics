@@ -28,7 +28,7 @@ public class IdolIngesterTests : IDisposable
     /// Trả đúng một chi tiết ván cho mọi match id, và ĐẾM số lời gọi mạng — số đếm đó là cách duy
     /// nhất phân biệt "đã rút tồn đọng" với "đã bỏ qua vì cửa còn đóng".
     /// </summary>
-    private sealed class DetailHandler : HttpMessageHandler
+    private sealed class DetailHandler(int lobbyType = 1, long leagueId = 17000) : HttpMessageHandler
     {
         public int MatchCalls { get; private set; }
         public int ListCalls { get; private set; }
@@ -42,7 +42,7 @@ public class IdolIngesterTests : IDisposable
             if (path.Contains("/matches/"))
             {
                 MatchCalls++;
-                json = Detail(long.Parse(path[(path.LastIndexOf('/') + 1)..]));
+                json = Detail(long.Parse(path[(path.LastIndexOf('/') + 1)..]), lobbyType, leagueId);
             }
             else if (path.EndsWith("/matches"))
             {
@@ -65,7 +65,7 @@ public class IdolIngesterTests : IDisposable
         /// Malr1ne và ATF — đúng hình dạng dữ liệu thật, nơi Malr1ne và ATF cùng đội Falcons nên
         /// ván thi đấu của họ là cùng một ván.
         /// </summary>
-        private static string Detail(long matchId)
+        private static string Detail(long matchId, int lobbyType, long leagueId)
         {
             long[] seats = [94054712, 898455820, 183719386, 904, 905, 302214028, 907, 908, 909, 910];
 
@@ -91,8 +91,8 @@ public class IdolIngesterTests : IDisposable
                   "radiant_win": true,
                   "duration": 2400,
                   "start_time": 1750000000,
-                  "lobby_type": 1,
-                  "leagueid": 17000,
+                  "lobby_type": {{lobbyType}},
+                  "leagueid": {{leagueId}},
                   "game_mode": 2,
                   "patch": 57,
                   "radiant_name": "Tundra Esports",
@@ -287,6 +287,46 @@ public class IdolIngesterTests : IDisposable
 
         (await db.IdolPlayers.CountAsync()).Should()
             .Be(IdolIngester.Seed.Length, "khoá theo account_id nên không tạo thêm người trùng");
+    }
+
+    /// <summary>
+    /// Tên phòng chờ pub KHÔNG được trở thành tên đội.
+    ///
+    /// Đã xảy ra thật trên dữ liệu sản xuất: Topson hiện lên với đội "Sniper monkeys" — tên một
+    /// nhóm pub — nằm ngay cạnh Team Falcons và Team Spirit như thể ngang hàng. Nguyên nhân là bản
+    /// đầu chỉ kiểm "trường tên có rỗng không", dựa trên một ghi chú tự khẳng định rằng ván xếp
+    /// hạng luôn để trống hai trường đó. Phòng chờ pub đặt được tên, nên leagueid mới là thứ phân
+    /// biệt giải đấu với một nhóm bạn tự gọi mình là gì.
+    /// </summary>
+    [Fact]
+    public async Task Ten_phong_cho_pub_khong_tro_thanh_ten_doi()
+    {
+        await using var db = NewDb();
+
+        db.IdolPlayers.Add(new IdolPlayer
+        {
+            AccountId = 94054712, Name = "Topson", NameKey = "TOPSON",
+            MatchesFetchedAt = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var idol = await db.IdolPlayers.FirstAsync();
+        db.IdolMatches.Add(new IdolMatch
+        {
+            IdolPlayerId = idol.Id, MatchId = 8_333_333, HeroId = 10,
+            StartTime = DateTime.UtcNow, Won = true, IsRadiant = true, LobbyType = 7,
+        });
+        await db.SaveChangesAsync();
+
+        // Ván xếp hạng: leagueid 0 nhưng VẪN có tên phe — đúng hình dạng đã gặp thật.
+        await Make(db, new DetailHandler(lobbyType: 7, leagueId: 0)).IngestAsync(CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        (await db.IdolPlayers.SingleAsync(x => x.AccountId == 94054712)).TeamName.Should()
+            .BeNull("leagueid bằng 0 nên tên phe chỉ là tên phòng chờ, không phải tên đội");
+
+        // Và ván xếp hạng vẫn phải neo — vào hồ pub của idol, không vào hồ pro.
+        (await db.StyleAnchors.SingleAsync()).Pool.Should().Be(IdolIngester.IdolPubPool);
     }
 
     /// <summary>

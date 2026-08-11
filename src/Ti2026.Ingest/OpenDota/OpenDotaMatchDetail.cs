@@ -75,11 +75,16 @@ public class OpenDotaMatchDetail
     [JsonPropertyName("game_mode")] public int? GameMode { get; set; }
 
     /// <summary>
-    /// Tên đội hai phe. Chỉ có ở ván giải, null ở ván xếp hạng.
+    /// Tên hai phe.
     ///
-    /// Đây là nguồn tên đội DUY NHẤT không tốn thêm lời gọi nào: players/{id} không trả về đội,
-    /// còn proPlayers thì trả về cả 5.127 tuyển thủ chỉ để lấy một chuỗi. Đọc từ ván thi đấu gần
-    /// nhất của chính người đó thì vừa miễn phí vừa là số đo chứ không phải giá trị gán tay sẽ mục.
+    /// KHÔNG PHẢI CHỈ VÁN GIẢI MỚI CÓ. Bản đầu của ghi chú này khẳng định ván xếp hạng luôn để
+    /// trống hai trường, và đó là điều đã bị dữ liệu thật bác: phòng chờ pub cũng đặt được tên, và
+    /// Topson hiện lên với "Sniper monkeys" — tên một nhóm pub, đứng cạnh Team Falcons như thể
+    /// ngang hàng. Muốn tên ĐỘI thì phải lọc theo leagueid khác 0, không phải theo "trường có rỗng
+    /// hay không".
+    ///
+    /// Vẫn là nguồn tên đội duy nhất không tốn thêm lời gọi nào: players/{id} không trả về đội,
+    /// còn proPlayers thì trả cả 5.127 tuyển thủ chỉ để lấy một chuỗi.
     /// </summary>
     [JsonPropertyName("radiant_name")] public string? RadiantName { get; set; }
 

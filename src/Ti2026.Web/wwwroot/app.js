@@ -3630,11 +3630,16 @@ function idolMeBlock(d) {
   const closest = d.matchups[0];
   const idolOf = (id) => d.idols.find((x) => x.id === id);
 
+  // Cột NHÁNH là cột quan trọng nhất bảng này, không phải cột trang trí. Trên dữ liệu thật,
+  // người gần nhất lại là người duy nhất có dữ liệu từ ván xếp hạng — và so pub với pub thì cùng
+  // loại ván hơn hẳn so pub với ván thi đấu. Không hiện cột này thì bảng ngầm bảo bốn dòng đứng
+  // ngang hàng nhau, trong khi một dòng được lợi thế mà người đọc không hề biết.
   const list = d.matchups.map((m, i) => {
     const x = idolOf(m.idolId);
     return `<tr${i === 0 ? ' class="row-hi"' : ''}>
       <td><b>${esc(x ? x.name : m.idolId)}</b></td>
       <td>${esc(ROLE_VN[m.role] || m.role)}</td>
+      <td>${x && x.track === 'pub' ? 'xếp hạng' : 'thi đấu'}</td>
       <td class="num">${fmt(m.distance, 2)}</td>
       <td class="num">${m.sharedAxes}</td>
       <td>${esc(m.diffs.slice(0, 2).map((f) => {
@@ -3661,13 +3666,18 @@ function idolMeBlock(d) {
     <h3>Ba trục lệch nhất so với ${esc(near ? near.name : 'người gần nhất')}</h3>
     <ul class="idol-diffs">${top}</ul>
     <div class="table-scroll"><table>
-      <thead><tr><th>Idol</th><th>Vai trò</th><th class="num">Khoảng cách</th>
+      <thead><tr><th>Idol</th><th>Vai trò</th><th>Nhánh dữ liệu</th><th class="num">Khoảng cách</th>
         <th class="num">Trục chung</th><th>Lệch nhiều nhất ở</th></tr></thead>
       <tbody>${list}</tbody>
     </table></div>
     <p class="desc">Khoảng cách là trung bình trị tuyệt đối của hiệu <b>log</b> giữa hai chỉ số.
       Dùng log vì đây là tỉ số: gấp đôi và bằng một nửa phải lệch như nhau, mà hiệu thường thì
-      không — và bảng này sẽ nghiêng có hệ thống về phía người vượt trội.</p>`;
+      không — và bảng này sẽ nghiêng có hệ thống về phía người vượt trội.</p>
+    <p class="desc">Đọc cột <b>nhánh dữ liệu</b> trước khi đọc khoảng cách. Người có dữ liệu từ ván
+      <b>xếp hạng</b> đang được so pub-với-pub, tức cùng loại ván với bạn hơn hẳn; người có dữ liệu
+      <b>thi đấu</b> thì phép so phải bắc qua hai thang khác nhau. Hệ neo đã trừ phần lớn chênh
+      lệch đó, nhưng không trừ hết — nên một khoảng cách nhỏ ở dòng &ldquo;xếp hạng&rdquo; không
+      hoàn toàn đứng ngang hàng với cùng con số đó ở dòng &ldquo;thi đấu&rdquo;.</p>`;
 }
 
 function idolHeroes(d) {

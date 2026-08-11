@@ -303,9 +303,16 @@ public class IdolIngester(
                 && MakeAnchor(pool, detail) is { } anchor)
                 db.StyleAnchors.Add(anchor);
 
-            // Tên đội đọc từ ván THI ĐẤU mới nhất có tên — ván xếp hạng để trống hai trường này.
+            // Tên đội CHỈ đọc từ ván có leagueid thật.
+            //
+            // Bản đầu chỉ kiểm "trường tên có rỗng không", vì tài liệu của chính nó ghi rằng ván
+            // xếp hạng luôn để trống hai trường này. SAI: phòng chờ pub cũng đặt được tên, và trên
+            // dữ liệu thật Topson hiện lên với đội "Sniper monkeys" — tên một nhóm pub, đứng ngay
+            // cạnh Team Falcons và Team Spirit như thể ngang hàng. leagueid mới là thứ phân biệt
+            // được giải đấu với phòng chờ tự đặt tên.
             var side = row.IsRadiant ? detail.RadiantName : detail.DireName;
-            if (!string.IsNullOrWhiteSpace(side)
+            if (row.LeagueId is int league && league != 0
+                && !string.IsNullOrWhiteSpace(side)
                 && (!teamNames.TryGetValue(row.IdolPlayerId, out var cur) || row.StartTime > cur.When))
                 teamNames[row.IdolPlayerId] = (row.StartTime, side);
 

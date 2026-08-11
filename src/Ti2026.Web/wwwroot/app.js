@@ -1030,7 +1030,7 @@ function renderProfile(d) {
       ${n0(m.wins + m.losses)} ván cả đời.</p>`;
 
   pane('overview').innerHTML = headlines(d) + skillBlock(d);
-  pane('roles').innerHTML = roleBlock(d) + eraBlock(d);
+  pane('roles').innerHTML = roleBlock(d) + deathBlock(d) + eraBlock(d);
   pane('heroes').innerHTML = heroBlock(d);
   pane('mates').innerHTML = matesBlock(d);
   pane('months').innerHTML = monthBlock(d);
@@ -1078,6 +1078,59 @@ function roleBlock(d) {
         <td class="mu">${r.exact ? 'nhãn replay' : 'suy từ thứ hạng tài sản'}</td>
       </tr>`).join('')}</tbody>
     </table></div>`;
+}
+
+/* --------------------- Cái chết có đổi được gì không --------------------- */
+
+const DEATH_VERDICT = {
+  'ho-tro': ['good', 'Có: ván bạn chết nhiều là ván đồng đội farm tốt hơn — ở CẢ ván thắng lẫn ván thua.'],
+  'phan-bac': ['warn', 'Không: ván bạn chết nhiều là ván đồng đội farm KÉM hơn, ở cả hai loại kết quả.'],
+  'khong-ro': ['flat', 'Chưa kết luận được: ván thắng và ván thua nói ngược nhau, nên đây là hai hiệu ứng khác nhau chứ không phải một quy luật.'],
+  'khong-du-du-lieu': ['flat', 'Chưa đủ ván ở cả hai nhóm thắng và thua để so.'],
+};
+
+/**
+ * Trả lời "cái chết của tôi có tạo ra khoảng trống cho đồng đội không" bằng kinh tế đồng đội.
+ *
+ * Không dùng chỉ số hỗ trợ: nó chỉ ghi nhận việc CÓ MẶT lúc hạ gục, mà người đã chết thì không
+ * thể có mặt ở pha hạ gục sau đó.
+ */
+function deathBlock(d) {
+  const de = d.deathEffect;
+  if (!de || !de.splits || !de.splits.length) return '';
+
+  const [tone, verdict] = DEATH_VERDICT[de.verdict] || DEATH_VERDICT['khong-ro'];
+
+  return `<h3 style="margin-top:var(--s-5)">Cái chết của bạn có đổi được gì không</h3>
+    <p class="desc" style="margin:0 0 var(--s-3)">Câu này KHÔNG trả lời được bằng chỉ số hỗ trợ —
+      hỗ trợ chỉ ghi nhận việc có mặt lúc hạ gục, mà người đã chết thì không thể có mặt ở pha hạ
+      gục sau đó. Thứ đo được là <b>mức farm của 4 đồng đội trong chính ván đó</b>: nếu lối chơi
+      hi sinh có hiệu quả thì ván bạn chết nhiều phải là ván đồng đội giàu hơn thường lệ.
+      So trong <b>cùng một kết quả trận</b>, vì thắng thua kéo mọi chỉ số đi theo.</p>
+    <div class="insight-card"><ul><li class="tone-${esc(tone)}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round">${TONE_ICON[tone] || TONE_ICON.flat}</svg>
+      <span>${esc(verdict)}</span>
+    </li></ul></div>
+    <div class="table-scroll"><table>
+      <thead><tr>
+        <th scope="col">Nhóm ván</th><th scope="col">Ván</th>
+        <th scope="col">Bạn chết NHIỀU nhất</th><th scope="col">Bạn chết ÍT nhất</th>
+        <th scope="col">Chênh</th><th scope="col">p</th>
+      </tr></thead>
+      <tbody>${de.splits.map((s) => `<tr>
+        <td>${esc(s.outcome)}</td>
+        <td class="num mu">${n0(s.games)}</td>
+        <td class="num">${s.highDeathMatesFarm}</td>
+        <td class="num">${s.lowDeathMatesFarm}</td>
+        <td class="num ${s.matesFarmGap > 0 ? 'cal-good' : s.matesFarmGap < 0 ? 'cal-bad' : ''}">${signed(s.matesFarmGap)}</td>
+        <td class="num mu">${s.pValue < 0.001 ? '&lt;0,001' : fmt(s.pValue, 3)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <p class="desc" style="margin-top:var(--s-3)">Hai cột giữa là <b>phân vị farm của đồng đội</b>,
+      không phải của bạn. Đây là <b>tương quan trong cùng một ván, không phải nhân quả</b>: ván
+      đồng đội farm tốt cũng có thể là ván bạn dám lao vào hơn vì biết đội đang mạnh. Dữ liệu
+      không phân biệt được hai chiều đó.</p>`;
 }
 
 /* --------------------------------- Hero --------------------------------- */

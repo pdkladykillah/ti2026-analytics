@@ -31,7 +31,20 @@ public class IdolPlayer
     public static string MakeNameKey(string name) => name.Trim().ToUpperInvariant();
 
     public string? PersonaName { get; set; }
+
+    /// <summary>
+    /// Tên phe ở ván GIẢI gần nhất của người này — không phải "đội hiện tại".
+    ///
+    /// Hai thứ đó khác nhau thật, và giao diện phải gọi đúng tên: Topson bán nghỉ nên ván giải gần
+    /// nhất của anh đá dưới tên một stack ("Retirement home"), trong khi danh sách tuyển thủ
+    /// chuyên nghiệp của OpenDota vẫn ghi affiliation cũ. Muốn affiliation thì phải gọi proPlayers
+    /// và tải về cả 5.127 người chỉ để lấy một chuỗi — mà đó vẫn là một đại lượng khác.
+    ///
+    /// Điều kiện leagueid khác 0 là bắt buộc: phòng chờ pub cũng đặt được tên, và không lọc thì
+    /// một nhóm pub tên "Sniper monkeys" sẽ hiện ngay cạnh Team Falcons như thể ngang hàng.
+    /// </summary>
     public string? TeamName { get; set; }
+
     public string? AvatarUrl { get; set; }
 
     /// <summary>

@@ -3562,10 +3562,17 @@ function idolCards(d) {
 
     const thin = x.window.games < 25;
 
+    // Tên đội gọi ĐÚNG thứ đang đo: "đội ở ván giải gần nhất", không phải "đội hiện tại".
+    //
+    // Hai thứ đó khác nhau thật. Topson bán nghỉ nên ván giải gần nhất của anh đá dưới tên một
+    // stack, trong khi danh sách tuyển thủ chuyên nghiệp vẫn ghi affiliation cũ. Sửa cái NHÃN cho
+    // khớp phép đo thì đúng cả hai nghĩa; sửa phép đo cho khớp kỳ vọng thì phải thêm một lời gọi
+    // tải về 5.127 tuyển thủ, và vẫn hiện một con số không phải điều ta đang đo.
     return `<article class="kpi p2">
-      <div class="kpi-label">${esc(x.name)}${x.team ? ' · ' + esc(x.team) : ''}</div>
+      <div class="kpi-label">${esc(x.name)}</div>
       <div class="kpi-value">${fmt(x.window.winrate, 0)}%</div>
       <div class="kpi-note">${roleText}<br>${idolWindowText(x)}
+        ${x.team ? `<br>đội ở ván giải gần nhất: <b>${esc(x.team)}</b>` : ''}
         ${thin ? '<br><span class="neg">Mẫu mỏng — đọc như dấu hiệu, không phải số đo.</span>' : ''}
         <br>${n0(x.heroPool.covering80)} hero phủ 80% số ván (${n0(x.heroPool.distinct)} hero khác nhau)
         ${x.note ? '<br><i>' + esc(x.note) + '</i>' : ''}</div>

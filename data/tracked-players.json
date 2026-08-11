@@ -5,6 +5,8 @@
     "",
     "accountId chinh la FRIEND ID hien trong Dota 2 (so 32-bit), khong phai steamID64.",
     "isOwner: chu trang - luon hien dau tien va la nguoi mac dinh khi mo tab.",
+    "displayName: ten hien tren trang. Ten Steam that duoc lay tu OpenDota va hien ben duoi.",
+    "note: ghi chu NOI BO, khong hien ra trang. Chi de nguoi sua file nay biet ai la ai.",
     "",
     "Nguoi choi phai bat 'Expose Public Match Data' trong Dota 2, neu khong OpenDota tra ve",
     "danh sach van RONG chu khong bao loi."
@@ -15,6 +17,11 @@
       "displayName": "PDK",
       "note": "chu trang",
       "isOwner": true
+    },
+    {
+      "accountId": 436836320,
+      "displayName": "nene",
+      "note": "hoc tro - cung la dong doi choi chung nhieu nhat cua PDK (1410 van)"
     }
   ]
 }

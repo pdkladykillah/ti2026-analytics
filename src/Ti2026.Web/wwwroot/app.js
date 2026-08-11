@@ -956,8 +956,11 @@ async function setupProfile() {
   if (!profileReady) {
     try {
       const d = await getJson('api/profile/people');
+      // Chỉ tên. note là ghi chú NỘI BỘ cho người sửa tracked-players.json ("chu trang",
+      // "hoc tro"), không phải nhãn cho người xem — dán nó vào đây làm ô chọn vừa dài vừa lộ
+      // một chuỗi không dấu giữa một trang tiếng Việt có dấu.
       sel.innerHTML = (d.people || []).map((p) =>
-        `<option value="${esc(String(p.accountId))}">${esc(p.name)}${p.note ? ` — ${esc(p.note)}` : ''}</option>`).join('');
+        `<option value="${esc(String(p.accountId))}">${esc(p.name)}</option>`).join('');
       sel.onchange = () => loadProfile(sel.value);
       enhanceSelect(sel, 'Gõ để tìm người…');
       profileReady = true;
@@ -1000,7 +1003,7 @@ function renderProfile(d) {
         : `<span class="pf-avatar logo-fallback">${esc((m.name || '?').charAt(0))}</span>`}
       <div class="pf-id">
         <strong>${esc(m.name)}</strong>
-        <div class="pf-sub">${esc(m.persona || '')}${m.note ? ` · ${esc(m.note)}` : ''}</div>
+        <div class="pf-sub">${esc(m.persona || '')}</div>
       </div>
       <div class="pf-kpis">
         <div><span class="pf-num">${esc(m.rank || '—')}</span><small>hạng</small></div>
@@ -1014,21 +1017,21 @@ function renderProfile(d) {
       trên toàn bộ ${n0(m.wins + m.losses)} ván cả đời.</p>`;
 
   const insights = (d.insights || []).length
-    ? `<h3 style="margin-top:var(--s-5)">Hệ thống đọc được gì</h3>
-       <div class="insight-card"><ul>${d.insights.map((i) => `
+    ? more(`Toàn bộ nhận định của hệ thống`, d.insights.length,
+        `<div class="insight-card"><ul>${d.insights.map((i) => `
          <li class="tone-${esc(i.tone)}">
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                 stroke-linecap="round" stroke-linejoin="round">${TONE_ICON[i.tone] || TONE_ICON.flat}</svg>
            <span>${esc(i.text)}</span>
-         </li>`).join('')}</ul></div>`
+         </li>`).join('')}</ul></div>`)
     : '';
 
   // Cột "so với pro" chỉ có nghĩa khi hero đó pro cũng chơi đủ nhiều — thiếu thì để "—" chứ
   // không điền 0, vì 0 GPM là một khẳng định sai chứ không phải một ô trống.
   const heroes = (d.heroes || []).filter((h) => h.games >= 5);
   const heroTable = heroes.length
-    ? `<h3 style="margin-top:var(--s-5)">Hero pool</h3>
-       <p class="desc" style="margin:0 0 var(--s-3)">Dấu ★ là hero mà cách biệt thắng/thua đã đủ
+    ? more('Hero pool', heroes.length,
+      `<p class="desc" style="margin:0 0 var(--s-3)">Dấu ★ là hero mà cách biệt thắng/thua đã đủ
          lớn để không giải thích được bằng may rủi — đã tính tới việc bạn chơi rất nhiều hero.</p>
        ${noStarNote(d, heroes)}
        <div class="table-scroll"><table>
@@ -1046,15 +1049,15 @@ function renderProfile(d) {
            <td class="num">${fmt(h.lastHitsPerMin, 1)}</td>
            <td class="num">${fmt(h.kda, 2)}</td>
          </tr>`).join('')}</tbody>
-       </table></div>`
+       </table></div>`)
     : '';
 
   const months = (d.months || []);
   const maxG = Math.max(...months.map((x) => x.games), 1);
   const mt = d.monthTrend;
   const trend = months.length
-    ? `<h3 style="margin-top:var(--s-5)">Theo tháng</h3>
-       <div class="pf-months">${months.map((x) => `
+    ? more('Diễn biến theo tháng', months.length,
+      `<div class="pf-months">${months.map((x) => `
          <div class="pf-month${x.thin ? ' thin' : ''}">
            <div class="pf-bar" style="height:${Math.max((x.games / maxG) * 100, 6)}%"
                 title="${n0(x.games)} ván"></div>
@@ -1068,14 +1071,113 @@ function renderProfile(d) {
          tháng đó hay chơi hero nào — một tháng chơi nhiều hỗ trợ sẽ tụt GPM mà chẳng liên quan
          gì tới kỹ năng. Dấu · là tháng chưa đủ 5 ván có phân vị. Tháng mờ là tháng dưới 10 ván —
          vẫn hiện để đường không bị đứt, nhưng đừng đọc nặng.</p>
-       ${mt && mt.text ? `<p class="desc"><b>Xu hướng:</b> ${esc(mt.text)}</p>` : ''}`
+       ${mt && mt.text ? `<p class="desc"><b>Xu hướng:</b> ${esc(mt.text)}</p>` : ''}`)
     : '';
 
-  body.innerHTML = head + insights + skillBlock(d) + metaBlock(d) + matesBlock(d) + eraBlock(d)
-    + trend + heroTable
-    + `<p class="desc" style="margin-top:var(--s-4)">${esc(d.method || '')}</p>`;
+  // THỨ TỰ LÀ CÓ CHỦ Ý: kết luận trước, bằng chứng sau.
+  //
+  // Bản trước xếp bảy khối bảng nối đuôi nhau, ai mở trang cũng phải cuộn qua hàng trăm dòng
+  // hero mới thấy được điều gì đáng biết — mà phần lớn những dòng đó, chính dữ liệu đã cho thấy
+  // là KHÔNG có tín hiệu (xem noStarNote). Giờ: bốn thẻ kết luận, một biểu đồ kỹ năng, rồi mọi
+  // thứ còn lại gập lại cho ai muốn tự soi số.
+  body.innerHTML = head + headlines(d) + skillBlock(d)
+    + insights + metaBlock(d) + matesBlock(d) + eraBlock(d) + trend + heroTable
+    + more('Cách tính và giới hạn của từng con số', 0,
+        `<p class="desc" style="margin:0">${esc(d.method || '')}</p>`);
 
   wireRoleChips(d);
+}
+
+/**
+ * Một khối gập. Số bên phải cho biết bên trong có bao nhiêu dòng, để người đọc quyết định có mở
+ * hay không mà không phải mở ra mới biết.
+ */
+function more(title, count, inner) {
+  return `<details class="pf-more">
+    <summary><span>${esc(title)}</span>${count ? `<b>${n0(count)}</b>` : ''}</summary>
+    <div class="pf-more-body">${inner}</div>
+  </details>`;
+}
+
+/* ------------------------------ Thẻ kết luận ------------------------------ */
+
+/**
+ * Bốn kết luận lớn nhất, đặt ngay đầu trang.
+ *
+ * CHỌN THEO TÍN HIỆU, KHÔNG THEO CHỦ ĐỀ. Dữ liệu thật đã chỉ rõ phần nào nói được và phần nào
+ * không: phân vị kỹ năng dựng trên 5.877 ván nên rất chắc, còn tỷ lệ thắng theo từng hero thì
+ * cần khoảng 140 ván MỖI hero mới tách được khỏi nhiễu — mà trung bình chỉ có 47. Nên bốn thẻ
+ * này chỉ lấy từ phân vị và từ vai trò có nhãn thật; bảng hero xuống dưới, gập lại.
+ *
+ * Thẻ nào không đủ dữ liệu thì KHÔNG hiện, thay vì hiện một ô trống hay một con số bịa — người
+ * mới được theo dõi sẽ chỉ có một hai thẻ, và thế là đúng.
+ */
+function headlines(d) {
+  const all = d.components || [];
+  if (!all.length) {
+    return `<div class="hl-empty">Chưa có ván nào lấy được phân vị. Vòng nạp kế tiếp sẽ lấy
+      bối cảnh cả 10 người của từng ván — sau đó trang này mới chấm được từng mặt kỹ năng.</div>`;
+  }
+
+  // Bỏ những cột mỏng khỏi cuộc đua "mạnh nhất / yếu nhất". Hồi máu chỉ có ở 989/5.877 ván (vì
+  // phân vị của một ván hồi 0 máu là vô nghĩa nên đã bị loại), và để nó tranh ngôi mặt mạnh
+  // nhất là để một cột dựng trên 1/6 dữ liệu nói thay cho cả hồ sơ.
+  const maxGames = Math.max(...all.map((c) => c.games));
+  const solid = all.filter((c) => c.games >= maxGames * 0.5);
+  const pool = solid.length >= 3 ? solid : all;
+
+  const cards = [];
+
+  const best = [...pool].sort((a, b) => b.median - a.median)[0];
+  if (best && best.median >= 55) {
+    cards.push(card('good', 'Mặt mạnh nhất', best.median, best.label,
+      `Hơn ${best.median}% người chơi cùng hero, qua ${n0(best.games)} ván.`));
+  }
+
+  const worst = [...pool].sort((a, b) => a.median - b.median)[0];
+  if (worst && worst.median <= 45 && worst.key !== (best || {}).key) {
+    const roles = (d.componentsByRole || [])
+      .map((r) => (r.components.find((c) => c.key === worst.key) || {}).median)
+      .filter((v) => v !== undefined);
+
+    const everywhere = roles.length >= 3 && roles.every((v) => v <= 50);
+
+    cards.push(card('bad', 'Đáng sửa nhất', worst.median, worst.label,
+      everywhere
+        ? `Thấp ở CẢ ${roles.length} vị trí — đây là thói quen đi theo bạn, không phải chuyện chọn sai vai trò.`
+        : `Dưới mức trung bình của người chơi cùng hero, qua ${n0(worst.games)} ván.`));
+  }
+
+  const moved = all
+    .filter((c) => c.recent !== null && c.recent !== undefined)
+    .map((c) => ({ c, gap: c.recent - c.median }))
+    .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
+
+  if (moved && Math.abs(moved.gap) >= 10) {
+    const up = moved.gap > 0;
+    cards.push(card(up ? 'good' : 'bad', up ? 'Đang lên' : 'Đang xuống',
+      `${up ? '+' : '−'}${Math.abs(moved.gap)}`, moved.c.label,
+      `50 ván gần nhất ở phân vị ${moved.c.recent}, so với ${moved.c.median} tính trên cả lịch sử.`));
+  }
+
+  const role = (d.roles || []).filter((r) => r.exact).sort((a, b) => b.games - a.games)[0];
+  if (role) {
+    cards.push(card('flat', 'Vị trí chính', role.games, role.label,
+      `Ván có nhãn vị trí THẬT đọc từ replay, thắng ${fmt(role.winrate, 1, '%')}.`));
+  }
+
+  if (!cards.length) return '';
+
+  return `<div class="hl-grid">${cards.join('')}</div>`;
+}
+
+function card(tone, kicker, big, title, note) {
+  return `<div class="hl hl-${tone}">
+    <div class="hl-kicker">${esc(kicker)}</div>
+    <div class="hl-big">${typeof big === 'number' ? n0(big) : esc(String(big))}</div>
+    <div class="hl-title">${esc(title)}</div>
+    <div class="hl-note">${esc(note)}</div>
+  </div>`;
 }
 
 /* ---------------------- Điểm thành phần theo phân vị ---------------------- */
@@ -1194,8 +1296,8 @@ function metaBlock(d) {
 
   const untouched = d.metaUntouched || [];
 
-  return `<h3 style="margin-top:var(--s-5)">Hero pool so với meta</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Mốc so ở đây là tỷ lệ thắng chung của
+  return more('Hero pool so với meta', rows.length,
+    `<p class="desc" style="margin:0 0 var(--s-3)">Mốc so ở đây là tỷ lệ thắng chung của
       <b>chính hero đó</b> ở bậc rank cao, không phải 50%. Lý do: hero mạnh sẵn thì ai chơi cũng
       thắng — thắng 53% với một hero có mức chung 53% là đúng bằng mọi người, còn thắng 50% với
       một hero có mức chung 44% là hơn hẳn. Cột <b>Chênh</b> mới là thứ nói bạn giỏi tới đâu.
@@ -1218,7 +1320,7 @@ function metaBlock(d) {
       bạn gần như chưa chơi: ${untouched.map((u) =>
         `<b>${esc(u.name)}</b> (${fmt(u.metaWinrate, 1, '%')})`).join(', ')}.
       Cố ý không gọi đây là "nên học" — một hero mạnh ở mức chung chưa chắc hợp với vị trí hay
-      lối chơi của bạn, và trang không có cách nào biết điều đó.</p>` : ''}`;
+      lối chơi của bạn, và trang không có cách nào biết điều đó.</p>` : ''}`);
 }
 
 /* ------------------------------- Đồng đội ------------------------------- */
@@ -1227,8 +1329,8 @@ function matesBlock(d) {
   const mates = d.teammates || [];
   if (!mates.length) return '';
 
-  return `<h3 style="margin-top:var(--s-5)">Chơi với ai thì thắng</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Cột quan trọng nhất là <b>Chênh</b>: tỷ lệ thắng
+  return more('Chơi với ai thì thắng', mates.length,
+    `<p class="desc" style="margin:0 0 var(--s-3)">Cột quan trọng nhất là <b>Chênh</b>: tỷ lệ thắng
       khi có người đó, trừ đi tỷ lệ thắng ở những ván VẮNG họ. Không có phép trừ này thì "thắng
       62% khi chơi với A" chẳng nói lên điều gì — bạn có thể vẫn thắng 62% ở mọi ván khác.
       Dấu ★ là chênh lệch đã đủ lớn để không giải thích được bằng may rủi, sau khi đã tính tới
@@ -1251,7 +1353,7 @@ function matesBlock(d) {
         <td class="num mu">${fmt(t.withoutWinrate, 1, '%')} <small>(${n0(t.withoutGames)})</small></td>
         <td class="num ${t.lift > 0 ? 'cal-good' : t.lift < 0 ? 'cal-bad' : ''}">${signed(t.lift, 1)}</td>
       </tr>`).join('')}</tbody>
-    </table></div>`;
+    </table></div>`);
 }
 
 /* --------------------- Vai trò dịch chuyển qua các năm --------------------- */
@@ -1267,8 +1369,8 @@ function eraBlock(d) {
   const eras = d.roleEras || [];
   if (eras.length < 2) return '';
 
-  return `<h3 style="margin-top:var(--s-5)">Vai trò dịch chuyển qua các năm</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Chỉ đếm những ván có nhãn vị trí THẬT đọc từ
+  return more('Vai trò dịch chuyển qua các năm', eras.length,
+    `<p class="desc" style="margin:0 0 var(--s-3)">Chỉ đếm những ván có nhãn vị trí THẬT đọc từ
       replay — phần suy đoán không phân biệt được mid với offlane nên đưa vào đây sẽ tạo ra một
       biểu đồ đầy đặn mà bịa. Đổi lại số ván có nhãn rất mỏng, nên mỗi năm đều ghi rõ nó dựng
       trên bao nhiêu ván; năm mờ là năm dưới 10 ván có nhãn.</p>
@@ -1287,7 +1389,7 @@ function eraBlock(d) {
     }).join('')}</div>
     <div class="era-key">${LANE_PARTS.map(([, label, cls]) =>
       `<span><i class="${cls}"></i>${label}</span>`).join('')}
-      <span class="mu">Số bên phải: ván có nhãn / tổng ván của năm.</span></div>`;
+      <span class="mu">Số bên phải: ván có nhãn / tổng ván của năm.</span></div>`);
 }
 
 /* ============================ Tier list ============================ */

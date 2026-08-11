@@ -92,13 +92,22 @@
   --r-sm: 11px;
   --r-pill: 999px;
 
-  /* Viền DÀY là một lựa chọn, không phải mặc định: nó thay cho bóng đổ để phân
-     tách thẻ, và bóng đổ nhẹ trên nền giấy da thì gần như tàng hình. */
-  --bw: 2px;
+  /* NÉT MẢNH, ĐỘ SÂU LÀM VIỆC THAY.
+     Bản trước để 2px ở khắp nơi và kết quả là mọi thứ trông như bị đóng khung. Giờ
+     1px, và phần lớn chỗ còn không cần viền — xem --card-edge. */
+  --bw: 1px;
 
-  --shadow-sm: 0 1px 2px rgba(60, 44, 12, .06);
-  --shadow-md: 0 2px 3px rgba(60, 44, 12, .06), 0 10px 24px rgba(60, 44, 12, .09);
-  --shadow-lg: 0 3px 6px rgba(60, 44, 12, .08), 0 18px 44px rgba(60, 44, 12, .14);
+  /* Viền quanh thẻ. Ở nền sáng là TRONG SUỐT: nền thẻ #fffdf7 so với nền trang
+     #f6f1e4 chênh 1,109 — đã đo là đủ để mắt tách được khi có thêm bóng đổ, nên
+     một đường kẻ nữa chỉ là tiếng ồn. Chủ đề tối thì ngược lại, xem khối dưới. */
+  --card-edge: transparent;
+
+  /* Bóng ĐẬM HƠN hẳn bản trước. Bóng cũ (alpha .06) trên nền giấy da gần như tàng
+     hình, nên bỏ viền đi là mất luôn ranh giới. Muốn độ sâu gánh việc thay nét thì
+     nó phải thực sự nhìn thấy được. Ám vàng nâu theo nền chứ không phải đen xám. */
+  --shadow-sm: 0 1px 2px rgba(92, 68, 20, .10);
+  --shadow-md: 0 2px 4px rgba(92, 68, 20, .10), 0 8px 18px rgba(92, 68, 20, .13);
+  --shadow-lg: 0 4px 8px rgba(92, 68, 20, .12), 0 18px 44px rgba(92, 68, 20, .20);
 
   /* --- Nhịp 4/8, thang dashboard --- */
   --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
@@ -159,6 +168,12 @@
 
   --heat-lo: #201a12;
   --heat-hi: #5c4a20;
+
+  /* NỀN TỐI PHẢI GIỮ VIỀN. Đo được: nền thẻ #201a12 so với nền trang #17130d chỉ
+     chênh 1,073 — dưới mức tách được bằng mắt, và bóng đổ trên nền tối thì gần như
+     không tồn tại vì bóng vốn là màu tối trên màu tối. Nên hai chủ đề cần hai chiến
+     lược khác nhau, không thể dùng chung một quy tắc: sáng thì độ sâu, tối thì nét. */
+  --card-edge: var(--border);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
   --shadow-md: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px rgba(0, 0, 0, .45);
@@ -253,7 +268,6 @@ a { color: var(--accent); }
 .brand-mark {
   width: 52px; height: 52px; border-radius: var(--r-md);
   background: var(--accent);
-  border: var(--bw) solid var(--on-accent);
   display: grid; place-items: center; color: var(--on-accent); flex: none;
   box-shadow: var(--shadow-md);
 }
@@ -304,12 +318,12 @@ nav button {
 nav button svg { width: 19px; height: 19px; flex: none; stroke-width: 2.3; }
 nav button:hover { background: var(--surface-2); color: var(--ink); }
 
-/* Tab đang chọn dùng CẢ nền vàng LẪN viền sẫm, không chỉ đổi màu chữ: trên nền
-   giấy da, một nền vàng nhạt đơn thuần gần như trùng với nền trang. Viền là thứ
-   khiến "đang ở đâu" thấy được ngay cả khi in đen trắng hoặc khi mù màu. */
+/* Tab đang chọn: nền vàng đặc + NỔI LÊN bằng bóng, không viền sẫm.
+   Viền sẫm quanh một mảng vàng là thứ làm giao diện nặng nét — mà nó cũng thừa:
+   nền vàng đặc với chữ sẫm đã tương phản 7,6:1 so với xung quanh, thấy ngay. */
 nav button[aria-selected="true"] {
   background: var(--accent); color: var(--on-accent);
-  border-color: var(--on-accent); font-weight: 800;
+  font-weight: 800; box-shadow: var(--shadow-sm);
 }
 
 .view { display: none; }
@@ -324,9 +338,11 @@ nav button[aria-selected="true"] {
   margin-bottom: var(--s-5);
 }
 
+/* Thẻ chỉ số KHÔNG viền: nền của chúng vốn đã là một sắc riêng, thêm đường kẻ cùng
+   màu chữ nữa thì mỗi thẻ thành một cái hộp đóng khung. Nền + bóng là đủ. */
 .kpi {
   border-radius: var(--r-lg); padding: var(--s-5);
-  border: var(--bw) solid currentColor; box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm);
   transition: transform .18s var(--ease), box-shadow .18s var(--ease);
 }
 .kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
@@ -353,9 +369,9 @@ nav button[aria-selected="true"] {
 .kpi.p5 { background: var(--pastel-5); color: var(--pastel-5-ink); }
 
 .card {
-  background: var(--surface); border: var(--bw) solid var(--border);
+  background: var(--surface); border: var(--bw) solid var(--card-edge);
   border-radius: var(--r-lg); padding: var(--s-5);
-  box-shadow: var(--shadow-sm); margin-bottom: var(--s-4);
+  box-shadow: var(--shadow-md); margin-bottom: var(--s-4);
 }
 .card > header { margin-bottom: var(--s-4); }
 .card h2 { font-size: 22px; }
@@ -380,24 +396,30 @@ nav button[aria-selected="true"] {
    --------------------------------------------------------------------------- */
 .why { margin: var(--s-2) 0 0; }
 
+/* NÚT CHỮ, KHÔNG PHẢI VIÊN THUỐC TÔ MÀU.
+   Bản trước làm nó thành một viên thuốc nền vàng viền vàng, và vì nó là thứ DUY
+   NHẤT còn lại khi khối đã gấp nên cả trang đầy những chấm vàng đòi chú ý — trong
+   khi nội dung nó dẫn tới lại là phần phụ. Một nút chữ có gạch chân chấm thì vẫn
+   đọc ra "bấm được" mà không tranh chỗ với con số. */
 .why > summary {
-  display: inline-flex; align-items: center; gap: 7px;
+  display: inline-flex; align-items: center; gap: 6px;
   cursor: pointer; list-style: none;
   font-family: var(--font-body); font-size: 14.5px; font-weight: 700;
-  color: var(--accent-ink); background: var(--accent-soft);
-  border: var(--bw) solid var(--accent); border-radius: var(--r-pill);
-  padding: 5px 15px; min-height: 34px;
-  transition: background .15s var(--ease);
+  color: var(--muted);
+  border-bottom: 1px dotted currentColor;
+  padding: 2px 0; min-height: 28px; width: fit-content;
+  transition: color .15s var(--ease);
 }
 .why > summary::-webkit-details-marker { display: none; }
 .why > summary::marker { content: ""; }
-.why > summary:hover { background: var(--accent); color: var(--on-accent); }
+.why > summary:hover { color: var(--accent-ink); }
 
 /* Mũi tên xoay — dấu hiệu duy nhất cho biết khối này còn mở ra được nữa. */
 .why > summary::after {
-  content: "▾"; font-size: 12px; transition: transform .18s var(--ease);
+  content: "▾"; font-size: 11px; transition: transform .18s var(--ease);
 }
 .why[open] > summary::after { transform: rotate(180deg); }
+.why[open] > summary { color: var(--ink-2); }
 
 .why-body {
   margin-top: var(--s-3);
@@ -574,7 +596,7 @@ select, input[type="search"], input[type="text"] {
   font-family: var(--font-body); font-size: 14px; text-align: left;
   cursor: pointer; transition: border-color .15s var(--ease);
 }
-.combo-btn:hover { border-color: var(--accent); }
+.combo-btn:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
 .combo-btn .combo-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .combo-btn .combo-caret { flex: none; color: var(--muted); transition: transform .15s var(--ease); }
 .combo[data-open="1"] .combo-caret { transform: rotate(180deg); }
@@ -603,6 +625,48 @@ select, input[type="search"], input[type="text"] {
 
 .combo-empty { padding: 10px; color: var(--muted); font-size: 13px; }
 
+/* ---------------------------------------------------------------------------
+   Ô chọn người — điều khiển CHÍNH của trang hồ sơ và trang học lối chơi.
+
+   Nó trả lời câu hỏi đầu tiên người ta hỏi khi mở trang: "đang xem của ai". Bản
+   trước để nó cỡ 14px nằm cuối khối, nhỏ hơn cả nút phụ "vì sao?" ngay phía trên —
+   tức thứ quan trọng nhất trông phụ nhất.
+
+   BẮT MẮT BẰNG MẢNG MÀU, KHÔNG BẰNG VIỀN. Vàng ở đây là NỀN với chữ đồng sẫm đặt
+   lên (5,18:1, đã kiểm), không phải một vòng viền vàng bao quanh — vòng viền chính
+   là thứ vừa bị chê nặng nét. Cả trang chỉ nên có MỘT chỗ được đối xử như vậy.
+   --------------------------------------------------------------------------- */
+.idhead { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); flex-wrap: wrap; }
+.idhead .desc { flex: 1 1 18rem; }
+
+.idpick { display: flex; flex-direction: column; gap: 5px; }
+
+.idpick-label {
+  font-size: 13px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--muted); margin: 0;
+}
+
+.pickbox { margin-bottom: 0; }
+
+.pickbox .combo-btn {
+  min-height: 58px; min-width: 15rem;
+  padding: 6px 20px;
+  font-size: 25px; font-weight: 800;
+  background: var(--accent-soft); color: var(--accent-ink);
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+.pickbox .combo-btn:hover { background: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-md); }
+.pickbox .combo-caret { color: inherit; width: 22px; height: 22px; }
+
+/* Ô chọn gốc cho trường hợp JS chưa kịp bọc thành combo — phải cùng cỡ, nếu không
+   trang sẽ nhảy một nhịp lớn ngay khi tải xong. */
+.pickbox > select { min-height: 58px; font-size: 25px; font-weight: 800; }
+
+@media (max-width: 560px) {
+  .pickbox .combo-btn, .pickbox > select { font-size: 21px; min-height: 52px; }
+}
+
 /* HAI CẤP NÚT, và sự khác nhau phải thấy được từ xa.
 
    Bản trước chỉ có một kiểu: nền trắng, viền 1px, chữ mảnh màu xám — trông y hệt
@@ -620,19 +684,21 @@ select, input[type="search"], input[type="text"] {
   transition: background .15s var(--ease), color .15s var(--ease),
               border-color .15s var(--ease), transform .1s var(--ease);
 }
-.pill:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+.pill:hover { background: var(--surface-2); box-shadow: var(--shadow-sm); color: var(--ink); }
 .pill:active { transform: translateY(1px); }
 
-.pill[aria-pressed="true"] {
-  background: var(--accent); border-color: var(--on-accent);
+/* Trạng thái bật và nút chính đều là MẢNG VÀNG ĐẶC, viền cùng màu nền chứ không
+   phải một đường sẫm bao quanh. Viền sẫm quanh mảng vàng là thứ làm giao diện nặng
+   nét, mà nó cũng thừa: chữ sẫm trên vàng đã đạt 7,6:1. */
+.pill[aria-pressed="true"], .pill.go {
+  background: var(--accent); border-color: var(--accent);
   color: var(--on-accent); font-weight: 800;
+  box-shadow: var(--shadow-sm);
 }
-
-.pill.go {
-  background: var(--accent); border-color: var(--on-accent);
-  color: var(--on-accent); font-weight: 800;
+.pill.go:hover, .pill[aria-pressed="true"]:hover {
+  background: var(--accent-hover); border-color: var(--accent-hover);
+  color: var(--on-accent); box-shadow: var(--shadow-md);
 }
-.pill.go:hover { background: var(--accent-hover); color: var(--on-accent); }
 
 /* ============================ H2H ============================ */
 
@@ -874,19 +940,32 @@ tr.off-lineup td, .pred-hist.off-lineup { opacity: .5; }
 }
 @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 
+/* ĐÓNG THÌ KHÔNG PHẢI CÁI HỘP.
+   Lỗi của bản trước: .note luôn mang nền, viền và padding của một hộp cảnh báo, kể
+   cả khi phần bên trong đã gấp. Cộng với flex giãn hết chiều ngang, kết quả là một
+   băng vàng rộng suốt trang chứa đúng một viên thuốc bé xíu và một khoảng trống lớn.
+   Một khối đã đóng thì KHÔNG CÓ GÌ để cảnh báo, nên nó không được trông như hộp
+   cảnh báo. Hộp chỉ xuất hiện khi người đọc đã mở ra. */
 .note {
-  display: flex; gap: var(--s-3); align-items: flex-start;
-  background: var(--warn-soft); color: var(--warn);
-  border: var(--bw) solid var(--warn); border-radius: var(--r-md);
-  padding: var(--s-3) var(--s-4);
+  display: flex; gap: var(--s-2); align-items: baseline;
+  color: var(--warn);
+  background: none; border: 0; padding: 0;
+  border-radius: var(--r-md);
   font-size: 15px; margin-bottom: var(--s-4);
+  transition: background .18s var(--ease), padding .18s var(--ease);
 }
 
-/* Khi khối lưu ý đã bị gấp, icon phải ở NGOÀI phần gấp — nếu không thì lúc đóng
-   lại chỉ còn một cái nút trơ, mất hẳn dấu hiệu "có điều cần lưu ý ở đây". */
+/* Lớp .open do JS gắn khi <details> mở, KHÔNG dùng :has(). Cơ chế gấp vốn đã do JS
+   làm nên thêm một dòng lắng nghe sự kiện là xong, mà lại chạy đúng ở mọi trình
+   duyệt thay vì phụ thuộc một bộ chọn tương đối mới. */
+.note.open {
+  background: var(--warn-soft);
+  padding: var(--s-3) var(--s-4);
+}
+
 .note > .why { flex: 1 1 auto; margin: 0; }
-.note > .why > summary { background: transparent; border-color: currentColor; color: inherit; }
-.note > .why > summary:hover { background: var(--warn); color: var(--warn-soft); }
+.note > .why > summary { color: inherit; }
+.note > .why > summary:hover { color: var(--ink); }
 .note > .why > .why-body { color: inherit; border-left-color: currentColor; }
 .note svg { width: 17px; height: 17px; flex: none; margin-top: 1px; }
 
@@ -1269,14 +1348,14 @@ tr.row-hi > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 }
 .subpill:hover { color: var(--ink); }
 
-/* Ô đang chọn nổi lên khỏi rãnh. Bản trước dựa hẳn vào bóng đổ, nhưng trên nền
-   giấy da thì bóng gần như tàng hình — nên thêm viền để trạng thái còn đọc được
-   khi in ra, khi độ tương phản hệ thống bật cao, và khi người xem mù màu. */
+/* Ô đang chọn NỔI LÊN khỏi rãnh. Bóng giờ đã đủ đậm để một mình gánh việc (đã tăng
+   alpha từ .06 lên .10–.13), nên bỏ được vòng viền vàng. Chữ cũng đậm hơn hẳn ô
+   không chọn — đó là kênh phi màu, còn đọc được khi in đen trắng. */
 .subpill[aria-selected="true"] {
   background: var(--surface);
   color: var(--ink);
-  border-color: var(--accent);
-  box-shadow: var(--shadow-sm);
+  font-weight: 800;
+  box-shadow: var(--shadow-md);
 }
 
 @media (max-width: 560px) {

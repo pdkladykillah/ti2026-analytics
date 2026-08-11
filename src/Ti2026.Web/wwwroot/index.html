@@ -150,15 +150,21 @@
       <!-- Thẻ này KHÔNG có data-sec nên luôn hiện ở mọi mục con: người đang xem là ai, và ô
            chọn người, phải theo suốt chứ không nấp trong một mục. -->
       <div class="card">
-        <header>
-          <h2>Hồ sơ người chơi</h2>
+        <!-- Ô chọn người đứng TRƯỚC và LỚN, tiêu đề tụt xuống làm nhãn nhỏ phía trên nó.
+             Lý do: câu hỏi đầu tiên khi mở trang này là "đang xem hồ sơ của ai", nên thứ trả
+             lời câu đó phải là thứ to nhất. Bản trước đặt nó cuối khối, nhỏ hơn cả nút phụ
+             "vì sao?" nằm ngay trên. -->
+        <header class="idhead">
+          <div class="idpick">
+            <h2 class="idpick-label">Đang xem hồ sơ của</h2>
+            <div class="controls pickbox" id="profile-controls">
+              <label class="sr-only" for="profile-who">Chọn người</label>
+              <select id="profile-who"></select>
+            </div>
+          </div>
           <p class="desc">Dữ liệu được lưu lại theo thời gian nên đọc được cả tiến bộ, không chỉ
             trạng thái hiện tại. Mọi chỉ số lấy từ hồ sơ Dota 2 công khai.</p>
         </header>
-        <div class="controls" id="profile-controls">
-          <label class="sr-only" for="profile-who">Chọn người</label>
-          <select id="profile-who"></select>
-        </div>
         <div id="profile-head" aria-live="polite"></div>
       </div>
 
@@ -451,9 +457,12 @@
           <h2>Bạn gần ai nhất, và lệch ở đâu</h2>
           <p class="desc">Chỉ so giữa những ván <b>cùng vai trò</b>. So chéo vai trò thì chỉ chứng minh được rằng carry chết ít hơn support — một sự thật hiển nhiên đội lốt phát hiện.</p>
         </header>
-        <div class="controls">
-          <label class="sr-only" for="idol-person">Chọn người</label>
-          <select id="idol-person"></select>
+        <div class="idpick">
+          <span class="idpick-label">So với</span>
+          <div class="controls pickbox">
+            <label class="sr-only" for="idol-person">Chọn người</label>
+            <select id="idol-person"></select>
+          </div>
         </div>
         <div id="idol-me"></div>
       </div>

@@ -4619,6 +4619,12 @@ function foldExplanations() {
     details.className = 'why';
     details.append(summary, body);
 
+    // Khối lưu ý chỉ mang hình hộp KHI ĐANG MỞ — xem ghi chú ở .note trong app.css.
+    // Nghe sự kiện thay vì dùng :has() trong CSS: cơ chế gấp vốn đã do JS làm, nên
+    // một dòng ở đây vừa rẻ vừa chạy đúng ở mọi trình duyệt.
+    if (el.classList.contains('note'))
+      details.addEventListener('toggle', () => el.classList.toggle('open', details.open));
+
     if (icon) el.appendChild(icon);
     el.appendChild(details);
   }

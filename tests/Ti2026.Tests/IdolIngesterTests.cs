@@ -30,8 +30,15 @@ public class IdolIngesterTests : IDisposable
     /// </summary>
     private sealed class DetailHandler(int lobbyType = 1, long leagueId = 17000) : HttpMessageHandler
     {
-        public int MatchCalls { get; private set; }
-        public int ListCalls { get; private set; }
+        // Interlocked, không phải ++. Bộ nạp gọi qua Parallel.ForEachAsync với 8 luồng, nên
+        // một phép tăng thường sẽ MẤT LƯỢT: đã thấy thật, bài kiểm đòi 3 lời gọi mà đếm ra 1.
+        // Lỗi nằm ở dụng cụ đo chứ không ở mã được đo — và đó là loại hỏng chỉ thỉnh thoảng
+        // mới xuất hiện, tức loại tệ nhất để bỏ qua.
+        private int _matchCalls;
+        private int _listCalls;
+
+        public int MatchCalls => Volatile.Read(ref _matchCalls);
+        public int ListCalls => Volatile.Read(ref _listCalls);
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage r, CancellationToken ct)
@@ -41,12 +48,12 @@ public class IdolIngesterTests : IDisposable
 
             if (path.Contains("/matches/"))
             {
-                MatchCalls++;
+                Interlocked.Increment(ref _matchCalls);
                 json = Detail(long.Parse(path[(path.LastIndexOf('/') + 1)..]), lobbyType, leagueId);
             }
             else if (path.EndsWith("/matches"))
             {
-                ListCalls++;
+                Interlocked.Increment(ref _listCalls);
                 json = "[]";
             }
             else

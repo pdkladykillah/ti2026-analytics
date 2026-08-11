@@ -1207,10 +1207,17 @@ function headlines(d) {
 
     const everywhere = roles.length >= 3 && roles.every((v) => v <= 50);
 
-    cards.push(card('bad', 'Đáng sửa nhất', worst.median, worst.label,
+    // Chữ phải TƯƠNG XỨNG với cỡ cách biệt. "Đáng sửa nhất" là một lời khuyên, và ở phân vị 42
+    // — tức chỉ kém trung bình 8 điểm — nó nặng hơn thứ dữ liệu đỡ được. Dưới 35 mới là cách
+    // biệt rõ; khoảng 35–45 chỉ nói được đây là cột thấp nhất trong mười cột của chính người đó.
+    const sharp = worst.median <= 35;
+
+    cards.push(card('bad', sharp ? 'Đáng sửa nhất' : 'Thấp nhất', worst.median, worst.label,
       everywhere
         ? `Thấp ở CẢ ${roles.length} vị trí — đây là thói quen đi theo bạn, không phải chuyện chọn sai vai trò.`
-        : `Dưới mức trung bình của người chơi cùng hero, qua ${n0(worst.games)} ván.`));
+        : sharp
+          ? `Rõ rệt dưới mức trung bình của người chơi cùng hero, qua ${n0(worst.games)} ván.`
+          : `Thấp nhất trong ${n0(all.length)} mặt của bạn, kém trung bình ${50 - worst.median} điểm — đáng để ý, chưa tới mức báo động.`));
   }
 
   const moved = all

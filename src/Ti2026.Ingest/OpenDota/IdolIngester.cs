@@ -84,24 +84,19 @@ public class IdolIngester(
     /// </summary>
     public async Task<int> IngestAsync(CancellationToken ct, bool force = false)
     {
-        if (!force)
-        {
-            var lastRun = await db.IngestRuns
-                .Where(r => r.Source == Source && r.Status == IngestStatus.Succeeded)
-                .OrderByDescending(r => r.StartedAt)
-                .Select(r => (DateTime?)r.StartedAt)
-                .FirstOrDefaultAsync(ct);
-
-            if (lastRun is DateTime last && DateTime.UtcNow - last < MinInterval)
-            {
-                logger.LogInformation("Bỏ qua vòng idol: lần trước cách đây {Hours:0.0} giờ",
-                    (DateTime.UtcNow - last).TotalHours);
-                return 0;
-            }
-        }
-
         await SeedAsync(ct);
-        var written = await ScanMatchListsAsync(ct);
+
+        // CỬA CHỈ CHẶN VIỆC QUÉT LẠI DANH SÁCH, không chặn việc rút cạn tồn đọng.
+        //
+        // Bản đầu bọc cả hai và đó là một lỗi thật: vòng đầu tiên cần khoảng 1.200 chi tiết ván mà
+        // trần mỗi vòng là 400, nên sau lần chạy đầu cửa đóng lại 12 giờ và còn 800 ván nằm chờ —
+        // trong khi vòng ingest vẫn báo Succeeded. Kết quả là trang chạy trên một phần ba dữ liệu
+        // suốt một ngày rưỡi mà không có gì báo là đang thiếu.
+        //
+        // Mốc thời gian lấy từ chính IdolPlayer.MatchesFetchedAt chứ không từ bảng IngestRuns:
+        // nếu đọc IngestRuns thì mỗi vòng rút tồn đọng lại ghi một hàng Succeeded mới, và cửa sẽ
+        // không bao giờ mở lại cho lần quét sau.
+        var written = await ScanMatchListsAsync(ct, force);
         written += await FetchDetailsAsync(ct);
         await BuildPubAnchorsAsync(ct);
         return written;
@@ -141,14 +136,29 @@ public class IdolIngester(
     /// Quét danh sách ván của từng người và tạo hàng rỗng cho ván chưa biết. Một lời gọi mỗi người.
     /// Kèm cập nhật hồ sơ (ảnh, persona) — cũng một lời gọi mỗi người.
     /// </summary>
-    private async Task<int> ScanMatchListsAsync(CancellationToken ct)
+    private async Task<int> ScanMatchListsAsync(CancellationToken ct, bool force)
     {
         var idols = await db.IdolPlayers.OrderBy(x => x.SortOrder).ToListAsync(ct);
         var written = 0;
+        var cutoff = DateTime.UtcNow - MinInterval;
 
         foreach (var idol in idols)
         {
             ct.ThrowIfCancellationRequested();
+
+            // GÁC THEO TỪNG NGƯỜI, không phải một cửa chung cho cả nhóm.
+            //
+            // Bản đầu hỏi "có ai tới hạn không" rồi quét cả bốn. Sai ở chỗ: thêm một người mới vào
+            // hạt giống sẽ kéo theo việc quét lại ba người vừa quét mười phút trước, tức 6 lời gọi
+            // thừa mỗi lần. Mốc thì đã có sẵn trên từng hàng nên không cần cửa chung.
+            if (!force
+                && idol.MatchesFetchedAt is DateTime last
+                && last >= cutoff)
+            {
+                logger.LogInformation("Bỏ qua quét {Name}: mới quét cách đây {Hours:0.0} giờ",
+                    idol.Name, (DateTime.UtcNow - last).TotalHours);
+                continue;
+            }
 
             try
             {
@@ -211,9 +221,17 @@ public class IdolIngester(
 
             idol.MatchesFetchedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
-            db.ChangeTracker.Clear();
         }
 
+        // XOÁ BỘ THEO DÕI SAU vòng lặp, không phải trong vòng lặp.
+        //
+        // Đây là một lỗi thật của bản đầu. Cả bốn hàng IdolPlayer nạp về trong MỘT truy vấn nên
+        // cùng được EF theo dõi; gọi Clear() ở cuối mỗi lượt sẽ tách rời cả bốn, và từ lượt thứ
+        // hai trở đi thì MatchesFetchedAt, PersonaName, AvatarUrl gán vào một thực thể đã rời khỏi
+        // ngữ cảnh — SaveChanges không ghi gì. Ván mới vẫn được thêm bình thường vì chúng là thực
+        // thể mới, nên bề ngoài mọi thứ hoạt động; chỉ có mốc thời gian của ba người sau là vĩnh
+        // viễn null, và cửa gác ở đầu hàm sẽ không bao giờ đóng với họ.
+        db.ChangeTracker.Clear();
         return written;
     }
 

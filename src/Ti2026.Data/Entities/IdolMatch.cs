@@ -98,6 +98,19 @@ public class IdolMatch
     public int? LaneEfficiency { get; set; }
 
     /// <summary>
+    /// Hạng net worth trong 5 người CÙNG ĐỘI, 1 = giàu nhất.
+    ///
+    /// VÌ SAO BẮT BUỘC PHẢI CÓ. lane_role nói NGƯỜI NÀY ĐỨNG Ở ĐÂU, không nói họ LÀM GÌ.
+    /// Hard support đứng ở safelane nên cũng mang nhãn "safe"; soft support đứng offlane nên
+    /// mang nhãn "off". Đo trên chính bộ idol này: Yatoro (carry) 89% safe và Dukalis (hard
+    /// support) 77% safe — cùng một nhãn cho hai công việc ngược nhau.
+    ///
+    /// Ghép nhãn lane với hạng net worth mới ra vị trí thật. Đó là lý do cột này tồn tại, và
+    /// là lý do đáng bỏ tiền lấy lại toàn bộ ván đã lưu để có nó.
+    /// </summary>
+    public int? TeamFarmRank { get; set; }
+
+    /// <summary>
     /// Chênh lệch vàng hai phe ở phút 10, theo góc nhìn PHE NÀY. Dương = đang dẫn.
     ///
     /// radiant_gold_adv ở nguồn luôn là Radiant trừ Dire, nên PHẢI đảo dấu khi ở phe Dire. Quên

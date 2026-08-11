@@ -178,7 +178,7 @@ public class ThemeContrastTests(Ti2026TestFactory factory) : IClassFixture<Ti202
             html.Should().NotContain($"family={banned}",
                 $"{banned} không có subset vietnamese — chữ có dấu sẽ rơi về font hệ thống");
 
-        html.Should().Contain("family=Baloo+2", "font chính phải là font đã kiểm có tiếng Việt");
+        html.Should().Contain("family=Nunito", "font chính phải là font đã kiểm có tiếng Việt");
         html.Should().Contain("family=JetBrains+Mono", "font số phải là font đã kiểm có tiếng Việt");
     }
 }

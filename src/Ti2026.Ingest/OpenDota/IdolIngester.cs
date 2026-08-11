@@ -68,14 +68,34 @@ public class IdolIngester(
     /// </summary>
     public static readonly (long AccountId, string Name, string Role, string Note, int Sort)[] Seed =
     [
-        (94054712, "Topson", "mid",
+        (94054712, "Topson", "pos2",
             "Ba lần vô địch TI. Lối mid ứng biến, hero pool rộng bất thường.", 1),
-        (898455820, "Malr1ne", "mid",
+        (898455820, "Malr1ne", "pos2",
             "Mid của Team Falcons. Đổi chác rẻ nhất trong nhóm — xem trục giá mỗi pha hạ gục.", 2),
-        (302214028, "Collapse", "off",
-            "Offlane của Team Spirit. Mở giao tranh, chịu đòn thay đội.", 3),
-        (183719386, "ATF", "off",
-            "Offlane của Team Falcons. Gánh sát thương nhiều hơn hẳn một offlaner thường.", 4),
+        (106573901, "No[o]ne-", "pos2",
+            "Mid kỳ cựu, 88% số ván có nhãn là mid — chuyên biệt nhất nhóm mid.", 3),
+        (480412663, "gpk-", "pos2",
+            "Mid. Chọn theo dữ liệu chứ không theo đội: tài khoản mang tên gpk trong roster "
+            + "Team Spirit chỉ có 40 ván và 0 ván thi đấu, còn đây có 300/300.", 4),
+        (201358612, "Nisha", "pos2",
+            "Mid của Team Liquid, nhưng 30% số ván ở vị trí khác — linh hoạt nhất nhóm.", 5),
+
+        (302214028, "Collapse", "pos3",
+            "Offlane của Team Spirit. Mở giao tranh, chịu đòn thay đội.", 6),
+        (183719386, "ATF", "pos3",
+            "Offlane của Team Falcons. Gánh sát thương nhiều hơn hẳn một offlaner thường.", 7),
+
+        (321580662, "Yatoro", "pos1",
+            "Carry của Team Spirit. 89% số ván có nhãn ở safelane.", 8),
+        (1044002267, "Satanic", "pos1",
+            "Carry. Mốc so cho những ván safelane có farm cao.", 9),
+
+        (317880638, "Save-", "pos4",
+            "63% số ván ở offlane nhưng phần lớn là support — mốc so cho vị trí 4.", 10),
+        (136829091, "Whitemon", "pos5",
+            "Support. Mang nhãn lane 'safe' như carry, nên chỉ tách được bằng hạng net worth.", 11),
+        (73401082, "Dukalis", "pos5",
+            "Hard support. 77% số ván nhãn 'safe' — cùng nhãn với Yatoro, ngược hẳn công việc.", 12),
     ];
 
     /// <summary>
@@ -536,6 +556,10 @@ public class IdolIngester(
         // tính trên 4 người đọc như tính trên 5 người là sai lệch âm thầm.
         if (team.Count == 5)
         {
+            // Hạng 1 = giàu nhất. Người thiếu net worth coi như 0 nên rơi xuống cuối, đúng chỗ:
+            // ván nào thiếu số liệu thì hạng của người đó cũng không đáng tin.
+            row.TeamFarmRank = team.Count(p => (p.NetWorth ?? 0) > (me.NetWorth ?? 0)) + 1;
+
             row.TeamKills = team.Sum(p => p.Kills);
             row.TeamDeaths = team.Sum(p => p.Deaths);
             row.TeamNetWorth = team.Sum(p => (long)(p.NetWorth ?? 0));

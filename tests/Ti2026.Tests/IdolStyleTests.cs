@@ -253,14 +253,48 @@ public class IdolStyleTests
                 $"trục '{axis.Key}' bị đảo chiều lúc vẽ nên không được giữ nguyên tên cũ");
     }
 
+    /// <summary>
+    /// Nhãn lane KHÔNG phải vị trí, và phép ghép với hạng net worth phải tách được hai người
+    /// làm hai việc ngược nhau nhưng đứng cùng một chỗ.
+    ///
+    /// ĐÃ ĐO VÀ ĐÃ PHẢI SỬA VÌ CHUYỆN NÀY. Trong 116 ván nhãn "safe" của người dùng: 69 ván hạng
+    /// 1–2 đạt trung bình 648 GPM và 381 lính, còn 40 ván hạng 4–5 chỉ 302 GPM và 56 lính — chênh
+    /// 345 GPM trong cùng một ô. Ở bộ tuyển thủ thì Yatoro (carry) 89% nhãn safe và Dukalis
+    /// (hard support) 77% nhãn safe: cùng nhãn, ngược công việc.
+    /// </summary>
     [Theory]
-    [InlineData(1, "safe")]
-    [InlineData(2, "mid")]
-    [InlineData(3, "off")]
-    [InlineData(4, null)]
-    [InlineData(null, null)]
-    public void Doc_ten_vai_tro_tu_nhan_replay(int? laneRole, string? expected) =>
-        IdolStyle.RoleOf(laneRole).Should().Be(expected);
+    [InlineData(2, 1, "pos2")]
+    [InlineData(2, 5, "pos2")]           // mid thì hạng net worth không đổi được vị trí
+    [InlineData(1, 1, "pos1")]
+    [InlineData(1, 2, "pos1")]
+    [InlineData(1, 4, "pos5")]
+    [InlineData(1, 5, "pos5")]
+    [InlineData(1, 3, null)]             // vùng chồng lấn thật — thà bỏ còn hơn gán bừa
+    [InlineData(3, 1, "pos3")]
+    [InlineData(3, 3, "pos3")]           // offlane core vẫn thường đứng hạng 3
+    [InlineData(3, 4, "pos4")]
+    [InlineData(3, 5, "pos4")]
+    [InlineData(4, 1, null)]             // rừng
+    [InlineData(null, 1, null)]          // ván chưa parse
+    [InlineData(1, null, null)]          // chưa có hạng thì không đoán
+    public void Ghep_lane_voi_hang_net_worth_ra_vi_tri(int? laneRole, int? rank, string? expected) =>
+        IdolStyle.PositionOf(laneRole, rank).Should().Be(expected);
+
+    /// <summary>
+    /// Mọi vị trí phải có tên tiếng Việt riêng, và hai vị trí CÙNG LANE phải mang tên khác nhau.
+    /// Nếu pos1 và pos5 hiện ra cùng một chữ thì cả phép tách vừa làm trở thành vô hình.
+    /// </summary>
+    [Fact]
+    public void Moi_vi_tri_co_ten_rieng()
+    {
+        string[] all = ["pos1", "pos2", "pos3", "pos4", "pos5"];
+        var labels = all.Select(IdolStyle.PositionLabel).ToList();
+
+        labels.Should().OnlyHaveUniqueItems();
+        labels.Should().NotContain(l => string.IsNullOrWhiteSpace(l));
+        IdolStyle.PositionLabel("pos1").Should().NotBe(IdolStyle.PositionLabel("pos5"));
+        IdolStyle.PositionLabel("pos3").Should().NotBe(IdolStyle.PositionLabel("pos4"));
+    }
 
     /// <summary>
     /// Hạt giống phải khoá theo account_id và không được trùng nhau.

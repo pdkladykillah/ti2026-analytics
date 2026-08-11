@@ -259,13 +259,46 @@ public static class IdolStyle
         return new StyleMatchup(idolId, role, diffs.Count, sum / diffs.Count, diffs);
     }
 
-    /// <summary>Tên vai trò từ lane_role. null cho ván chưa parse và cho rừng.</summary>
-    public static string? RoleOf(int? laneRole) => laneRole switch
+    /// <summary>
+    /// VỊ TRÍ thật, ghép từ nhãn lane với hạng net worth trong đội.
+    ///
+    /// VÌ SAO KHÔNG DÙNG THẲNG lane_role. Nó nói người này ĐỨNG Ở ĐÂU, không nói họ LÀM GÌ.
+    /// Hard support đứng safelane cùng carry nên cả hai đều mang nhãn "safe"; soft support đứng
+    /// offlane cùng offlaner nên cả hai đều là "off". Gộp chung là gộp hai công việc ngược nhau.
+    ///
+    /// ĐO ĐƯỢC, trên chính dữ liệu đã lưu. Trong 116 ván mang nhãn "safe" của người dùng:
+    ///   • 69 ván hạng net worth 1–2: trung bình 648 GPM, 381 lính;
+    ///   • 40 ván hạng 4–5:           trung bình 302 GPM,  56 lính.
+    /// Chênh 345 GPM và 325 lính TRONG CÙNG MỘT Ô. Và nặng hơn nữa ở người thứ hai: 31 ván
+    /// "offlane" của nene có 24 ván hạng 4–5 và đúng 1 ván là core — tức phần lớn là support,
+    /// nhưng vẫn đang được đem so với những offlane core chuyên nghiệp.
+    ///
+    /// Ở bộ tuyển thủ cũng vậy: Yatoro (carry) 89% nhãn safe, Dukalis (hard support) 77% nhãn
+    /// safe. Không tách ra thì hai người này nằm chung một ô.
+    ///
+    /// HẠNG 3 Ở SAFELANE TRẢ NULL. Đó là vùng chồng lấn thật — không đủ giàu để chắc là carry,
+    /// không đủ nghèo để chắc là support. Thà bỏ 6% số ván còn hơn gán bừa rồi kéo lệch cả hai ô.
+    /// Offlane thì không cần ngưỡng đó: offlane core vẫn thường xuyên đứng hạng 3.
+    /// </summary>
+    public static string? PositionOf(int? laneRole, int? teamFarmRank) => (laneRole, teamFarmRank) switch
     {
-        1 => "safe",
-        2 => "mid",
-        3 => "off",
+        (2, _) => "pos2",
+        (1, <= 2) => "pos1",
+        (1, >= 4) => "pos5",
+        (3, <= 3 and >= 1) => "pos3",
+        (3, >= 4) => "pos4",
         _ => null,
+    };
+
+    /// <summary>Tên tiếng Việt của vị trí, dùng chung cho mọi chỗ hiển thị.</summary>
+    public static string PositionLabel(string position) => position switch
+    {
+        "pos1" => "carry (safelane)",
+        "pos2" => "mid",
+        "pos3" => "offlane",
+        "pos4" => "support offlane",
+        "pos5" => "hard support",
+        _ => position,
     };
 
     /// <summary>

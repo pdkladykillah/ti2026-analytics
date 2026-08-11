@@ -3420,7 +3420,15 @@ function biasNote(bias) {
 
 /* ---------------------- Học lối chơi từ idol ---------------------- */
 
-const ROLE_VN = { safe: 'safe lane', mid: 'mid', off: 'offlane' };
+/* Tên vị trí. KHÔNG phải tên lane — hai thứ khác nhau và nhầm lẫn đó vừa phải sửa:
+   hard support đứng safelane nên cũng mang nhãn lane "safe" y như carry. */
+const ROLE_VN = {
+  pos1: 'carry (safelane)',
+  pos2: 'mid',
+  pos3: 'offlane',
+  pos4: 'support offlane',
+  pos5: 'hard support',
+};
 
 /**
  * Giá trị đem VẼ, khác giá trị đem ĐỌC ở đúng những trục mà thấp mới tốt.

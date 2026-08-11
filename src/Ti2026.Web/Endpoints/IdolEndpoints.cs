@@ -78,9 +78,12 @@ public static class IdolEndpoints
 
                 var sig = IdolStyle.Signature(games.Select(ToGame).ToList(), norm);
 
-                var labelled = games.Where(g => IdolStyle.RoleOf(g.LaneRole) is not null).ToList();
+                var labelled = games
+                    .Where(g => IdolStyle.PositionOf(g.LaneRole, g.TeamFarmRank) is not null)
+                    .ToList();
+
                 var roleGroups = labelled
-                    .GroupBy(g => IdolStyle.RoleOf(g.LaneRole)!)
+                    .GroupBy(g => IdolStyle.PositionOf(g.LaneRole, g.TeamFarmRank)!)
                     .OrderByDescending(g => g.Count())
                     .ToList();
 
@@ -126,6 +129,7 @@ public static class IdolEndpoints
                     role = measuredRole is null ? null : new
                     {
                         role = measuredRole,
+                        label = IdolStyle.PositionLabel(measuredRole),
                         labelled = labelled.Count,
                         share = labelled.Count > 0
                             ? 100.0 * roleGroups[0].Count() / labelled.Count
@@ -242,7 +246,7 @@ public static class IdolEndpoints
 
         var byRole = new Dictionary<string, List<StyleValue>>();
 
-        foreach (var group in rows.GroupBy(r => IdolStyle.RoleOf(r.LaneRole)))
+        foreach (var group in rows.GroupBy(r => IdolStyle.PositionOf(r.LaneRole, r.TeamFarmRank)))
         {
             if (group.Key is not { } role) continue;
 

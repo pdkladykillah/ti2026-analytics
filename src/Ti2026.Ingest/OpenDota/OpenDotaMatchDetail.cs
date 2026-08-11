@@ -33,6 +33,43 @@ public class OpenDotaMatchDetail
     [JsonPropertyName("throw")] public int? Throw { get; set; }
 
     [JsonPropertyName("comeback")] public int? Comeback { get; set; }
+
+    /// <summary>
+    /// Từng pha giao tranh, CHỈ có ở ván đã parse.
+    ///
+    /// Đây là thứ trả lời được câu "cái chết của tôi có phải một cuộc đổi chác có lời không" —
+    /// điều mà mọi con số tổng kết cả trận không bao giờ nói được. Mỗi pha có vàng cộng thêm của
+    /// từng người trong mười người, nên cộng lại là biết pha đó đội nào lời.
+    ///
+    /// Và tiền thưởng của Dota vốn đã tỉ lệ với độ giàu của nạn nhân, nên "tôi chết rẻ, đổi lại
+    /// đội giết được đứa giàu" TỰ NẰM trong con số vàng — không phải ước lượng thêm.
+    /// </summary>
+    [JsonPropertyName("teamfights")] public List<OpenDotaTeamfight>? Teamfights { get; set; }
+}
+
+public class OpenDotaTeamfight
+{
+    /// <summary>Giây kể từ tiếng còi. Âm = pha xảy ra trước khai cuộc.</summary>
+    [JsonPropertyName("start")] public int Start { get; set; }
+
+    [JsonPropertyName("end")] public int End { get; set; }
+
+    /// <summary>Tổng số người chết trong pha, cả hai phe.</summary>
+    [JsonPropertyName("deaths")] public int Deaths { get; set; }
+
+    /// <summary>Đúng 10 phần tử, cùng thứ tự với players của trận.</summary>
+    [JsonPropertyName("players")] public List<OpenDotaTeamfightPlayer> Players { get; set; } = [];
+}
+
+public class OpenDotaTeamfightPlayer
+{
+    [JsonPropertyName("deaths")] public int? Deaths { get; set; }
+
+    /// <summary>Vàng cộng thêm trong pha. Âm khi chết. Đây là thước đo lời/lỗ của pha đó.</summary>
+    [JsonPropertyName("gold_delta")] public int? GoldDelta { get; set; }
+
+    [JsonPropertyName("xp_delta")] public int? XpDelta { get; set; }
+    [JsonPropertyName("damage")] public int? Damage { get; set; }
 }
 
 public class OpenDotaPickBan
@@ -107,6 +144,15 @@ public class OpenDotaMatchPlayer
     ///    Cộng thẳng vào một điểm tổng thì càng chết nhiều điểm càng cao.
     /// </summary>
     [JsonPropertyName("benchmarks")] public Dictionary<string, OpenDotaBenchmark>? Benchmarks { get; set; }
+
+    /// <summary>
+    /// Vàng tích luỹ theo TỪNG PHÚT. Chỉ có ở ván đã parse.
+    ///
+    /// Cần để trả lời "kẻ chết cùng pha với tôi có giàu hơn tôi không": net worth cuối ván không
+    /// dùng được vì nó là con số SAU khi mọi chuyện đã xảy ra. Phải là độ giàu tại đúng phút xảy
+    /// ra pha giao tranh.
+    /// </summary>
+    [JsonPropertyName("gold_t")] public List<int>? GoldPerMinute { get; set; }
     [JsonPropertyName("kills")] public int Kills { get; set; }
     [JsonPropertyName("deaths")] public int Deaths { get; set; }
     [JsonPropertyName("assists")] public int Assists { get; set; }

@@ -1135,7 +1135,52 @@ function deathBlock(d) {
     <p class="desc" style="margin-top:var(--s-3)">Hai cột giữa là <b>phân vị farm của đồng đội</b>,
       không phải của bạn. Đây là <b>tương quan trong cùng một ván, không phải nhân quả</b>: ván
       đồng đội farm tốt cũng có thể là ván bạn dám lao vào hơn vì biết đội đang mạnh. Dữ liệu
-      không phân biệt được hai chiều đó.</p>`;
+      không phân biệt được hai chiều đó.</p>
+    ${tradeBlock(d)}`;
+}
+
+/**
+ * Tầng mịn hơn: từng PHA GIAO TRANH, không phải cả ván.
+ *
+ * Con số cả ván không phân biệt được một cái chết vô ích với một cái chết kéo 2-3 người địch đi
+ * xa để đồng đội dọn phần còn lại. Pha giao tranh thì phân biệt được — và tiền thưởng của Dota
+ * vốn tỉ lệ với độ giàu nạn nhân, nên "chết rẻ đổi lấy mạng đắt" nằm sẵn trong con số vàng.
+ */
+function tradeBlock(d) {
+  const t = d.deathTrade;
+  if (!t) return '';
+
+  const kpi = (v, label, note, tone) => `<div class="tr-kpi">
+    <div class="tr-num ${tone || ''}">${v}</div>
+    <div class="tr-lbl">${label}</div>
+    <div class="tr-note">${note}</div>
+  </div>`;
+
+  const enough = t.trades >= t.minTrades;
+
+  return `<h4 style="margin:var(--s-5) 0 var(--s-2)">Đổi chác trong từng pha giao tranh</h4>
+    <p class="desc" style="margin:0 0 var(--s-3)">Mịn hơn bảng trên: thay vì hỏi cả ván, hỏi từng
+      pha. Nếu cái chết của bạn kéo được 2-3 người địch đi xa thì đồng đội dọn được phần còn lại,
+      và <b>pha đó vẫn lời vàng dù bạn nằm xuống</b>. Tiền thưởng của Dota tỉ lệ với độ giàu nạn
+      nhân, nên "mình nghèo, đứa chết bên kia giàu" tự nằm trong con số vàng.
+      Chỉ tính ${n0(t.matches)} ván đã parse.</p>
+    <div class="tr-grid">
+      ${kpi(fmt(t.aheadShare, 0, '%'), 'pha bạn chết mà đội vẫn lời vàng',
+            `trên ${n0(t.fights)} pha có bạn chết`,
+            t.aheadShare >= 50 ? 'cal-good' : '')}
+      ${kpi(signed(t.swingDied), 'vàng mỗi pha bạn chết',
+            `pha bạn sống sót: ${signed(t.swingSurvived)}`,
+            t.swingDied >= 0 ? 'cal-good' : 'cal-bad')}
+      ${enough ? kpi(signed(t.goldEdge), 'chênh độ giàu khi đổi mạng',
+            `bạn ${n0(t.myGold)} vàng, kẻ chết cùng pha ${n0(t.foeGold)}`,
+            t.goldEdge > 0 ? 'cal-good' : 'cal-bad')
+        : kpi('—', 'chênh độ giàu khi đổi mạng',
+            `mới ${n0(t.trades)}/${n0(t.minTrades)} lượt đổi, chưa đủ để nói`)}
+    </div>
+    <p class="desc" style="margin-top:var(--s-3)">${esc(t.text)}</p>
+    <p class="desc">Vẫn là <b>tương quan</b>: pha bạn chết mà đội lời cũng có thể là pha đội vốn
+      đã mạnh hơn, chứ không phải nhờ cái chết. Và replay của Valve hết hạn sau khoảng hai tháng
+      nên phần lịch sử xa sẽ không bao giờ có dữ liệu này.</p>`;
 }
 
 /* --------------------------------- Hero --------------------------------- */

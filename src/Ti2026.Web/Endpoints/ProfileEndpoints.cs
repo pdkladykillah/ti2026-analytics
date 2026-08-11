@@ -209,6 +209,14 @@ public static class ProfileEndpoints
                     m.Won, m.PctDeaths, m.MatesPctGpm, m.TeamNetWorth, m.EnemyNetWorth, m.DurationSeconds))
                 .ToList());
 
+            // Tầng thứ hai, mịn hơn: từng PHA GIAO TRANH. Chỉ có ở ván đã parse, nhưng nó phân
+            // biệt được thứ mà con số cả ván không phân biệt nổi — một cái chết vô ích với một
+            // cái chết kéo người địch đi để đồng đội dọn phần còn lại.
+            var trade = DeathTrade.Read(rows.Select(m => new TradeGame(
+                m.FightsDied, m.FightsDiedAhead, m.FightSwingDied,
+                m.FightsSurvived, m.FightSwingSurvived,
+                m.TradeMyGold, m.TradeFoeGold, m.TradeFoeDeaths)));
+
             // ---------- Hero pool đặt cạnh meta ----------
             // Mốc là bậc rank CAO chứ không phải toàn bộ pub: người dùng ở Ancient, còn tỷ lệ
             // thắng gộp cả Herald tới Immortal là một quần thể khác hẳn.
@@ -328,6 +336,21 @@ public static class ProfileEndpoints
                         leadGap = s.LeadGap,
                         pValue = Math.Round(s.PValue, 5),
                     }).ToList(),
+                },
+
+                deathTrade = trade is null ? null : new
+                {
+                    matches = trade.Value.Matches,
+                    fights = trade.Value.Fights,
+                    aheadShare = trade.Value.AheadShare,
+                    swingDied = trade.Value.SwingDied,
+                    swingSurvived = trade.Value.SwingSurvived,
+                    myGold = trade.Value.MyGold,
+                    foeGold = trade.Value.FoeGold,
+                    goldEdge = trade.Value.GoldEdge,
+                    trades = trade.Value.Trades,
+                    minTrades = DeathTrade.MinTrades,
+                    text = trade.Value.Text,
                 },
 
                 roles = roles.Select(r => new

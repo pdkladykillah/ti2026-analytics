@@ -175,6 +175,7 @@ public class TrackedMatchDetailIngester(
 
                 ReadBenchmarks(row, me);
                 ReadTeamEconomy(row, me, all);
+                ReadFights(row, detail, me, all);
                 SaveTeammates(row, me, team, savedMates);
 
                 row.DetailFetchedAt = DateTime.UtcNow;
@@ -321,6 +322,102 @@ public class TrackedMatchDetailIngester(
         var mates = team.Where(p => !ReferenceEquals(p, me)).ToList();
         row.MatesPctGpm = MedianPct(mates, "gold_per_min");
         row.MatesPctXpm = MedianPct(mates, "xp_per_min");
+    }
+
+    /// <summary>
+    /// Đọc từng PHA GIAO TRANH: cái chết của người này đổi được gì cho đội.
+    ///
+    /// VÌ SAO CẦN TẦNG NÀY khi đã có kinh tế cả ván. Con số cả ván không phân biệt được một cái
+    /// chết vô ích với một cái chết kéo 2-3 người địch đi xa để đồng đội dọn phần còn lại. Pha
+    /// giao tranh thì phân biệt được: cộng vàng cộng thêm của 5 người mỗi phe TRONG pha đó là
+    /// biết pha đó ai lời.
+    ///
+    /// VÀ TIỀN THƯỞNG ĐÃ TỰ TÍNH ĐỘ GIÀU. Bounty của Dota tỉ lệ với net worth nạn nhân, nên
+    /// "tôi chết rẻ, đổi lại đội giết được đứa giàu nhất bên kia" nằm sẵn trong chênh lệch vàng
+    /// — không phải ước lượng thêm.
+    ///
+    /// Riêng phần so độ giàu thì lấy VÀNG THEO PHÚT tại đúng phút xảy ra pha, không lấy net
+    /// worth cuối ván: cuối ván là con số sau khi mọi chuyện đã xảy ra, còn thứ quyết định một
+    /// cuộc đổi chác lời hay lỗ là độ giàu ngay lúc đó.
+    /// </summary>
+    private static void ReadFights(
+        Data.Entities.TrackedPlayerMatch row,
+        OpenDotaMatchDetail detail,
+        OpenDotaMatchPlayer me,
+        List<OpenDotaMatchPlayer> all)
+    {
+        var fights = detail.Teamfights;
+
+        // null = ván chưa parse. Giữ nguyên null ở mọi cột thay vì ghi 0: 0 pha giao tranh là
+        // một khẳng định về ván, còn "chưa parse" thì không biết gì cả.
+        if (fights is null || fights.Count == 0 || all.Count != 10) return;
+
+        var meIndex = all.IndexOf(me);
+        if (meIndex < 0) return;
+
+        var meRadiant = me.PlayerSlot < 128;
+        var mates = Enumerable.Range(0, 10).Where(i => (all[i].PlayerSlot < 128) == meRadiant).ToList();
+        var foes = Enumerable.Range(0, 10).Where(i => (all[i].PlayerSlot < 128) != meRadiant).ToList();
+        if (mates.Count != 5 || foes.Count != 5) return;
+
+        int died = 0, diedAhead = 0, swingDied = 0, survived = 0, swingSurvived = 0;
+        int myGold = 0, foeGold = 0, foeDeaths = 0;
+
+        foreach (var f in fights)
+        {
+            if (f.Players.Count != 10) continue;
+
+            var teamGold = mates.Sum(i => f.Players[i].GoldDelta ?? 0);
+            var enemyGold = foes.Sum(i => f.Players[i].GoldDelta ?? 0);
+            var swing = teamGold - enemyGold;
+
+            if ((f.Players[meIndex].Deaths ?? 0) > 0)
+            {
+                died++;
+                swingDied += swing;
+                if (swing > 0) diedAhead++;
+
+                // Độ giàu tại phút xảy ra pha. Chỉ cộng khi ĐỌC ĐƯỢC cả hai vế, nếu không thì
+                // tử số và mẫu số lệch nhau và tỷ lệ mất nghĩa.
+                var mine = GoldAt(all[meIndex], f.Start);
+                if (mine is int g)
+                {
+                    foreach (var i in foes.Where(i => (f.Players[i].Deaths ?? 0) > 0))
+                    {
+                        if (GoldAt(all[i], f.Start) is not int fg) continue;
+                        myGold += g;
+                        foeGold += fg;
+                        foeDeaths++;
+                    }
+                }
+            }
+            else
+            {
+                survived++;
+                swingSurvived += swing;
+            }
+        }
+
+        row.FightsDied = died;
+        row.FightsDiedAhead = diedAhead;
+        row.FightSwingDied = swingDied;
+        row.FightsSurvived = survived;
+        row.FightSwingSurvived = swingSurvived;
+        row.TradeMyGold = myGold;
+        row.TradeFoeGold = foeGold;
+        row.TradeFoeDeaths = foeDeaths;
+    }
+
+    /// <summary>Vàng tích luỹ của một người tại giây <paramref name="seconds"/>, hoặc null.</summary>
+    private static int? GoldAt(OpenDotaMatchPlayer p, int seconds)
+    {
+        var t = p.GoldPerMinute;
+        if (t is null || t.Count == 0) return null;
+
+        // Pha xảy ra trước khai cuộc có start âm — kẹp về phút 0 chứ không bỏ, vì đó vẫn là một
+        // pha giao tranh thật (tranh rune, chặn creep) và độ giàu lúc đó đúng bằng vàng khởi đầu.
+        var minute = Math.Clamp(seconds / 60, 0, t.Count - 1);
+        return t[minute];
     }
 
     /// <summary>

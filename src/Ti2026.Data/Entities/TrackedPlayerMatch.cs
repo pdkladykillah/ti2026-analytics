@@ -165,6 +165,46 @@ public class TrackedPlayerMatch
     /// <summary>Trung vị phân vị XPM của 4 đồng đội.</summary>
     public int? MatesPctXpm { get; set; }
 
+    // ---------- Đổi chác trong từng pha giao tranh, CHỈ có ở ván đã parse ----------
+    //
+    // VÌ SAO CẦN THÊM MỘT TẦNG NỮA. Tầng trước hỏi "ván tôi chết nhiều thì đồng đội có farm tốt
+    // hơn không" và đo được +5 điểm phân vị. Nhưng nó vẫn là con số CẢ VÁN, nên không phân biệt
+    // được một cái chết vô ích với một cái chết kéo 2-3 người địch đi xa để đồng đội dọn phần
+    // còn lại.
+    //
+    // Pha giao tranh thì phân biệt được: cộng vàng cộng thêm của 5 người mỗi phe TRONG pha đó là
+    // biết pha đó ai lời. Và tiền thưởng của Dota vốn tỉ lệ với độ giàu của nạn nhân, nên
+    // "tôi chết rẻ, đổi lại đội giết được đứa giàu" tự nằm trong con số vàng.
+
+    /// <summary>Số pha giao tranh có ta chết.</summary>
+    public int? FightsDied { get; set; }
+
+    /// <summary>Trong số đó, bao nhiêu pha đội vẫn LỜI vàng so với địch.</summary>
+    public int? FightsDiedAhead { get; set; }
+
+    /// <summary>Tổng chênh lệch vàng hai phe, cộng dồn qua những pha có ta chết.</summary>
+    public int? FightSwingDied { get; set; }
+
+    /// <summary>Số pha giao tranh ta sống sót — nhóm đối chứng.</summary>
+    public int? FightsSurvived { get; set; }
+
+    /// <summary>Tổng chênh lệch vàng cộng dồn qua những pha ta sống sót.</summary>
+    public int? FightSwingSurvived { get; set; }
+
+    /// <summary>
+    /// Cộng dồn ĐỘ GIÀU CỦA TA tại thời điểm những pha có ta chết.
+    ///
+    /// Lấy vàng theo phút chứ không lấy net worth cuối ván: net worth cuối là con số SAU khi mọi
+    /// chuyện đã xảy ra, còn thứ quyết định một cuộc đổi chác lời hay lỗ là độ giàu NGAY LÚC ĐÓ.
+    /// </summary>
+    public int? TradeMyGold { get; set; }
+
+    /// <summary>Cộng dồn độ giàu của những kẻ địch chết trong CHÍNH những pha đó.</summary>
+    public int? TradeFoeGold { get; set; }
+
+    /// <summary>Số kẻ địch đã chết trong những pha đó — mẫu số cho <see cref="TradeFoeGold"/>.</summary>
+    public int? TradeFoeDeaths { get; set; }
+
     /// <summary>4 người cùng phe. Rỗng khi ván chưa lấy chi tiết, hoặc khi cả 4 đều ẩn danh.</summary>
     public List<TrackedMatchTeammate> Teammates { get; set; } = [];
 }

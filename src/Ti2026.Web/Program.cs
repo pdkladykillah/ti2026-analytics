@@ -153,7 +153,30 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseDefaultFiles();
-app.UseStaticFiles();
+
+// BẮT TRÌNH DUYỆT KIỂM LẠI index.html, app.js, app.css MỖI LẦN MỞ TRANG.
+//
+// Vì sao cần, và đây là sự cố đã xảy ra thật: ba tệp này tham chiếu nhau bằng đường dẫn KHÔNG
+// có phiên bản ("app.js"), và trước đây không gửi header cache nào cả. Thiếu Cache-Control thì
+// trình duyệt tự suy ra thời hạn theo kinh nghiệm và giữ bản cũ hàng giờ.
+//
+// Hậu quả không phải "thấy bản cũ" — mà là TRANG HỎNG HẲN. Một lần triển khai đổi cả HTML lẫn
+// JS: HTML mới tách thành sáu khung mục con, JS mới ghi vào sáu khung đó. Người dùng nhận HTML
+// mới (vì họ vừa tải lại trang) nhưng JS CŨ từ bộ nhớ đệm, và JS cũ ghi vào #profile-body — một
+// thẻ vừa bị bỏ đi. Nó ném lỗi ngay dòng đầu và cả trang hồ sơ trắng trơn, trông y hệt như mất
+// dữ liệu.
+//
+// "no-cache" KHÔNG phải là cấm lưu đệm: trình duyệt vẫn giữ tệp, chỉ bắt buộc hỏi lại server
+// trước khi dùng. Đã có ETag nên câu hỏi đó trả về 304 rỗng — vài trăm byte, không phải vài
+// chục KB. Đổi lại là bảo đảm một lần triển khai luôn tới được người dùng.
+//
+// Ảnh trong /media thì ngược lại, vẫn cache một năm: tên tệp là hash NỘI DUNG nên ảnh đổi thì
+// tên đổi, không bao giờ có chuyện tên cũ trỏ vào nội dung mới.
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+        ctx.Context.Response.Headers.CacheControl = "no-cache",
+});
 
 // Ảnh đã tải về, phục vụ từ chính máy mình tại /media.
 //

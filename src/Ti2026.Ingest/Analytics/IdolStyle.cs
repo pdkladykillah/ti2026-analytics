@@ -280,24 +280,35 @@ public static class IdolStyle
     /// không đủ nghèo để chắc là support. Thà bỏ 6% số ván còn hơn gán bừa rồi kéo lệch cả hai ô.
     /// Offlane thì không cần ngưỡng đó: offlane core vẫn thường xuyên đứng hạng 3.
     /// </summary>
-    public static string? PositionOf(int? laneRole, int? teamFarmRank) => (laneRole, teamFarmRank) switch
+    /// <remarks>
+    /// GỌI LẠI <see cref="RoleResolver"/>, KHÔNG TỰ CÀI LẠI.
+    ///
+    /// Bản đầu của hàm này tự viết lại luật ghép lane với hạng farm, trong khi RoleResolver đã
+    /// làm đúng việc đó từ trước — và trang Hồ sơ vẫn luôn dùng nó. Tức là lỗi "nhãn lane không
+    /// phải vị trí" chưa bao giờ tồn tại ở trang Hồ sơ; nó chỉ tồn tại ở tab này, vì tôi dựng
+    /// một bộ giải mã thứ hai thay vì dùng cái có sẵn.
+    ///
+    /// Hai bản cài cùng một luật thì sớm muộn cũng lệch nhau, và lúc đó hai trang sẽ nói hai
+    /// điều khác nhau về cùng một ván mà không ai biết bên nào đúng.
+    ///
+    /// Trả null cho những gì KHÔNG phải vị trí chính xác — gồm cả "core"/"support" suy từ đội
+    /// hình: phép so với tuyển thủ chuyên nghiệp cần biết đúng vị trí, và một ô "core" trộn
+    /// carry với mid với offlane thì không so được với ai.
+    /// </remarks>
+    public static string? PositionOf(int? laneRole, int? teamFarmRank)
     {
-        (2, _) => "pos2",
-        (1, <= 2) => "pos1",
-        (1, >= 4) => "pos5",
-        (3, <= 3 and >= 1) => "pos3",
-        (3, >= 4) => "pos4",
-        _ => null,
-    };
+        var verdict = RoleResolver.Resolve(laneRole, teamFarmRank);
+        return verdict.IsExact ? verdict.Code : null;
+    }
 
-    /// <summary>Tên tiếng Việt của vị trí, dùng chung cho mọi chỗ hiển thị.</summary>
+    /// <summary>Tên tiếng Việt của vị trí. Cũng lấy từ RoleResolver để hai trang gọi giống nhau.</summary>
     public static string PositionLabel(string position) => position switch
     {
-        "pos1" => "carry (safelane)",
-        "pos2" => "mid",
-        "pos3" => "offlane",
-        "pos4" => "support offlane",
-        "pos5" => "hard support",
+        "pos1" => "carry (pos 1)",
+        "pos2" => "mid (pos 2)",
+        "pos3" => "offlane (pos 3)",
+        "pos4" => "support cơ động (pos 4)",
+        "pos5" => "hard support (pos 5)",
         _ => position,
     };
 

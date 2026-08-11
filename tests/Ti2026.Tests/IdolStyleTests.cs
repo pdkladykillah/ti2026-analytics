@@ -269,14 +269,23 @@ public class IdolStyleTests
     [InlineData(1, 2, "pos1")]
     [InlineData(1, 4, "pos5")]
     [InlineData(1, 5, "pos5")]
-    [InlineData(1, 3, null)]             // vùng chồng lấn thật — thà bỏ còn hơn gán bừa
+
+    // Hạng 3 ở safelane về CORE, không phải "không rõ". Đây là luật đã ship trong
+    // RoleResolver và trang Hồ sơ vẫn đang chạy trên nó; giữ nguyên chứ không đẻ ra
+    // luật thứ hai. Ngưỡng duy nhất là hạng >= 4 thì mới là hỗ trợ.
+    [InlineData(1, 3, "pos1")]
+
     [InlineData(3, 1, "pos3")]
     [InlineData(3, 3, "pos3")]           // offlane core vẫn thường đứng hạng 3
     [InlineData(3, 4, "pos4")]
     [InlineData(3, 5, "pos4")]
     [InlineData(4, 1, null)]             // rừng
-    [InlineData(null, 1, null)]          // ván chưa parse
-    [InlineData(1, null, null)]          // chưa có hạng thì không đoán
+    [InlineData(null, 1, null)]          // ván chưa parse thì KHÔNG có vị trí chính xác
+
+    // Có nhãn lane mà thiếu hạng thì luật đã ship coi như core. Ca này gần như không xảy
+    // ra trên dữ liệu thật — hạng net worth có ở 100% số ván đã lấy chi tiết, mà nhãn lane
+    // thì chỉ có sau khi đã lấy chi tiết.
+    [InlineData(1, null, "pos1")]
     public void Ghep_lane_voi_hang_net_worth_ra_vi_tri(int? laneRole, int? rank, string? expected) =>
         IdolStyle.PositionOf(laneRole, rank).Should().Be(expected);
 

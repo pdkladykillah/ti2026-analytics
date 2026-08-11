@@ -320,6 +320,7 @@ public static class ProfileEndpoints
                     splits = deathEffect.Splits.Select(s => new
                     {
                         outcome = s.Outcome, games = s.Games,
+                        medianMinutes = s.MedianMinutes,
                         highDeathMatesFarm = s.HighDeathMatesFarm,
                         lowDeathMatesFarm = s.LowDeathMatesFarm,
                         matesFarmGap = s.MatesFarmGap,

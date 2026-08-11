@@ -1252,6 +1252,109 @@ function card(tone, kicker, big, title, note) {
   </div>`;
 }
 
+/* ------------------------------ Biểu đồ ra-đa ------------------------------ */
+
+/**
+ * Bảy trục cố định, theo đúng thứ tự này ở MỌI người.
+ *
+ * Cố định để hình dạng so được giữa hai người: nếu thứ tự trục đổi theo dữ liệu thì hai đa giác
+ * khác hình có thể chỉ vì trục xếp khác, chứ không phải vì người chơi khác nhau.
+ *
+ * Bỏ "chối lính" (gần trùng với ăn lính, hai trục cạnh nhau đo cùng một việc sẽ kéo dài hình về
+ * một phía một cách giả tạo) và "hồi máu" (chỉ có ở một phần nhỏ số ván, xem quy tắc raw = 0).
+ */
+const RADAR_AXES = [
+  ['farm-gpm', 'Kiếm vàng'],
+  ['farm-lh', 'Ăn lính'],
+  ['xpm', 'Lên cấp'],
+  ['dmg', 'Sát thương'],
+  ['tower', 'Đẩy trụ'],
+  ['assists', 'Hỗ trợ'],
+  ['deaths', 'Giữ mạng'],
+];
+
+/**
+ * Ra-đa bảy góc: vươn ra ở mặt mạnh, thụt vào ở mặt yếu.
+ *
+ * VÌ SAO DẠNG NÀY DÙNG ĐƯỢC Ở ĐÂY, trong khi ra-đa thường bị chê. Điều khiến nó sai trong đa số
+ * trường hợp là mỗi trục một đơn vị khác nhau, nên diện tích hình chẳng có nghĩa gì. Ở đây cả
+ * bảy trục đều là CÙNG một thang: phân vị 0→100 so với người chơi cùng hero. Cùng thang, cùng
+ * chiều (cao luôn là tốt, số chết đã đảo), nên hình dạng đọc được thật.
+ *
+ * VÒNG 50 ĐƯỢC VẼ ĐẬM. Không có nó thì một đa giác trông "khá to" mà thực ra chỉ quanh mức
+ * trung bình — vòng đó là ranh giới giữa hơn người và kém người, và nó phải nhìn thấy được.
+ *
+ * TRỤC KHÔNG BAO GIỜ CẮT GỐC. Luôn 0→100 đủ vòng, kể cả khi mọi giá trị nằm trong 40–70: co
+ * thang cho "vừa dữ liệu" sẽ thổi một chênh lệch 8 điểm thành một hình dạng kịch tính.
+ */
+function radar(components) {
+  const axes = RADAR_AXES
+    .map(([key, label]) => ({ label, c: components.find((x) => x.key === key) }))
+    .filter((a) => a.c);
+
+  if (axes.length < 3) return '';
+
+  // Khung rộng hơn cao vì nhãn nằm NGANG hai bên: bản đầu dùng khung vuông 400×330 và hai nhãn
+  // dưới bị cắt mất dòng số — điểm dưới cùng rơi ở y 328 rồi còn cộng thêm hai dòng tspan nữa.
+  // Chỗ chừa ra mỗi bên phải đủ cho nhãn dài nhất, không phải chỉ cho vòng tròn.
+  const W = 460, H = 320, cx = W / 2, cy = 161, R = 112, LR = R + 22;
+
+  const at = (i, v) => {
+    const a = (-90 + (i * 360) / axes.length) * Math.PI / 180;
+    return [cx + Math.cos(a) * R * (v / 100), cy + Math.sin(a) * R * (v / 100)];
+  };
+
+  const poly = (v) => axes.map((_, i) => at(i, typeof v === 'function' ? v(i) : v).join(',')).join(' ');
+
+  const rings = [25, 50, 75, 100].map((v) => `<polygon points="${poly(v)}"
+    class="rd-ring${v === 50 ? ' rd-mid' : ''}"/>`).join('');
+
+  const spokes = axes.map((_, i) => {
+    const [x, y] = at(i, 100);
+    return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="rd-spoke"/>`;
+  }).join('');
+
+  const labels = axes.map((a, i) => {
+    const [x, y] = at(i, 100);
+    const dx = (x - cx) / R, dy = (y - cy) / R;
+    const lx = cx + dx * LR;
+
+    // Nhãn TRÊN phải đẩy lên đủ cho CẢ HAI dòng, nhãn DƯỚI đẩy xuống vừa đủ dòng đầu — vì dòng
+    // thứ hai luôn nằm dưới dòng đầu 1,15em. Không tính riêng hai chiều thì nhãn dưới cùng bị
+    // cắt mất dòng số, đúng lỗi của bản đầu.
+    const ly = cy + dy * LR + (dy < -0.6 ? -14 : dy > 0.55 ? 12 : -5);
+    const anchor = Math.abs(dx) < 0.3 ? 'middle' : dx > 0 ? 'start' : 'end';
+
+    return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="rd-lbl">
+      <tspan x="${lx.toFixed(1)}">${esc(a.label)}</tspan>
+      <tspan x="${lx.toFixed(1)}" dy="1.15em" class="rd-num">${a.c.median}</tspan>
+    </text>`;
+  }).join('');
+
+  const dots = axes.map((a, i) => {
+    const [x, y] = at(i, a.c.median);
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" class="rd-dot"><title>${esc(a.label)}: phân vị ${a.c.median} qua ${n0(a.c.games)} ván${
+      a.c.won === null || a.c.won === undefined ? '' : ` (thắng ${a.c.won}, thua ${a.c.lost})`}</title></circle>`;
+  }).join('');
+
+  const spoken = axes.map((a) => `${a.label} ${a.c.median}`).join(', ');
+
+  // Nhãn "50" đặt NGAY TRÊN vòng đậm chứ không ở tâm: ở tâm nó nằm dưới đa giác dữ liệu và bị
+  // lớp nền của đa giác làm mờ, đồng thời không chỉ vào thứ nó đang gọi tên.
+  const [, midY] = at(0, 50);
+
+  return `<svg class="rd" viewBox="0 0 ${W} ${H}" role="img"
+      aria-label="Biểu đồ bảy trục, thang phân vị 0 đến 100 so với người chơi cùng hero. ${esc(spoken)}.">
+    <g class="rd-grid">${rings}${spokes}</g>
+    <polygon points="${poly((i) => axes[i].c.median)}" class="rd-area"/>
+    ${dots}${labels}
+    <text x="${cx + 7}" y="${(midY + 4).toFixed(1)}" class="rd-hint">50</text>
+  </svg>
+  <p class="desc" style="margin:var(--s-2) 0 0">Vòng đậm ở giữa là mức <b>50</b> — ngang người
+    chơi trung bình trên cùng hero. Vươn ra ngoài vòng đó là hơn người, thụt vào trong là kém.
+    Thang luôn chạy đủ 0→100 nên hai người so được hình với nhau.</p>`;
+}
+
 /* ---------------------- Điểm thành phần theo phân vị ---------------------- */
 
 /**
@@ -1280,7 +1383,10 @@ function skillRow(c) {
       : `<span class="${delta > 0 ? 'cal-good' : delta < 0 ? 'cal-bad' : 'mu'}"
               title="50 ván gần nhất so với toàn bộ lịch sử">${delta > 0 ? '▲' : delta < 0 ? '▼' : '·'} ${Math.abs(delta)}</span>`}</div>
     ${c.won === null || c.won === undefined || c.lost === null || c.lost === undefined ? ''
-      : `<div class="sk-split" title="Cùng chỉ số, tách theo kết quả trận">
+      // Thứ tự LUÔN là thắng trước, thua sau — và đó mới là kênh phân biệt chính, không phải
+      // màu. Ở chế độ tối, xanh --pos và đỏ --neg chỉ cách nhau ΔE 3,3 với người mù màu đỏ-lục,
+      // tức gần như cùng một màu. Màu ở đây chỉ là lớp củng cố cho người nhìn được nó.
+      : `<div class="sk-split" title="Ván thắng ${c.won} · ván thua ${c.lost} (phân vị)">
            <span class="cal-good">${c.won}</span><i>·</i><span class="cal-bad">${c.lost}</span>
          </div>`}
   </div>`;
@@ -1304,12 +1410,14 @@ function skillBlock(d) {
   // trước mỗi biểu đồ là cách chắc chắn để người đọc bỏ qua cả biểu đồ lẫn đoạn văn.
   return `<h3 style="margin-top:var(--s-5)">Điểm từng mặt, so với người chơi cùng hero</h3>
     <p class="desc" style="margin:0 0 var(--s-3)">Phân vị 0→100 so với người chơi <b>cùng hero</b>.
-      Vạch giữa là mức 50 — ngang người trung bình. Hai số ngoài cùng bên phải là
-      <span class="cal-good">ván thắng</span> · <span class="cal-bad">ván thua</span>. Đọc chúng
+      Vạch giữa là mức 50 — ngang người trung bình. Hai số ngoài cùng bên phải luôn theo thứ tự
+      <b>ván thắng trước, ván thua sau</b> (<span class="cal-good">60</span>·<span class="cal-bad">26</span>
+      nghĩa là thắng 60, thua 26). Đọc chúng
       như bối cảnh, đừng đọc thành lời bào chữa: <b>mọi</b> chỉ số đều sụp khi thua, với mọi
       người, ở cùng một mức — đo trên hai tài khoản thì khoảng cách từng cột gần như trùng khít.
       "Giữ mạng" đã đảo chiều để cao luôn là tốt.</p>
     ${roles.length ? `<div class="chips" id="pf-roles">${chips.join('')}</div>` : ''}
+    <div id="pf-radar">${radar(all)}</div>
     <div class="sk-list" id="pf-skills">${all.map(skillRow).join('')}</div>`;
 }
 
@@ -1328,6 +1436,12 @@ function wireRoleChips(d) {
     const role = btn.dataset.role;
     const found = role ? (d.componentsByRole || []).find((r) => r.role === role) : null;
     const rows = role ? (found ? found.components : []) : (d.components || []);
+
+    // Ra-đa phải đổi theo cùng bộ lọc: để nó đứng yên trong khi bảng bên dưới đã đổi vai trò là
+    // bày ra hai con số khác nhau cho cùng một thứ, và người đọc không có cách nào biết cái nào
+    // đang nói về cái gì.
+    const rd = $('#pf-radar');
+    if (rd) rd.innerHTML = radar(rows);
 
     list.innerHTML = (rows.length
       ? rows.map(skillRow).join('')

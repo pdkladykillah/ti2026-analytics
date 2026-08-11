@@ -134,6 +134,37 @@ public class TrackedPlayerMatch
     public int? PctHeroHealing { get; set; }
     public int? PctTowerDamage { get; set; }
 
+    // ---------- Kinh tế CỦA CẢ HAI PHE, để đo hiệu quả của cái chết ----------
+    //
+    // VÌ SAO CẦN. Câu hỏi "cái chết của tôi có tạo ra khoảng trống cho đồng đội không" KHÔNG trả
+    // lời được bằng chỉ số của riêng người chết. Đã thử dùng số hỗ trợ làm proxy và người dùng
+    // bác đúng: hỗ trợ chỉ ghi nhận việc CÓ MẶT lúc hạ gục, còn một cái chết mua thời gian cho
+    // đồng đội đi farm hay đẩy trụ thì không để lại dấu vết nào trong đó.
+    //
+    // Thứ đo được điều đó là kinh tế của bốn người kia trong CHÍNH ván ấy. Nếu lối chơi hi sinh
+    // có hiệu quả thì những ván ta chết nhiều phải là những ván đồng đội giàu hơn thường lệ.
+    //
+    // Kèm kinh tế phe địch vì thiếu nó thì không phân biệt được "đồng đội giàu vì ta tạo được
+    // khoảng trống" với "cả hai phe đều giàu vì ván kéo dài".
+
+    /// <summary>Tổng net worth 5 người cùng phe, gồm cả người được theo dõi.</summary>
+    public int? TeamNetWorth { get; set; }
+
+    /// <summary>Tổng net worth 5 người phe địch.</summary>
+    public int? EnemyNetWorth { get; set; }
+
+    /// <summary>
+    /// Trung vị phân vị GPM của 4 ĐỒNG ĐỘI (không tính người được theo dõi).
+    ///
+    /// Dùng phân vị chứ không dùng GPM thô: đồng đội chơi hero khác nhau, và 500 GPM của một
+    /// support là phi thường còn của một carry là kém. Phân vị đã so mỗi người với người khác
+    /// cùng hero nên bốn con số mới cộng chung được.
+    /// </summary>
+    public int? MatesPctGpm { get; set; }
+
+    /// <summary>Trung vị phân vị XPM của 4 đồng đội.</summary>
+    public int? MatesPctXpm { get; set; }
+
     /// <summary>4 người cùng phe. Rỗng khi ván chưa lấy chi tiết, hoặc khi cả 4 đều ẩn danh.</summary>
     public List<TrackedMatchTeammate> Teammates { get; set; } = [];
 }

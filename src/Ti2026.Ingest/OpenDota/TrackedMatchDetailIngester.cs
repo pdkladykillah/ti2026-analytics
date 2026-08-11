@@ -174,6 +174,7 @@ public class TrackedMatchDetailIngester(
                 }
 
                 ReadBenchmarks(row, me);
+                ReadTeamEconomy(row, me, all);
                 SaveTeammates(row, me, team, savedMates);
 
                 row.DetailFetchedAt = DateTime.UtcNow;
@@ -290,6 +291,52 @@ public class TrackedMatchDetailIngester(
         if (raw <= 0 && p > 0.5) return null;
 
         return (int)Math.Round(p * 100);
+    }
+
+    /// <summary>
+    /// Kinh tế của cả hai phe, và mức farm của riêng 4 ĐỒNG ĐỘI.
+    ///
+    /// Đây là dữ liệu để trả lời "cái chết của tôi có tạo ra khoảng trống không" mà không phải
+    /// mượn chỉ số hỗ trợ làm proxy — hỗ trợ chỉ ghi nhận việc có mặt lúc hạ gục, còn một cái
+    /// chết mua thời gian cho đồng đội đi farm thì không để lại dấu vết nào trong đó.
+    ///
+    /// Chỉ ghi khi ĐỦ 5 người mỗi phe. Thiếu người thì tổng kinh tế đổi nghĩa, và một tổng của
+    /// 4 người đọc như tổng của 5 là sai lệch âm thầm — đúng loại đã phải chặn ở thứ hạng farm.
+    /// </summary>
+    private static void ReadTeamEconomy(
+        Data.Entities.TrackedPlayerMatch row,
+        OpenDotaMatchPlayer me,
+        List<OpenDotaMatchPlayer> all)
+    {
+        var meRadiant = me.PlayerSlot < 128;
+        var team = all.Where(p => (p.PlayerSlot < 128) == meRadiant).ToList();
+        var foes = all.Where(p => (p.PlayerSlot < 128) != meRadiant).ToList();
+
+        if (team.Count != 5 || foes.Count != 5) return;
+        if (team.Any(p => p.NetWorth is null) || foes.Any(p => p.NetWorth is null)) return;
+
+        row.TeamNetWorth = team.Sum(p => p.NetWorth!.Value);
+        row.EnemyNetWorth = foes.Sum(p => p.NetWorth!.Value);
+
+        var mates = team.Where(p => !ReferenceEquals(p, me)).ToList();
+        row.MatesPctGpm = MedianPct(mates, "gold_per_min");
+        row.MatesPctXpm = MedianPct(mates, "xp_per_min");
+    }
+
+    /// <summary>
+    /// Trung vị phân vị của một chỉ số trên nhóm người truyền vào.
+    ///
+    /// Trung vị chứ không trung bình, và bỏ qua người thiếu phân vị thay vì coi họ bằng 0: một
+    /// đồng đội ẩn danh hay một ô benchmark trống không có nghĩa là người đó farm kém nhất trận.
+    /// </summary>
+    private static int? MedianPct(List<OpenDotaMatchPlayer> group, string key)
+    {
+        var values = group.Select(p => Pct(p.Benchmarks, key)).OfType<int>().OrderBy(x => x).ToList();
+        if (values.Count == 0) return null;
+
+        return values.Count % 2 == 1
+            ? values[values.Count / 2]
+            : (int)Math.Round((values[values.Count / 2 - 1] + values[values.Count / 2]) / 2.0);
     }
 
     /// <summary>

@@ -200,6 +200,15 @@ public static class ProfileEndpoints
 
             var mates = TeammateAnalysis.Read(mateGames);
 
+            // ---------- Cái chết có đổi được gì không ----------
+            // Đo bằng kinh tế ĐỒNG ĐỘI trong chính ván đó, không mượn chỉ số hỗ trợ làm proxy:
+            // hỗ trợ chỉ ghi nhận việc có mặt lúc hạ gục, mà người đã chết thì không thể có mặt
+            // ở pha hạ gục sau đó.
+            var deathEffect = DeathEffect.Read(rows
+                .Select(m => new DeathGame(
+                    m.Won, m.PctDeaths, m.MatesPctGpm, m.TeamNetWorth, m.EnemyNetWorth))
+                .ToList());
+
             // ---------- Hero pool đặt cạnh meta ----------
             // Mốc là bậc rank CAO chứ không phải toàn bộ pub: người dùng ở Ancient, còn tỷ lệ
             // thắng gộp cả Herald tới Immortal là một quần thể khác hẳn.
@@ -303,6 +312,22 @@ public static class ProfileEndpoints
 
                 components = components.Select(Shape).ToList(),
                 componentsByRole = byRole,
+
+                deathEffect = new
+                {
+                    verdict = deathEffect.Verdict,
+                    text = deathEffect.Text,
+                    splits = deathEffect.Splits.Select(s => new
+                    {
+                        outcome = s.Outcome, games = s.Games,
+                        highDeathMatesFarm = s.HighDeathMatesFarm,
+                        lowDeathMatesFarm = s.LowDeathMatesFarm,
+                        matesFarmGap = s.MatesFarmGap,
+                        highDeathLead = s.HighDeathLead, lowDeathLead = s.LowDeathLead,
+                        leadGap = s.LeadGap,
+                        pValue = Math.Round(s.PValue, 5),
+                    }).ToList(),
+                },
 
                 roles = roles.Select(r => new
                 {

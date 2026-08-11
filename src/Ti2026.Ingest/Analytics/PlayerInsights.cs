@@ -151,10 +151,26 @@ public static class PlayerInsights
 
         foreach (var c in weak.Take(2))
         {
+            // Mặt yếu chỉ sụp trong ván THUA thì chẩn đoán khác hẳn, và lời khuyên cũng khác.
+            // Nói "hãy luyện giữ mạng" cho một người đứng phân vị 60 ở ván thắng là chữa sai bệnh.
+            if (SkillComponents.OnlyWhenLosing(c))
+            {
+                found.Add(new PlayerInsight("yeu-khi-thua", "warn",
+                    $"{c.Label} nhìn gộp thì thấp (phân vị {c.Median}), nhưng tách theo kết quả "
+                    + $"trận thì đó là hai chuyện khác nhau: ván THẮNG bạn ở {c.Won}, ván THUA chỉ "
+                    + $"{c.Lost}. Tức không phải bạn kém mặt này — mà những ván hỏng của bạn hỏng "
+                    + "rất nặng. Chỗ đáng luyện là cắt lỗ sớm và chơi an toàn khi ván đang xấu, "
+                    + "chứ không phải luyện lại kỹ năng này từ đầu.",
+                    87));
+                continue;
+            }
+
             found.Add(new PlayerInsight("yeu-mat", "warn",
                 $"{c.Label} là mặt yếu nhất: phân vị {c.Median} qua {N(c.Games)} ván — dưới mức "
-                + "trung bình của những người chơi cùng hero. Đây là chỗ đáng sửa nhất vì nó đã "
-                + "so trên cùng hero, tức không phải do bạn hay chọn hero khó.",
+                + "trung bình của những người chơi cùng hero"
+                + (c.Won is int w ? $", và cả trong ván THẮNG cũng chỉ {w}" : "")
+                + ". Đây là chỗ đáng sửa nhất vì nó đã so trên cùng hero, tức không phải do bạn "
+                + "hay chọn hero khó.",
                 86));
         }
 

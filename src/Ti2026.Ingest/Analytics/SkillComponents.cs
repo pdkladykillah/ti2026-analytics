@@ -16,9 +16,12 @@ public readonly record struct RatedGame(
 /// <param name="Low">Phân vị 25 của chính người này — mức của ván dở.</param>
 /// <param name="High">Phân vị 75 — mức của ván hay.</param>
 /// <param name="Recent">Median của 50 ván gần nhất, null khi chưa đủ dữ liệu để so.</param>
+/// <param name="Won">Median chỉ tính trong ván THẮNG. null khi chưa đủ ván thắng.</param>
+/// <param name="Lost">Median chỉ tính trong ván THUA.</param>
 public readonly record struct SkillComponent(
     string Key, string Label, string Group, int Games,
-    int Median, int Low, int High, int? Recent, bool Inverted);
+    int Median, int Low, int High, int? Recent, bool Inverted,
+    int? Won, int? Lost);
 
 /// <summary>
 /// Chấm từng mặt kỹ năng bằng PHÂN VỊ THEO HERO của OpenDota, thay vì bằng con số tuyệt đối.
@@ -105,10 +108,25 @@ public static class SkillComponents
                 ? Percentile(all.Take(RecentWindow).Select(x => x.Value).ToList(), 50)
                 : null;
 
+            // TÁCH THEO KẾT QUẢ TRẬN. Đây là thứ một con số gộp giấu mất hoàn toàn.
+            //
+            // Đo trên tài khoản thật: cột "giữ mạng" gộp lại là 42 — nghe như một điểm yếu rõ.
+            // Nhưng tách ra thì trong ván THẮNG là 60 (trên trung bình) và trong ván THUA là 26.
+            // Hai câu chuyện hoàn toàn khác nhau nằm sau cùng một con số, và câu đúng không phải
+            // "người này chết nhiều" mà "những ván hỏng của người này hỏng rất nặng".
+            //
+            // Không thay con số gộp bằng con số theo kết quả: mốc so của OpenDota cũng là quần
+            // thể gộp cả thắng lẫn thua, nên gộp mới là phép so cùng thang. Tách ra là để KỂ
+            // đúng câu chuyện, không phải để đổi thước đo.
+            var won = all.Where(x => x.Game.Won).Select(x => x.Value).ToList();
+            var lost = all.Where(x => !x.Game.Won).Select(x => x.Value).ToList();
+
             found.Add(new SkillComponent(
                 key, label, group, all.Count,
                 Percentile(values, 50), Percentile(values, 25), Percentile(values, 75),
-                recent, inverted));
+                recent, inverted,
+                won.Count >= minGames ? Percentile(won, 50) : null,
+                lost.Count >= minGames ? Percentile(lost, 50) : null));
         }
 
         return found;
@@ -161,4 +179,15 @@ public static class SkillComponents
 
         return (strong, weak);
     }
+
+    /// <summary>
+    /// Mặt yếu này có yếu ở CẢ ván thắng không, hay chỉ sụp trong ván thua.
+    ///
+    /// Phân biệt này quyết định lời khuyên đưa ra là gì. Cột "giữ mạng" của tài khoản thật gộp
+    /// lại là 42, và nếu dừng ở đó thì trang khuyên "học cách đừng chết". Nhưng trong ván thắng
+    /// nó là 60 — TRÊN trung bình. Vấn đề không nằm ở kỹ năng giữ mạng; nó nằm ở chỗ những ván
+    /// hỏng hỏng rất nặng. Hai chẩn đoán khác nhau dẫn tới hai việc phải luyện khác nhau.
+    /// </summary>
+    public static bool OnlyWhenLosing(SkillComponent c) =>
+        c.Won is int w && c.Lost is int l && w >= 50 && l < 50 - NotableGap;
 }

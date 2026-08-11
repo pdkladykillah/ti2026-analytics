@@ -389,6 +389,12 @@ public static class ProfileEndpoints
         key = c.Key, label = c.Label, group = c.Group, games = c.Games,
         median = c.Median, low = c.Low, high = c.High,
         recent = c.Recent, inverted = c.Inverted,
+
+        // Tách theo kết quả trận. Một con số gộp giấu mất câu chuyện: cột giữ mạng gộp lại là
+        // 42 nhưng ván thắng là 60 còn ván thua là 26 — và lời khuyên đưa ra từ hai con số đó
+        // khác hẳn nhau.
+        won = c.Won, lost = c.Lost,
+        onlyWhenLosing = SkillComponents.OnlyWhenLosing(c),
     };
 
     private static string? RankLabel(int? tier)

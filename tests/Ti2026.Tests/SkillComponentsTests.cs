@@ -199,6 +199,61 @@ public class SkillComponentsTests
             "phân vị 53 là ngang trung bình, không phải điểm mạnh");
     }
 
+    // ---------- Tách theo kết quả trận ----------
+
+    /// <summary>
+    /// Người dùng phản bác kết luận "giữ mạng 42 là điểm yếu đáng sửa nhất", và phép kiểm trên
+    /// dữ liệu thật cho thấy họ đúng — nhưng không phải vì lý do họ nêu.
+    ///
+    /// Đo trên 5.877 ván: cột giữ mạng gộp lại là 42, nhưng tách theo kết quả thì ván THẮNG là
+    /// 60 (TRÊN trung bình) còn ván THUA là 26. Hai câu chuyện khác hẳn nhau nằm sau cùng một
+    /// con số. Câu đúng không phải "người này chết nhiều" mà "những ván hỏng hỏng rất nặng" —
+    /// và hai chẩn đoán đó dẫn tới hai việc phải luyện hoàn toàn khác nhau.
+    /// </summary>
+    [Fact]
+    public void Tach_duoc_van_thang_va_van_thua()
+    {
+        var games = new List<RatedGame>();
+        for (var i = 0; i < 40; i++) games.Add(G(i, won: true, deaths: 40));    // giữ mạng 60
+        for (var i = 40; i < 80; i++) games.Add(G(i, won: false, deaths: 74));  // giữ mạng 26
+
+        var c = SkillComponents.Read(games).Single(x => x.Key == "deaths");
+
+        c.Median.Should().Be(43, "gộp lại nằm giữa hai nhóm");
+        c.Won.Should().Be(60);
+        c.Lost.Should().Be(26);
+        SkillComponents.OnlyWhenLosing(c).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Nhưng một mặt yếu ở CẢ ván thắng thì vẫn là mặt yếu thật, và không được gán nhãn
+    /// "chỉ sụp khi thua" — nếu không thì mọi điểm yếu đều được bào chữa.
+    /// </summary>
+    [Fact]
+    public void Yeu_o_ca_van_thang_thi_van_la_yeu_that()
+    {
+        var games = new List<RatedGame>();
+        for (var i = 0; i < 40; i++) games.Add(G(i, won: true, deaths: 70));
+        for (var i = 40; i < 80; i++) games.Add(G(i, won: false, deaths: 80));
+
+        var c = SkillComponents.Read(games).Single(x => x.Key == "deaths");
+
+        c.Won.Should().Be(30, "phân vị 70 số chết đảo chiều thành 30");
+        SkillComponents.OnlyWhenLosing(c).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Thieu_van_thang_hoac_thua_thi_de_trong_chu_khong_doan()
+    {
+        var games = Enumerable.Range(0, 40).Select(i => G(i, won: true, deaths: 40)).ToList();
+
+        var c = SkillComponents.Read(games).Single(x => x.Key == "deaths");
+
+        c.Won.Should().Be(60);
+        c.Lost.Should().BeNull("không có ván thua nào thì không có gì để nói");
+        SkillComponents.OnlyWhenLosing(c).Should().BeFalse();
+    }
+
     [Fact]
     public void Khong_gop_thanh_mot_diem_tong()
     {

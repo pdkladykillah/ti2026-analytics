@@ -138,7 +138,9 @@
 
     <!-- ===== Hồ sơ cá nhân ===== -->
     <section class="view" id="view-profile" role="tabpanel" aria-labelledby="tab-profile" hidden>
-      <div class="card" data-sec="Hồ sơ cá nhân">
+      <!-- Thẻ này KHÔNG có data-sec nên luôn hiện ở mọi mục con: người đang xem là ai, và ô
+           chọn người, phải theo suốt chứ không nấp trong một mục. -->
+      <div class="card">
         <header>
           <h2>Hồ sơ người chơi</h2>
           <p class="desc">Dữ liệu được lưu lại theo thời gian nên đọc được cả tiến bộ, không chỉ
@@ -148,8 +150,17 @@
           <label class="sr-only" for="profile-who">Chọn người</label>
           <select id="profile-who"></select>
         </div>
-        <div id="profile-body" aria-live="polite"></div>
+        <div id="profile-head" aria-live="polite"></div>
       </div>
+
+      <!-- Mỗi mục một thẻ data-sec. setupSubTabs() tự sinh nút cho chúng, đúng cơ chế mà mọi
+           tab khác đang dùng — không có máy móc riêng nào cho trang này. -->
+      <div class="card" data-sec="Tổng quan"><div id="profile-overview"></div></div>
+      <div class="card" data-sec="Vai trò"><div id="profile-roles"></div></div>
+      <div class="card" data-sec="Hero"><div id="profile-heroes"></div></div>
+      <div class="card" data-sec="Đồng đội"><div id="profile-mates"></div></div>
+      <div class="card" data-sec="Theo thời gian"><div id="profile-months"></div></div>
+      <div class="card" data-sec="Nhận định"><div id="profile-insights"></div></div>
     </section>
 
     <!-- ===== Bảng chỉ số ===== -->

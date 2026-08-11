@@ -117,8 +117,9 @@ public class PlayerInsightsTests
 
     // ---------- Dịch chuyển trên toàn bộ các mặt ----------
 
-    private static SkillComponent C(string key, int median, int? recent) =>
-        new(key, key, "nhóm", 500, median, median - 20, median + 20, recent, false);
+    private static SkillComponent C(string key, int median, int? recent,
+        int? won = null, int? lost = null) =>
+        new(key, key, "nhóm", 500, median, median - 20, median + 20, recent, false, won, lost);
 
     /// <summary>
     /// Đo trên dữ liệu thật: cả 10 mặt đều cao hơn ở 50 ván gần nhất, nhưng mặt lệch nhiều nhất

@@ -925,9 +925,16 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 
 .sk-list { display: grid; gap: 9px; }
 .sk-row {
-  display: grid; grid-template-columns: 11.5rem 1fr 2.4rem 2.9rem;
+  display: grid; grid-template-columns: 11.5rem 1fr 2.4rem 2.9rem 4.2rem;
   gap: var(--s-3); align-items: center;
 }
+
+/* Cùng một chỉ số, tách theo kết quả trận. Cần nó vì con số gộp giấu mất câu chuyện: cột giữ
+   mạng gộp lại là 42 nhưng ván thắng 60 / ván thua 26 — hai chẩn đoán khác hẳn nhau. */
+.sk-split {
+  font-size: 11.5px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.sk-split i { color: var(--muted); font-style: normal; margin: 0 3px; }
 .sk-name { font-size: 13px; display: flex; flex-direction: column; line-height: 1.25; }
 .sk-name small { color: var(--muted); font-size: 11px; }
 
@@ -956,7 +963,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .sk-delta { font-size: 11.5px; text-align: right; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 620px) {
-  .sk-row { grid-template-columns: 1fr 2.4rem 2.9rem; row-gap: 3px; }
+  .sk-row { grid-template-columns: 1fr 2.4rem 2.9rem 4.2rem; row-gap: 3px; }
   .sk-name { grid-column: 1 / -1; }
 }
 

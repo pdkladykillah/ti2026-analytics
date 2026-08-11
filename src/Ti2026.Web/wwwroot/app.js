@@ -1083,7 +1083,12 @@ function renderProfile(d) {
   body.innerHTML = head + headlines(d) + skillBlock(d)
     + insights + metaBlock(d) + matesBlock(d) + eraBlock(d) + trend + heroTable
     + more('Cách tính và giới hạn của từng con số', 0,
-        `<p class="desc" style="margin:0">${esc(d.method || '')}</p>`);
+        `<p class="desc" style="margin:0 0 var(--s-3)">Chỉ những vị trí có nhãn THẬT từ replay mới
+           tách riêng được bằng các nút phía trên. Vị trí suy đoán thì không tách — nó không phân
+           biệt được mid với offlane. Dải mờ hẹp nghĩa là bạn ổn định, dải rộng nghĩa là thất
+           thường: hai người cùng trung vị 60 có thể là một người luôn quanh 60 và một người khi
+           90 khi 20.</p>
+         <p class="desc" style="margin:0">${esc(d.method || '')}</p>`);
 
   wireRoleChips(d);
 }
@@ -1224,15 +1229,13 @@ function skillBlock(d) {
     .concat(roles.map((r) => `<button type="button" class="chip" data-role="${esc(r.role)}">
         ${esc(r.label)}<small>${n0(r.games)}</small></button>`));
 
+  // Giải thích NGẮN ở đây, phần dài nằm trong khối "Cách tính" gập lại cuối trang. Ba đoạn văn
+  // trước mỗi biểu đồ là cách chắc chắn để người đọc bỏ qua cả biểu đồ lẫn đoạn văn.
   return `<h3 style="margin-top:var(--s-5)">Điểm từng mặt, so với người chơi cùng hero</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Mỗi thanh là phân vị 0→100 so với mọi người
-      chơi CÙNG hero đó, nên nó đã trừ đi phần lệch do bạn hay chọn hero nào. Vạch đứng ở giữa là
-      mức 50 — ngang người chơi trung bình. Dải mờ là khoảng từ ván dở tới ván hay của chính bạn:
-      dải hẹp là ổn định, dải rộng là thất thường. Cột "Giữ mạng" đã đảo chiều để cao luôn là tốt.</p>
-    ${roles.length ? `<div class="chips" id="pf-roles">${chips.join('')}</div>
-      <p class="desc" style="margin:var(--s-2) 0 var(--s-3)">Chỉ những vị trí có nhãn THẬT từ
-        replay mới tách riêng được. Vị trí suy đoán thì không tách — nó không phân biệt được mid
-        với offlane.</p>` : ''}
+    <p class="desc" style="margin:0 0 var(--s-3)">Phân vị 0→100 so với người chơi <b>cùng hero</b>.
+      Vạch giữa là mức 50 — ngang người trung bình. Dải mờ là khoảng ván dở → ván hay của chính
+      bạn. "Giữ mạng" đã đảo chiều để cao luôn là tốt.</p>
+    ${roles.length ? `<div class="chips" id="pf-roles">${chips.join('')}</div>` : ''}
     <div class="sk-list" id="pf-skills">${all.map(skillRow).join('')}</div>`;
 }
 

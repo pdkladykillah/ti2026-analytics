@@ -1,122 +1,168 @@
 /* ============================================================================
-   TI 2026 — Bento sáng + pastel mềm
+   TI 2026 — "Aegis": giấy da ấm, vàng Aegis, xanh Radiant / đỏ Dire
    ----------------------------------------------------------------------------
    Không build step: CSS viết tay + custom properties. Không Tailwind, không npm.
-   Dockerfile chỉ cần .NET SDK.
 
-   Nguyên tắc màu: nền và bề mặt là trung tính sáng (60%), pastel làm nền cho thẻ
-   chỉ số và nhãn (30%), indigo làm điểm nhấn cho hành động và trạng thái (10%).
-   Vùng số liệu cố tình TRẦM: bảng 12 cột mà tô pastel khắp nơi thì không đọc được.
-   Dễ thương nằm ở vỏ — thẻ, bo góc, icon, chuyển động — không nằm trong bảng số.
+   VÌ SAO ĐỔI KHỎI BẢN INDIGO + PASTEL. Bản trước dính bốn dấu hiệu "giao diện do
+   máy sinh" cùng lúc: điểm nhấn tím-indigo, dải pastel mềm, lưới thẻ đều tăm tắp,
+   và bo góc lớn đồng loạt. Từng thứ một thì vô hại; cả bốn cùng lúc thì thành một
+   phong cách không thuộc về nội dung nào cả.
+
+   BA QUYẾT ĐỊNH MÀU, và cái sau ràng buộc cái trước:
+
+   1. ĐIỂM NHẤN LÀ VÀNG AEGIS, không phải tím. Vàng là màu của vàng-trong-game và
+      của chiếc Aegis — nó thuộc về nội dung này chứ không phải một bảng màu mượn
+      về. Nó cũng là màu mà mọi bản mẫu AI đều KHÔNG chọn, nên nó giải quyết luôn
+      lời phàn nàn về vẻ chung chung.
+
+   2. VÀNG TRÊN NỀN SÁNG KHÔNG ĐỦ TƯƠNG PHẢN CHO CHỮ. Đây là ràng buộc thật, không
+      phải chi tiết nhỏ: #E8A317 trên nền trắng chỉ đạt khoảng 2,2:1, dưới xa mức
+      4,5:1 của WCAG AA. Nên vàng chỉ được dùng làm NỀN với chữ sẫm đặt lên (đúng
+      cách giao diện vàng trong game vẫn làm), còn khi cần CHỮ màu vàng thì phải
+      là --accent-ink, một sắc đồng sẫm hơn hẳn. Trộn lẫn hai vai này là cách chắc
+      chắn nhất để tạo ra một trang đẹp mà không đọc được.
+
+   3. THẮNG/THUA DÙNG ĐÚNG XANH RADIANT VÀ ĐỎ DIRE. Ở đây màu ngữ nghĩa không phải
+      quy ước tùy ý mượn từ tài chính — trong Dota, xanh và đỏ CHÍNH LÀ hai phe.
+      Nhưng thứ tự và nhãn vẫn phải mang thông tin: dưới mắt người mù màu đỏ-lục,
+      hai màu này lại gần nhau, nên không chỗ nào được để màu làm kênh duy nhất.
+
+   NHỊP CHỮ: một font biểu cảm + một font đơn cách, không phải hai font sans.
+   Baloo 2 nói phần người — tiêu đề, nhãn, kết luận. JetBrains Mono nói phần máy —
+   mọi con số. Đó cũng đúng là hai giọng của trang này: một bên đúc kết, một bên đo
+   đạc. Cả hai đều có đủ dấu tiếng Việt, thứ mà Poppins ở bản trước KHÔNG có nên
+   mọi tiêu đề có dấu đều đang rơi về font hệ thống.
    ========================================================================= */
 
 :root {
   color-scheme: light;
 
-  /* --- Nền & bề mặt (60%) --- */
-  --bg: #f7f8fc;
-  --surface: #ffffff;
-  --surface-2: #f2f4fa;
-  --border: #e6e9f4;
-  --border-strong: #d5dae9;
+  /* --- Nền & bề mặt: giấy da ấm, ngả về sắc vàng của điểm nhấn --- */
+  --bg: #f6f1e4;
+  --surface: #fffdf7;
+  --surface-2: #f0e8d6;
+  --border: #dccdaa;
+  --border-strong: #c9b48e;
 
-  /* --- Chữ --- */
-  --ink: #262a43;
-  --ink-2: #4d5478;
-  --muted: #6f77a0;
+  /* --- Chữ: đen ấm, không bao giờ #000 --- */
+  --ink: #2a241a;
+  --ink-2: #554c3b;
+  --muted: #7d735f;
 
-  /* --- Điểm nhấn (10%) --- */
-  --accent: #5b4ee0;
-  --accent-hover: #4a3dd0;
-  --accent-soft: #ece9ff;
-  --accent-ink: #3a2fb0;
-  --on-accent: #ffffff;
+  /* --- Điểm nhấn: vàng Aegis --- */
+  --accent: #e8a317;
+  --accent-hover: #d0900c;
+  --accent-soft: #fbefd2;
 
-  /* --- Pastel cho thẻ chỉ số (30%) --- */
-  --pastel-1: #ffe4d9;  --pastel-1-ink: #9a4a24;
-  --pastel-2: #d9f2e6;  --pastel-2-ink: #17694c;
-  --pastel-3: #dbe8ff;  --pastel-3-ink: #2a4f96;
-  --pastel-4: #ece3ff;  --pastel-4-ink: #5c3fa8;
-  --pastel-5: #fff1cf;  --pastel-5-ink: #8a5f14;
+  /* Vàng dùng làm CHỮ phải sẫm hơn hẳn — xem quyết định 2 ở đầu tệp. */
+  --accent-ink: #8a5a0b;
+  --on-accent: #241e12;
 
-  /* --- Ngữ nghĩa: giữ xanh/đỏ để đọc nhanh thắng/thua --- */
-  --pos: #0f8f68;
-  --pos-soft: #dcf5ec;
-  --neg: #cf3a40;
-  --neg-soft: #fde5e6;
-  --warn: #a06a12;
-  --warn-soft: #fdf0d8;
+  /* --- Nền thẻ chỉ số: năm sắc lấy từ trong game, không phải pastel --- */
+  --pastel-1: #fbefd2;  --pastel-1-ink: #7a4e08;   /* vàng Aegis   */
+  --pastel-2: #dcefe2;  --pastel-2-ink: #1d6042;   /* xanh Radiant */
+  --pastel-3: #d9e8f4;  --pastel-3-ink: #1c5380;   /* lam mana     */
+  --pastel-4: #d5edea;  --pastel-4-ink: #0f625b;   /* lam ngọc rune*/
+  --pastel-5: #fbe2db;  --pastel-5-ink: #94331f;   /* than Dire    */
+
+  /* --- Ngữ nghĩa: xanh Radiant / đỏ Dire ---
+
+     XANH NGẢ MỘT CHÚT SANG LAM, CÓ CHỦ Ý. Xanh lá thuần và đỏ thuần gần như CHẬP
+     hẳn vào nhau dưới mắt người mù màu đỏ-lục — đã đo: #2a6b17 với #b3271b chỉ cách
+     nhau ΔE 17,7 sau khi mô phỏng deuteranopia. Thêm một chút lam vào xanh đẩy con
+     số đó lên 80,7, tức gấp hơn bốn lần, mà mắt thường vẫn đọc ra "xanh lá".
+
+     Đây là đánh đổi đã cân: mất một chút sắc vàng-lục của Radiant, đổi lấy việc
+     khoảng 8% nam giới phân biệt được thắng với thua. Và nó KHÔNG thay cho việc
+     phải có kênh phi màu — mọi chỗ dùng cặp này vẫn phải kèm dấu hoặc chữ. */
+  --pos: #237049;
+  --pos-soft: #dcefe2;
+  --neg: #bf3010;
+  --neg-soft: #fbe2db;
+  --warn: #8a5a0b;
+  --warn-soft: #fbefd2;
 
   /* --- Heatmap của bảng: rất nhạt, không được cạnh tranh với chữ --- */
-  --heat-lo: #f7f8fc;
-  --heat-hi: #c3d3f5;
+  --heat-lo: #f6f1e4;
+  --heat-hi: #ecd9a8;
 
-  /* --- Hình khối --- */
-  --r-lg: 20px;
-  --r-md: 14px;
-  --r-sm: 10px;
+  /* --- Hình khối: tròn và dày, đó là chỗ "dễ thương" nằm --- */
+  --r-lg: 22px;
+  --r-md: 16px;
+  --r-sm: 11px;
   --r-pill: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(38, 42, 67, .05);
-  --shadow-md: 0 1px 2px rgba(38, 42, 67, .04), 0 8px 20px rgba(38, 42, 67, .06);
-  --shadow-lg: 0 2px 4px rgba(38, 42, 67, .05), 0 16px 40px rgba(38, 42, 67, .10);
+  /* Viền DÀY là một lựa chọn, không phải mặc định: nó thay cho bóng đổ để phân
+     tách thẻ, và bóng đổ nhẹ trên nền giấy da thì gần như tàng hình. */
+  --bw: 2px;
 
-  /* --- Nhịp 4/8, thang dashboard (dày hơn trang marketing) --- */
+  --shadow-sm: 0 1px 2px rgba(60, 44, 12, .06);
+  --shadow-md: 0 2px 3px rgba(60, 44, 12, .06), 0 10px 24px rgba(60, 44, 12, .09);
+  --shadow-lg: 0 3px 6px rgba(60, 44, 12, .08), 0 18px 44px rgba(60, 44, 12, .14);
+
+  /* --- Nhịp 4/8, thang dashboard --- */
   --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
   --s-5: 24px; --s-6: 32px; --s-7: 48px;
 
-  --font-head: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-body: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 
   --ease: cubic-bezier(.32, .72, 0, 1);
 
   /* Viền quanh logo đội. Xem ghi chú ở .logo — nhiều đội dùng logo đơn sắc TRẮNG. */
-  --logo-edge: rgba(22, 26, 46, .55);
+  --logo-edge: rgba(42, 36, 26, .55);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 
   /* Nền tối thì đảo lại: logo đơn sắc ĐEN mới là loại biến mất. */
-  --logo-edge: rgba(255, 255, 255, .45);
+  --logo-edge: rgba(255, 250, 240, .45);
 
-  --bg: #14151f;
-  --surface: #1c1e2c;
-  --surface-2: #232638;
-  --border: #2c3048;
-  --border-strong: #3a3f5c;
+  /* Than ấm, KHÔNG phải xanh-đen. Giao diện Dota tối theo hướng nâu/đen ám vàng;
+     một nền tối ám xanh lam sẽ đọc ra "ứng dụng tài chính", không ra trò chơi. */
+  --bg: #17130d;
+  --surface: #201a12;
+  --surface-2: #2a2318;
+  --border: #3a3122;
+  --border-strong: #4d422e;
 
-  --ink: #eceef8;
-  --ink-2: #b9c0dc;
-  --muted: #949cc2;
+  --ink: #f4ecdb;
+  --ink-2: #cdbfa5;
+  --muted: #9c8f76;
 
-  --accent: #a99bff;
-  --accent-hover: #bcb0ff;
-  --accent-soft: #2a2750;
-  --accent-ink: #cfc6ff;
-  --on-accent: #191a27;
+  /* Trên nền tối thì vàng sáng ĐỦ tương phản để làm chữ, nên accent-ink sáng lên
+     thay vì sẫm đi — quan hệ giữa hai biến này đảo chiều theo chủ đề. */
+  --accent: #f0b429;
+  --accent-hover: #ffc94d;
+  --accent-soft: #3a2c10;
+  --accent-ink: #f5c65c;
+  --on-accent: #1a1409;
 
-  /* Dark mode dùng biến thể tối đi, KHÔNG đảo màu — đảo màu làm pastel thành
+  /* Dark mode dùng biến thể tối đi, KHÔNG đảo màu — đảo màu làm nền thẻ thành
      những mảng chói không đọc được chữ. */
-  --pastel-1: #46291f;  --pastel-1-ink: #ffc7ae;
-  --pastel-2: #163a2d;  --pastel-2-ink: #96e6c6;
-  --pastel-3: #1e2f4d;  --pastel-3-ink: #a8c8ff;
-  --pastel-4: #2f2650;  --pastel-4-ink: #cbb8ff;
-  --pastel-5: #40331a;  --pastel-5-ink: #f5d491;
+  --pastel-1: #3f2f10;  --pastel-1-ink: #f7d489;
+  --pastel-2: #1b3d2c;  --pastel-2-ink: #96dcb4;
+  --pastel-3: #16324b;  --pastel-3-ink: #9ccbf0;
+  --pastel-4: #113936;  --pastel-4-ink: #86ddd4;
+  --pastel-5: #46201a;  --pastel-5-ink: #f6ad99;
 
-  --pos: #46d3a3;
-  --pos-soft: #14382c;
-  --neg: #ff8a8f;
-  --neg-soft: #402224;
-  --warn: #e8b45c;
-  --warn-soft: #3b2f16;
+  /* Cùng lý do như chủ đề sáng, và nền tối còn tệ hơn: cặp xanh-lá/đỏ sáng chỉ cách
+     nhau ΔE 10,7 sau mô phỏng deuteranopia — gần như một màu. Ngả lam đưa lên 73,5. */
+  --pos: #7ad49a;
+  --pos-soft: #1b3d2c;
+  --neg: #f0806c;
+  --neg-soft: #46201a;
+  --warn: #f5c65c;
+  --warn-soft: #3a2c10;
 
-  --heat-lo: #1c1e2c;
-  --heat-hi: #33447a;
+  --heat-lo: #201a12;
+  --heat-hi: #5c4a20;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
-  --shadow-md: 0 1px 2px rgba(0, 0, 0, .25), 0 8px 20px rgba(0, 0, 0, .35);
-  --shadow-lg: 0 2px 4px rgba(0, 0, 0, .3), 0 16px 40px rgba(0, 0, 0, .45);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px rgba(0, 0, 0, .45);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, .35), 0 16px 40px rgba(0, 0, 0, .55);
 }
 
 /* ============================ Cơ bản ============================ */
@@ -130,16 +176,34 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.6;
+
+  /* 17px, không phải 15px. Bản trước để 15px thân và tụt xuống 10,5–13px ở nhãn,
+     đầu bảng và chú thích — cỡ đó buộc người đọc ghé sát màn hình, và một trang
+     đầy số thì mỏi mắt trước khi hiểu được gì. */
+  font-size: 17px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Mọi con số trong bảng/thẻ dùng chữ số đều bề rộng, nếu không cột sẽ nhảy khi
-   giá trị đổi và mắt rất khó dò theo hàng. */
-.num, table, .kpi-value, .stat-value { font-variant-numeric: tabular-nums; }
+/* Mọi con số dùng font đơn cách VÀ chữ số đều bề rộng.
+   Đơn cách không phải để trang trí: nó là giọng thứ hai của trang — phần MÁY ĐO,
+   tách khỏi phần NGƯỜI ĐÚC KẾT vốn nói bằng Baloo 2. Và nó khiến cột số thẳng
+   hàng thật, thứ mà một font tỉ lệ không làm được dù có tabular-nums. */
+.num, .kpi-value, .stat-value, .rd-num, td.num, th.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
 
-h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; letter-spacing: -.015em; }
+table { font-variant-numeric: tabular-nums; }
+
+h1, h2, h3 {
+  font-family: var(--font-head);
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -.01em;
+  line-height: 1.15;
+}
 
 a { color: var(--accent); }
 
@@ -183,24 +247,28 @@ a { color: var(--accent); }
 
 .brand { display: flex; align-items: center; gap: var(--s-3); }
 
+/* Vàng ĐẶC, không phải dải chuyển màu. Bản trước chuyển từ indigo sang tím #8b7cff —
+   một màu không có trong bảng màu nào của trang, và dải chuyển màu tím-lam đứng đầu
+   danh sách dấu hiệu "giao diện do máy sinh". Một mảng vàng đặc thì tự tin hơn. */
 .brand-mark {
-  width: 44px; height: 44px; border-radius: var(--r-md);
-  background: linear-gradient(135deg, var(--accent), #8b7cff);
-  display: grid; place-items: center; color: #fff; flex: none;
+  width: 52px; height: 52px; border-radius: var(--r-md);
+  background: var(--accent);
+  border: var(--bw) solid var(--on-accent);
+  display: grid; place-items: center; color: var(--on-accent); flex: none;
   box-shadow: var(--shadow-md);
 }
-.brand-mark svg { width: 24px; height: 24px; }
+.brand-mark svg { width: 28px; height: 28px; stroke-width: 2.5; }
 
-h1 { font-size: 22px; line-height: 1.25; }
-.subtitle { color: var(--ink-2); font-size: 13.5px; margin: 2px 0 0; }
+h1 { font-size: 30px; }
+.subtitle { color: var(--ink-2); font-size: 15.5px; margin: 3px 0 0; font-weight: 500; }
 
 .top-actions { display: flex; gap: var(--s-2); align-items: center; }
 
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-pill); padding: 6px 13px;
-  font-size: 12.5px; color: var(--ink-2);
+  border-radius: var(--r-pill); padding: 7px 15px;
+  font-size: 14px; color: var(--ink-2); font-weight: 600;
 }
 .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pos); flex: none; }
 .chip .dot.stale { background: var(--warn); }
@@ -226,17 +294,22 @@ nav {
 }
 
 nav button {
-  display: inline-flex; align-items: center; gap: 7px;
-  background: none; border: none; border-radius: var(--r-sm);
+  display: inline-flex; align-items: center; gap: 8px;
+  background: none; border: var(--bw) solid transparent; border-radius: var(--r-sm);
   color: var(--ink-2); font-family: var(--font-body);
-  font-size: 14px; font-weight: 500;
-  padding: 10px 15px; min-height: 44px; cursor: pointer;
+  font-size: 15.5px; font-weight: 600;
+  padding: 10px 15px; min-height: 46px; cursor: pointer;
   transition: background .15s var(--ease), color .15s var(--ease);
 }
-nav button svg { width: 17px; height: 17px; flex: none; }
+nav button svg { width: 19px; height: 19px; flex: none; stroke-width: 2.3; }
 nav button:hover { background: var(--surface-2); color: var(--ink); }
+
+/* Tab đang chọn dùng CẢ nền vàng LẪN viền sẫm, không chỉ đổi màu chữ: trên nền
+   giấy da, một nền vàng nhạt đơn thuần gần như trùng với nền trang. Viền là thứ
+   khiến "đang ở đâu" thấy được ngay cả khi in đen trắng hoặc khi mù màu. */
 nav button[aria-selected="true"] {
-  background: var(--accent-soft); color: var(--accent-ink); font-weight: 600;
+  background: var(--accent); color: var(--on-accent);
+  border-color: var(--on-accent); font-weight: 800;
 }
 
 .view { display: none; }
@@ -252,22 +325,26 @@ nav button[aria-selected="true"] {
 }
 
 .kpi {
-  border-radius: var(--r-lg); padding: var(--s-4) var(--s-5);
-  border: 1px solid transparent; box-shadow: var(--shadow-sm);
+  border-radius: var(--r-lg); padding: var(--s-5);
+  border: var(--bw) solid currentColor; box-shadow: var(--shadow-sm);
   transition: transform .18s var(--ease), box-shadow .18s var(--ease);
 }
-.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 
 .kpi-label {
-  font-size: 11.5px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; opacity: .8;
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; opacity: .85;
 }
+
+/* 46px. Con số LÀ nội dung của thẻ này — nếu phải nheo mắt tìm nó giữa nhãn và
+   chú thích thì thẻ đã hỏng mục đích. Dùng font đơn cách để nó thuộc giọng "đo
+   đạc", và weight 700 vì Baloo 2 ở 800 quá bè khi chữ đã lớn thế này. */
 .kpi-value {
-  font-family: var(--font-head); font-size: 34px; font-weight: 600;
-  line-height: 1.1; margin: var(--s-2) 0 var(--s-1); letter-spacing: -.02em;
+  font-size: 46px; font-weight: 700;
+  line-height: 1.05; margin: var(--s-2) 0 var(--s-1); letter-spacing: -.03em;
 }
-.kpi-team { font-size: 13px; font-weight: 600; }
-.kpi-note { font-size: 12px; opacity: .78; }
+.kpi-team { font-size: 15px; font-weight: 700; }
+.kpi-note { font-size: 14px; opacity: .85; line-height: 1.45; }
 
 .kpi.p1 { background: var(--pastel-1); color: var(--pastel-1-ink); }
 .kpi.p2 { background: var(--pastel-2); color: var(--pastel-2-ink); }
@@ -276,13 +353,60 @@ nav button[aria-selected="true"] {
 .kpi.p5 { background: var(--pastel-5); color: var(--pastel-5-ink); }
 
 .card {
-  background: var(--surface); border: 1px solid var(--border);
+  background: var(--surface); border: var(--bw) solid var(--border);
   border-radius: var(--r-lg); padding: var(--s-5);
   box-shadow: var(--shadow-sm); margin-bottom: var(--s-4);
 }
 .card > header { margin-bottom: var(--s-4); }
-.card h2 { font-size: 16px; }
-.card .desc { color: var(--ink-2); font-size: 13px; margin: 3px 0 0; }
+.card h2 { font-size: 22px; }
+.card .desc { color: var(--ink-2); font-size: 15.5px; margin: 5px 0 0; line-height: 1.5; }
+
+/* ---------------------------------------------------------------------------
+   "Vì sao?" — phần giải thích được GẤP LẠI mặc định.
+
+   VÌ SAO GẤP. Màn tổng quan trước đây đặt kết luận cạnh cả đoạn giải thích
+   phương pháp, nên con số — thứ người ta mở trang để xem — phải cạnh tranh chỗ
+   với phần chỉ đáng đọc một lần. Quy tắc mới: ngoài cùng chỉ có điều ĐÚC KẾT
+   được, chi tiết nằm sau một cú bấm.
+
+   VÌ SAO DÙNG <details> CHỨ KHÔNG PHẢI div + class. Thẻ này cho sẵn bàn phím,
+   trạng thái đóng/mở cho trình đọc màn hình, và quan trọng nhất: Ctrl+F của
+   trình duyệt tìm được chữ bên trong rồi tự bung ra. Một div ẩn bằng CSS thì
+   nội dung coi như biến mất khỏi trang.
+
+   Nút phải trông RA NÚT. Bản đầu tôi định để nó là chữ gạch chân mờ, nhưng đó
+   đúng là lỗi "nút chưa rõ ràng" vừa được nhắc — nên nó có nền, viền dày và
+   vùng bấm cao 34px.
+   --------------------------------------------------------------------------- */
+.why { margin: var(--s-2) 0 0; }
+
+.why > summary {
+  display: inline-flex; align-items: center; gap: 7px;
+  cursor: pointer; list-style: none;
+  font-family: var(--font-body); font-size: 14.5px; font-weight: 700;
+  color: var(--accent-ink); background: var(--accent-soft);
+  border: var(--bw) solid var(--accent); border-radius: var(--r-pill);
+  padding: 5px 15px; min-height: 34px;
+  transition: background .15s var(--ease);
+}
+.why > summary::-webkit-details-marker { display: none; }
+.why > summary::marker { content: ""; }
+.why > summary:hover { background: var(--accent); color: var(--on-accent); }
+
+/* Mũi tên xoay — dấu hiệu duy nhất cho biết khối này còn mở ra được nữa. */
+.why > summary::after {
+  content: "▾"; font-size: 12px; transition: transform .18s var(--ease);
+}
+.why[open] > summary::after { transform: rotate(180deg); }
+
+.why-body {
+  margin-top: var(--s-3);
+  color: var(--ink-2); font-size: 15.5px; line-height: 1.55;
+  border-left: var(--bw) solid var(--border-strong);
+  padding-left: var(--s-4);
+}
+.why-body > :first-child { margin-top: 0; }
+.why-body > :last-child { margin-bottom: 0; }
 
 /* ============================ Bảng ============================ */
 
@@ -315,13 +439,13 @@ nav button[aria-selected="true"] {
 .table-scroll::-webkit-scrollbar-thumb:hover { background: var(--ink-2); }
 .table-scroll::-webkit-scrollbar-corner { background: var(--surface); }
 
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
 
-th, td { padding: 9px 10px; text-align: right; white-space: nowrap; }
+th, td { padding: 11px 12px; text-align: right; white-space: nowrap; }
 th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; }
 
 thead th {
-  color: var(--ink-2); font-weight: 600; font-size: 11.5px;
+  color: var(--ink-2); font-weight: 700; font-size: 13px;
   text-transform: uppercase; letter-spacing: .04em;
   background: var(--surface-2); cursor: pointer; user-select: none;
   border-bottom: 1px solid var(--border);
@@ -351,15 +475,15 @@ td.na { color: var(--muted); }
    Hai lớp bóng chứ không một: một lớp sát để tạo nét, một lớp toả rộng hơn để logo mảnh
    (đường kẻ 1px) vẫn tách được khỏi nền. */
 .logo {
-  width: 24px; height: 24px; border-radius: 7px; object-fit: contain;
+  width: 27px; height: 27px; border-radius: 8px; object-fit: contain;
   flex: none;
   filter: drop-shadow(0 0 1px var(--logo-edge)) drop-shadow(0 0 2.5px var(--logo-edge));
 }
 .logo-fallback {
-  width: 24px; height: 24px; border-radius: 7px; flex: none;
+  width: 27px; height: 27px; border-radius: 8px; flex: none;
   display: grid; place-items: center;
   background: var(--accent-soft); color: var(--accent-ink);
-  font-size: 11px; font-weight: 700;
+  font-size: 12.5px; font-weight: 800;
 }
 
 .tier-badge {
@@ -416,9 +540,9 @@ td.na { color: var(--muted); }
 
 select, input[type="search"], input[type="text"] {
   background: var(--surface); color: var(--ink);
-  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
-  padding: 10px 13px; min-height: 44px;
-  font-family: var(--font-body); font-size: 14px;
+  border: var(--bw) solid var(--border-strong); border-radius: var(--r-sm);
+  padding: 10px 14px; min-height: 46px;
+  font-family: var(--font-body); font-size: 16px; font-weight: 600;
 }
 
 /* ---------------------------------------------------------------------------
@@ -479,18 +603,36 @@ select, input[type="search"], input[type="text"] {
 
 .combo-empty { padding: 10px; color: var(--muted); font-size: 13px; }
 
+/* HAI CẤP NÚT, và sự khác nhau phải thấy được từ xa.
+
+   Bản trước chỉ có một kiểu: nền trắng, viền 1px, chữ mảnh màu xám — trông y hệt
+   một cái nhãn tĩnh. Người dùng nói đúng là "nút chưa rõ ràng": không có gì báo
+   rằng nó bấm được, và không có gì phân biệt hành động chính với bộ lọc phụ.
+
+   .pill      = cấp phụ: viền DÀY, chữ đậm, nền bề mặt. Đủ để đọc ra "bấm được".
+   .pill.go   = cấp chính: nền vàng đặc + chữ sẫm + viền sẫm. Mỗi khung chỉ nên
+                có một cái — nếu mọi thứ đều là cấp chính thì không cái nào là. */
 .pill {
-  background: var(--surface); border: 1px solid var(--border);
-  color: var(--ink-2); border-radius: var(--r-pill);
-  padding: 9px 16px; min-height: 44px;
-  font-family: var(--font-body); font-size: 13.5px; font-weight: 500; cursor: pointer;
-  transition: background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);
+  background: var(--surface); border: var(--bw) solid var(--border-strong);
+  color: var(--ink); border-radius: var(--r-pill);
+  padding: 9px 18px; min-height: 46px;
+  font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: background .15s var(--ease), color .15s var(--ease),
+              border-color .15s var(--ease), transform .1s var(--ease);
 }
-.pill:hover { background: var(--surface-2); color: var(--ink); }
+.pill:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+.pill:active { transform: translateY(1px); }
+
 .pill[aria-pressed="true"] {
-  background: var(--accent); border-color: var(--accent);
-  color: var(--on-accent); font-weight: 600;
+  background: var(--accent); border-color: var(--on-accent);
+  color: var(--on-accent); font-weight: 800;
 }
+
+.pill.go {
+  background: var(--accent); border-color: var(--on-accent);
+  color: var(--on-accent); font-weight: 800;
+}
+.pill.go:hover { background: var(--accent-hover); color: var(--on-accent); }
 
 /* ============================ H2H ============================ */
 
@@ -733,11 +875,19 @@ tr.off-lineup td, .pred-hist.off-lineup { opacity: .5; }
 @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 
 .note {
-  display: flex; gap: var(--s-2); align-items: flex-start;
+  display: flex; gap: var(--s-3); align-items: flex-start;
   background: var(--warn-soft); color: var(--warn);
-  border-radius: var(--r-md); padding: var(--s-3) var(--s-4);
-  font-size: 12.5px; margin-bottom: var(--s-4);
+  border: var(--bw) solid var(--warn); border-radius: var(--r-md);
+  padding: var(--s-3) var(--s-4);
+  font-size: 15px; margin-bottom: var(--s-4);
 }
+
+/* Khi khối lưu ý đã bị gấp, icon phải ở NGOÀI phần gấp — nếu không thì lúc đóng
+   lại chỉ còn một cái nút trơ, mất hẳn dấu hiệu "có điều cần lưu ý ở đây". */
+.note > .why { flex: 1 1 auto; margin: 0; }
+.note > .why > summary { background: transparent; border-color: currentColor; color: inherit; }
+.note > .why > summary:hover { background: var(--warn); color: var(--warn-soft); }
+.note > .why > .why-body { color: inherit; border-left-color: currentColor; }
 .note svg { width: 17px; height: 17px; flex: none; margin-top: 1px; }
 
 footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-align: center; }
@@ -1112,17 +1262,20 @@ tr.row-hi > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   max-width: 100%;
 }
 .subpill {
-  border: none; background: transparent; color: var(--ink-2);
-  padding: 8px 16px; min-height: 38px; border-radius: var(--r-pill); cursor: pointer;
-  font: inherit; font-size: 13.5px; font-weight: 600; white-space: nowrap;
+  border: var(--bw) solid transparent; background: transparent; color: var(--ink-2);
+  padding: 8px 16px; min-height: 42px; border-radius: var(--r-pill); cursor: pointer;
+  font: inherit; font-size: 15px; font-weight: 700; white-space: nowrap;
   transition: background .15s var(--ease), color .15s var(--ease), box-shadow .15s var(--ease);
 }
 .subpill:hover { color: var(--ink); }
 
-/* Ô đang chọn nổi lên khỏi rãnh — bóng đổ làm việc nặng ở đây, màu chỉ là lớp xác nhận */
+/* Ô đang chọn nổi lên khỏi rãnh. Bản trước dựa hẳn vào bóng đổ, nhưng trên nền
+   giấy da thì bóng gần như tàng hình — nên thêm viền để trạng thái còn đọc được
+   khi in ra, khi độ tương phản hệ thống bật cao, và khi người xem mù màu. */
 .subpill[aria-selected="true"] {
   background: var(--surface);
-  color: var(--accent-ink);
+  color: var(--ink);
+  border-color: var(--accent);
   box-shadow: var(--shadow-sm);
 }
 

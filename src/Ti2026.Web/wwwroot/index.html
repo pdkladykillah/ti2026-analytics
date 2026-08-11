@@ -8,7 +8,10 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Open+Sans:wght@400;500;600;700&display=swap">
+<!-- Baloo 2 + JetBrains Mono: cả hai đều có subset vietnamese, nên chữ có dấu được
+     chính font vẽ chứ không rơi về font hệ thống. Poppins ở bản trước KHÔNG có
+     subset đó — mọi tiêu đề tiếng Việt đang hiển thị bằng một font khác hẳn. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -412,7 +415,7 @@
         <div class="controls">
           <label class="sr-only" for="me-id">Dota account ID hoặc Steam ID64</label>
           <input type="text" id="me-id" inputmode="numeric" placeholder="86745912 hoặc 76561198047011640" autocomplete="off">
-          <button class="pill" type="button" id="me-go">So sánh</button>
+          <button class="pill go" type="button" id="me-go">So sánh</button>
         </div>
         <div id="me-body"></div>
       </div>

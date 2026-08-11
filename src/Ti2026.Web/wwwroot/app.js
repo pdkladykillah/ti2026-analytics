@@ -4139,7 +4139,7 @@ async function loadFantasyRoster() {
       <div class="note" style="margin-top:var(--s-4)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.method || '')}<br><br><b>${esc(d.limitation || '')}</b>
-        <br><br><button class="pill" type="button" data-goto-sec="Máy tính emblem">Mở máy tính emblem →</button></div>
+        <br><br><button class="pill go" type="button" data-goto-sec="Máy tính emblem">Mở máy tính emblem →</button></div>
       </div>
       ${biasNote(d.bias)}`;
   } catch (err) {
@@ -4531,8 +4531,112 @@ function applyTheme(theme) {
     : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
 }
 
+/* ---------------------- Gấp phần giải thích lại ---------------------- */
+
+/**
+ * Ngưỡng ký tự để một khối chữ đáng bị gấp.
+ *
+ * Gấp một chú thích năm chữ thì tệ hơn là để nguyên: người đọc mất một cú bấm để
+ * lấy về đúng lượng chữ vừa bị giấu. 90 ký tự là chỗ mà một dòng chú thích bắt đầu
+ * thành một đoạn văn.
+ */
+const FOLD_MIN_CHARS = 90;
+
+/**
+ * Gấp mọi khối giải thích dài vào một nút "vì sao?".
+ *
+ * VÌ SAO LÀ MutationObserver CHỨ KHÔNG PHẢI GỌI Ở TỪNG CHỖ RENDER. Chữ trên trang
+ * này đến từ hai nguồn: khối tĩnh trong index.html (33 đoạn .desc + 3 khối .note)
+ * và khối do JS sinh ra ở hơn mười hàm load* khác nhau. Gọi tay ở từng chỗ nghĩa là
+ * mười chỗ phải nhớ, và chỗ thứ mười một thêm sau này sẽ quên — rồi một đoạn văn
+ * lọt ra màn tổng quan mà không ai thấy sai.
+ *
+ * Quan sát viên thì không quên. Nó cũng xử lý đúng ca khó nhất: #kpi-caveat bị JS
+ * ghi đè innerHTML sau khi đã gấp — lúc đó phần đã gấp biến mất, quan sát viên thấy
+ * nội dung mới và gấp lại. Vì thế điều kiện "đã gấp chưa" phải hỏi CON của phần tử
+ * chứ không phải một cờ đặt trên chính nó: cờ sống sót qua innerHTML, con thì không,
+ * và một cái cờ sống sót sẽ khiến khối mới không bao giờ được gấp nữa.
+ *
+ * KHÔNG lặp vô hạn: gấp xong thì lần quét sau thấy đã gấp và không đổi gì nữa, nên
+ * không có đột biến mới nào sinh ra.
+ */
+function foldExplanations() {
+  const targets = [
+    ...$$('.card > header > p.desc'),
+    ...$$('.note'),
+  ];
+
+  for (const el of targets) {
+    // Hỏi "có CON NÀO là phần đã gấp không", không hỏi "con ĐẦU TIÊN có phải không".
+    //
+    // Bản đầu hỏi con đầu tiên, và nó sai ngay khi khối cảnh báo giữ icon ở đầu: con
+    // đầu tiên là <svg> nên chốt luôn trượt, và mỗi lần quan sát viên chạy lại gói
+    // thêm một lớp nữa. Đo được 65 lớp lồng nhau — một vòng lặp tự nuôi mà trang vẫn
+    // hiển thị gần như bình thường, chỉ chậm dần và DOM phình ra mãi.
+    if ([...el.children].some((c) => c.matches('details.why'))) continue;
+    if ((el.textContent || '').trim().length < FOLD_MIN_CHARS) continue;
+
+    // Nhãn nút lấy từ câu MỞ ĐẦU in đậm nếu có — các khối .note đều mở bằng một câu
+    // kiểu "Đọc trang này thế nào." và giữ lại nó thì người đọc vẫn biết bên trong là
+    // gì mà không phải mở ra. Mất câu đó thì mọi nút đều là "vì sao?" giống hệt nhau.
+    //
+    // PHẢI LÀ CÂU MỞ ĐẦU, không phải chữ in đậm bất kỳ. Bản đầu chỉ lấy <b> đầu tiên
+    // tìm được và đã nhặt trúng những cụm nhấn mạnh nằm GIỮA câu — "10′ đầu" thành nhãn
+    // nút thì vô nghĩa, mà tệ hơn là cụm đó bị xoá khỏi đoạn văn nên câu còn lại thủng
+    // một lỗ. Chỉ nhận khi đoạn văn bắt đầu đúng bằng nó, và đủ ngắn để làm nhãn.
+    const lead = el.querySelector('b');
+    const leadText = lead ? lead.textContent.trim() : '';
+    const isOpening = leadText.length > 0
+      && leadText.length <= 42
+      && (el.textContent || '').trim().startsWith(leadText);
+
+    const label = isOpening ? leadText.replace(/[.:]$/, '') : 'vì sao?';
+    if (isOpening) lead.remove();
+
+    // Giữ icon cảnh báo Ở NGOÀI phần gấp: gấp cả nó vào thì lúc đóng lại khối chỉ
+    // còn một cái nút trơ, và dấu hiệu "đây là điều cần lưu ý" biến mất đúng lúc
+    // nó cần nhất — khi người đọc chưa mở ra.
+    const icon = el.firstElementChild && el.firstElementChild.matches('svg')
+      ? el.removeChild(el.firstElementChild)
+      : null;
+
+    const body = document.createElement('div');
+    body.className = 'why-body';
+    while (el.firstChild) body.appendChild(el.firstChild);
+
+    const summary = document.createElement('summary');
+    summary.textContent = label;
+
+    const details = document.createElement('details');
+    details.className = 'why';
+    details.append(summary, body);
+
+    if (icon) el.appendChild(icon);
+    el.appendChild(details);
+  }
+}
+
+function watchForExplanations() {
+  foldExplanations();
+
+  let queued = false;
+  new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+
+    // Gom nhiều đột biến của cùng một lần render vào MỘT lần quét: một hàm load*
+    // ghi năm khối liên tiếp sẽ bắn năm lần gọi lại, mà quét lại năm lần thì tốn
+    // gấp năm cho đúng một kết quả.
+    requestAnimationFrame(() => {
+      queued = false;
+      foldExplanations();
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+}
+
 setupTheme();
 setupTabs();
 setupSubTabs();
 setupTableSorting();
+watchForExplanations();
 boot();

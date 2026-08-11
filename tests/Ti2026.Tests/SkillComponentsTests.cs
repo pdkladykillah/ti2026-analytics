@@ -202,13 +202,13 @@ public class SkillComponentsTests
     // ---------- Tách theo kết quả trận ----------
 
     /// <summary>
-    /// Người dùng phản bác kết luận "giữ mạng 42 là điểm yếu đáng sửa nhất", và phép kiểm trên
-    /// dữ liệu thật cho thấy họ đúng — nhưng không phải vì lý do họ nêu.
+    /// Tách theo kết quả trận là BỐI CẢNH đáng hiện, không phải căn cứ để phán.
     ///
-    /// Đo trên 5.877 ván: cột giữ mạng gộp lại là 42, nhưng tách theo kết quả thì ván THẮNG là
-    /// 60 (TRÊN trung bình) còn ván THUA là 26. Hai câu chuyện khác hẳn nhau nằm sau cùng một
-    /// con số. Câu đúng không phải "người này chết nhiều" mà "những ván hỏng hỏng rất nặng" —
-    /// và hai chẩn đoán đó dẫn tới hai việc phải luyện hoàn toàn khác nhau.
+    /// Bản trước có hàm OnlyWhenLosing với lập luận: cột giữ mạng gộp lại 42 nhưng ván thắng 60
+    /// và ván thua 26, nên "vấn đề là ván hỏng hỏng nặng chứ không phải kỹ năng". Rồi đo trên
+    /// người thứ hai thì khoảng cách thắng/thua từng cột của họ gần như TRÙNG KHÍT với người thứ
+    /// nhất. Tức mọi chỉ số đều sụp khi thua, với mọi người, ở cùng một mức — đó là tính chất
+    /// của thước đo, không phân biệt được ai với ai.
     /// </summary>
     [Fact]
     public void Tach_duoc_van_thang_va_van_thua()
@@ -222,24 +222,7 @@ public class SkillComponentsTests
         c.Median.Should().Be(43, "gộp lại nằm giữa hai nhóm");
         c.Won.Should().Be(60);
         c.Lost.Should().Be(26);
-        SkillComponents.OnlyWhenLosing(c).Should().BeTrue();
-    }
-
-    /// <summary>
-    /// Nhưng một mặt yếu ở CẢ ván thắng thì vẫn là mặt yếu thật, và không được gán nhãn
-    /// "chỉ sụp khi thua" — nếu không thì mọi điểm yếu đều được bào chữa.
-    /// </summary>
-    [Fact]
-    public void Yeu_o_ca_van_thang_thi_van_la_yeu_that()
-    {
-        var games = new List<RatedGame>();
-        for (var i = 0; i < 40; i++) games.Add(G(i, won: true, deaths: 70));
-        for (var i = 40; i < 80; i++) games.Add(G(i, won: false, deaths: 80));
-
-        var c = SkillComponents.Read(games).Single(x => x.Key == "deaths");
-
-        c.Won.Should().Be(30, "phân vị 70 số chết đảo chiều thành 30");
-        SkillComponents.OnlyWhenLosing(c).Should().BeFalse();
+        SkillComponents.ResultGap(c).Should().Be(34);
     }
 
     [Fact]
@@ -251,7 +234,21 @@ public class SkillComponentsTests
 
         c.Won.Should().Be(60);
         c.Lost.Should().BeNull("không có ván thua nào thì không có gì để nói");
-        SkillComponents.OnlyWhenLosing(c).Should().BeFalse();
+        SkillComponents.ResultGap(c).Should().BeNull();
+    }
+
+    /// <summary>
+    /// Khoá lại điều đã học: không được dựng lại phép "gỡ nhãn mặt yếu vì ván thắng vẫn ổn".
+    /// Đo thật, khoảng cách thắng/thua của hai người trên từng cột là 34/37, 11/13, 8/5, 23/25,
+    /// 12/14, 26/28, 40/39, 34/33, 36/49, 14/14 — một nhãn bật theo khoảng cách đó sẽ bật cho
+    /// cả hai như nhau và chẳng nói lên điều gì.
+    /// </summary>
+    [Fact]
+    public void Khong_duoc_dung_lai_phep_go_nhan_mat_yeu_vi_van_thang_van_on()
+    {
+        typeof(SkillComponents).GetMethod("OnlyWhenLosing").Should().BeNull(
+            "mọi chỉ số đều sụp khi thua với mọi người ở cùng một mức, nên đó là tính chất của "
+            + "thước đo chứ không phải phát hiện về một người");
     }
 
     [Fact]

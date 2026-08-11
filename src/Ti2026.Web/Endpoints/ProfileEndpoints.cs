@@ -394,7 +394,6 @@ public static class ProfileEndpoints
         // 42 nhưng ván thắng là 60 còn ván thua là 26 — và lời khuyên đưa ra từ hai con số đó
         // khác hẳn nhau.
         won = c.Won, lost = c.Lost,
-        onlyWhenLosing = SkillComponents.OnlyWhenLosing(c),
     };
 
     private static string? RankLabel(int? tier)

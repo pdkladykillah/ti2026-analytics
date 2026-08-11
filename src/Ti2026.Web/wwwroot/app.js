@@ -1201,26 +1201,16 @@ function headlines(d) {
 
   const worst = [...pool].sort((a, b) => a.median - b.median)[0];
   if (worst && worst.median <= 45 && worst.key !== (best || {}).key) {
-    // MỘT CON SỐ GỘP KHÔNG ĐỦ ĐỂ PHÁN. Đo trên tài khoản thật: cột giữ mạng gộp lại là 42,
-    // nghe như điểm yếu rõ — nhưng ván THẮNG là 60 (trên trung bình) còn ván THUA là 26. Chẩn
-    // đoán đúng không phải "kém giữ mạng" mà "ván hỏng thì hỏng rất nặng", và hai chẩn đoán đó
-    // dẫn tới hai việc phải luyện khác hẳn nhau.
-    if (worst.onlyWhenLosing) {
-      cards.push(card('warn', 'Chỉ sụp khi thua', `${worst.won} / ${worst.lost}`, worst.label,
-        `Ván thắng bạn ở phân vị ${worst.won} — trên trung bình. Ván thua tụt xuống ${worst.lost}.
-         Vấn đề là ván hỏng hỏng quá nặng, không phải mặt kỹ năng này.`));
-    } else {
-      const roles = (d.componentsByRole || [])
-        .map((r) => (r.components.find((c) => c.key === worst.key) || {}).median)
-        .filter((v) => v !== undefined);
+    const roles = (d.componentsByRole || [])
+      .map((r) => (r.components.find((c) => c.key === worst.key) || {}).median)
+      .filter((v) => v !== undefined);
 
-      const everywhere = roles.length >= 3 && roles.every((v) => v <= 50);
+    const everywhere = roles.length >= 3 && roles.every((v) => v <= 50);
 
-      cards.push(card('bad', 'Đáng sửa nhất', worst.median, worst.label,
-        everywhere
-          ? `Thấp ở CẢ ${roles.length} vị trí, và cả trong ván thắng cũng chỉ ${worst.won ?? '—'} — đây là thói quen đi theo bạn.`
-          : `Dưới mức trung bình của người chơi cùng hero, qua ${n0(worst.games)} ván.`));
-    }
+    cards.push(card('bad', 'Đáng sửa nhất', worst.median, worst.label,
+      everywhere
+        ? `Thấp ở CẢ ${roles.length} vị trí — đây là thói quen đi theo bạn, không phải chuyện chọn sai vai trò.`
+        : `Dưới mức trung bình của người chơi cùng hero, qua ${n0(worst.games)} ván.`));
   }
 
   const moved = all
@@ -1308,9 +1298,10 @@ function skillBlock(d) {
   return `<h3 style="margin-top:var(--s-5)">Điểm từng mặt, so với người chơi cùng hero</h3>
     <p class="desc" style="margin:0 0 var(--s-3)">Phân vị 0→100 so với người chơi <b>cùng hero</b>.
       Vạch giữa là mức 50 — ngang người trung bình. Hai số ngoài cùng bên phải là
-      <span class="cal-good">ván thắng</span> · <span class="cal-bad">ván thua</span>: một cột
-      thấp vì thua nhiều là chuyện khác hẳn một cột thấp ở cả hai. "Giữ mạng" đã đảo chiều để cao
-      luôn là tốt.</p>
+      <span class="cal-good">ván thắng</span> · <span class="cal-bad">ván thua</span>. Đọc chúng
+      như bối cảnh, đừng đọc thành lời bào chữa: <b>mọi</b> chỉ số đều sụp khi thua, với mọi
+      người, ở cùng một mức — đo trên hai tài khoản thì khoảng cách từng cột gần như trùng khít.
+      "Giữ mạng" đã đảo chiều để cao luôn là tốt.</p>
     ${roles.length ? `<div class="chips" id="pf-roles">${chips.join('')}</div>` : ''}
     <div class="sk-list" id="pf-skills">${all.map(skillRow).join('')}</div>`;
 }

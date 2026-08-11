@@ -181,13 +181,28 @@ public static class SkillComponents
     }
 
     /// <summary>
-    /// Mặt yếu này có yếu ở CẢ ván thắng không, hay chỉ sụp trong ván thua.
+    /// Khoảng cách giữa ván thắng và ván thua của một cột.
     ///
-    /// Phân biệt này quyết định lời khuyên đưa ra là gì. Cột "giữ mạng" của tài khoản thật gộp
-    /// lại là 42, và nếu dừng ở đó thì trang khuyên "học cách đừng chết". Nhưng trong ván thắng
-    /// nó là 60 — TRÊN trung bình. Vấn đề không nằm ở kỹ năng giữ mạng; nó nằm ở chỗ những ván
-    /// hỏng hỏng rất nặng. Hai chẩn đoán khác nhau dẫn tới hai việc phải luyện khác nhau.
+    /// CỐ Ý KHÔNG CÓ HÀM "CHỈ SỤP KHI THUA". Bản trước có, và nó SAI — đây là lỗi đã suýt lên
+    /// trang, bắt được nhờ so hai người theo dõi với nhau.
+    ///
+    /// Lập luận cũ: cột giữ mạng gộp lại 42, nhưng ván thắng 60 và ván thua 26, nên "vấn đề là
+    /// ván hỏng hỏng nặng chứ không phải kỹ năng". Nghe rất thuyết phục. Rồi đo trên người thứ
+    /// hai thì khoảng cách thắng/thua của HỌ trên từng cột là 37, 13, 5, 25, 14, 28, 39, 33, 49,
+    /// 14 — so với 34, 11, 8, 23, 12, 26, 40, 34, 36, 14 của người thứ nhất. Gần như trùng khít.
+    ///
+    /// Nghĩa là mọi chỉ số đều sụp khi thua, với MỌI người, ở cùng một mức. Đó là tính chất của
+    /// thước đo chứ không phải phát hiện về một người — và một nhãn bật cho 3/10 cột của người
+    /// này và 4/10 cột của người kia thì không phân biệt được ai với ai.
+    ///
+    /// Điều còn lại sau khi trừ đi phần chung: trên cột giữ mạng, người thứ nhất là 60/26 còn
+    /// người thứ hai là 83/50 — thấp hơn 23 điểm ở CẢ HAI đầu. Chênh lệch đều, không dồn vào
+    /// phần thua. Nên kết luận đúng vẫn là kết luận ban đầu, và phép "hiệu chỉnh" kia chỉ là
+    /// một cách bào chữa nghe có vẻ khoa học.
+    ///
+    /// Giữ lại con số thắng/thua để HIỂN THỊ vì nó là bối cảnh có ích, nhưng không dùng nó để
+    /// phán.
     /// </summary>
-    public static bool OnlyWhenLosing(SkillComponent c) =>
-        c.Won is int w && c.Lost is int l && w >= 50 && l < 50 - NotableGap;
+    public static int? ResultGap(SkillComponent c) =>
+        c.Won is int w && c.Lost is int l ? w - l : null;
 }

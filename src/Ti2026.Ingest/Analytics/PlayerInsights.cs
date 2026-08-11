@@ -149,26 +149,21 @@ public static class PlayerInsights
                 88));
         }
 
+        // Mặt yếu: lấy cột thấp nhất, và nêu kèm con số ván THẮNG.
+        //
+        // Vì sao nêu kèm mà KHÔNG dùng nó để bào chữa: mọi chỉ số đều sụp khi thua, với mọi
+        // người, ở cùng một mức — đo trên hai tài khoản thì khoảng cách thắng/thua từng cột gần
+        // như trùng khít. Nên "ván thắng bạn vẫn ổn" là bối cảnh đáng biết, không phải lý do để
+        // gỡ nhãn mặt yếu. Xem <see cref="SkillComponents.ResultGap"/>.
         foreach (var c in weak.Take(2))
         {
-            // Mặt yếu chỉ sụp trong ván THUA thì chẩn đoán khác hẳn, và lời khuyên cũng khác.
-            // Nói "hãy luyện giữ mạng" cho một người đứng phân vị 60 ở ván thắng là chữa sai bệnh.
-            if (SkillComponents.OnlyWhenLosing(c))
-            {
-                found.Add(new PlayerInsight("yeu-khi-thua", "warn",
-                    $"{c.Label} nhìn gộp thì thấp (phân vị {c.Median}), nhưng tách theo kết quả "
-                    + $"trận thì đó là hai chuyện khác nhau: ván THẮNG bạn ở {c.Won}, ván THUA chỉ "
-                    + $"{c.Lost}. Tức không phải bạn kém mặt này — mà những ván hỏng của bạn hỏng "
-                    + "rất nặng. Chỗ đáng luyện là cắt lỗ sớm và chơi an toàn khi ván đang xấu, "
-                    + "chứ không phải luyện lại kỹ năng này từ đầu.",
-                    87));
-                continue;
-            }
-
             found.Add(new PlayerInsight("yeu-mat", "warn",
                 $"{c.Label} là mặt yếu nhất: phân vị {c.Median} qua {N(c.Games)} ván — dưới mức "
                 + "trung bình của những người chơi cùng hero"
-                + (c.Won is int w ? $", và cả trong ván THẮNG cũng chỉ {w}" : "")
+                + (c.Won is int w && c.Lost is int l
+                    ? $" (ván thắng {w}, ván thua {l} — mọi chỉ số đều sụp khi thua nên đừng đọc "
+                      + "riêng con số ván thắng thành lời bào chữa)"
+                    : "")
                 + ". Đây là chỗ đáng sửa nhất vì nó đã so trên cùng hero, tức không phải do bạn "
                 + "hay chọn hero khó.",
                 86));

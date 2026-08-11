@@ -2,15 +2,19 @@ namespace Ti2026.Ingest.Analytics;
 
 /// <summary>Một ván, rút gọn còn những gì cần để hỏi cái chết có đổi được gì không.</summary>
 public readonly record struct DeathGame(
-    bool Won, int? PctDeaths, int? MatesPctGpm, int? TeamNetWorth, int? EnemyNetWorth);
+    bool Won, int? PctDeaths, int? MatesPctGpm, int? TeamNetWorth, int? EnemyNetWorth,
+    int DurationSeconds);
 
 /// <param name="MatesFarmGap">
 /// Mức farm của đồng đội ở nhóm ta chết NHIỀU, trừ đi nhóm ta chết ÍT. Dương = ván ta chết nhiều
 /// thì đồng đội giàu hơn, tức đúng chiều của lối chơi hi sinh.
 /// </param>
 /// <param name="LeadGap">Chênh lệch kinh tế hai phe, so giữa hai nhóm đó. Đơn vị: vàng.</param>
+/// <param name="Games">Số ván CÒN LẠI sau khi lọc về cùng độ dài, không phải tổng số ván.</param>
+/// <param name="MedianMinutes">Độ dài trung vị của nhóm kết quả này, tâm của dải đang xét.</param>
 public readonly record struct DeathSplit(
-    string Outcome, int Games, int HighDeathMatesFarm, int LowDeathMatesFarm,
+    string Outcome, int Games, int MedianMinutes,
+    int HighDeathMatesFarm, int LowDeathMatesFarm,
     int MatesFarmGap, int HighDeathLead, int LowDeathLead, int LeadGap, double PValue);
 
 /// <param name="Verdict">ho-tro | phan-bac | khong-du-du-lieu | khong-ro</param>
@@ -43,8 +47,27 @@ public readonly record struct DeathEffectReading(
 /// </summary>
 public static class DeathEffect
 {
-    /// <summary>Mỗi nhóm kết quả cần ngần này ván thì phép so mới đáng làm.</summary>
+    /// <summary>Mỗi nhóm kết quả cần ngần này ván CÒN LẠI sau khi lọc độ dài thì mới so được.</summary>
     public const int MinGamesPerOutcome = 120;
+
+    /// <summary>
+    /// Chỉ so những ván dài xấp xỉ nhau, lệch không quá ngần này so với trung vị.
+    ///
+    /// ĐÂY LÀ ĐIỀU KIỆN QUYẾT ĐỊNH DẤU CỦA KẾT QUẢ, không phải một bộ lọc cho gọn. Bản đầu chỉ
+    /// khống chế thắng/thua và cho ra: ván thua mà ta chết nhiều thì đồng đội farm KÉM hơn 13
+    /// điểm — nghe như bằng chứng phản bác lối chơi hi sinh.
+    ///
+    /// Nhưng hai nhóm đó không so được với nhau: ván thua ta chết ít dài trung bình 47 phút (thua
+    /// dai dẳng, ai cũng kịp farm), còn ván thua ta chết nhiều chỉ 35 phút (bị đè). Phép so đó
+    /// thực chất đang so ĐỘ DÀI VÁN.
+    ///
+    /// Lọc về cùng dải độ dài rồi so lại thì dấu ĐẢO: từ −13 thành +8, cùng chiều với ván thắng.
+    /// Đo trên người thứ hai cũng vậy: −9 thành +8. Tức kết luận đúng ngược hẳn với kết luận
+    /// chưa khống chế.
+    ///
+    /// 12% là đánh đổi: hẹp hơn thì mẫu mỏng, rộng hơn thì độ dài lại lọt vào phép so.
+    /// </summary>
+    public const double DurationBand = 0.12;
 
     /// <summary>Tỷ lệ mỗi đầu khi cắt nhóm chết nhiều nhất và chết ít nhất.</summary>
     public const double TailShare = 0.25;
@@ -62,11 +85,18 @@ public static class DeathEffect
 
         foreach (var (won, label) in new[] { (true, "thắng"), (false, "thua") })
         {
-            var g = usable.Where(x => x.Won == won).ToList();
-            if (g.Count < MinGamesPerOutcome) continue;
+            var g = usable.Where(x => x.Won == won && x.DurationSeconds > 0).ToList();
+            if (g.Count == 0) continue;
+
+            // Lọc về CÙNG DẢI ĐỘ DÀI trước khi cắt theo số chết. Xem DurationBand — bỏ bước này
+            // thì phép so biến thành phép so độ dài ván, và dấu của kết quả đảo ngược.
+            var mid = Median(g.Select(x => x.DurationSeconds).ToList());
+            var band = g.Where(x => Math.Abs(x.DurationSeconds - mid) <= mid * DurationBand).ToList();
+
+            if (band.Count < MinGamesPerOutcome) continue;
 
             // Sắp theo SỐ CHẾT giảm dần: đầu danh sách là những ván chết nhiều nhất.
-            var byDeaths = g.OrderByDescending(x => x.PctDeaths!.Value).ToList();
+            var byDeaths = band.OrderByDescending(x => x.PctDeaths!.Value).ToList();
             var take = Math.Max((int)(byDeaths.Count * TailShare), 1);
 
             var high = byDeaths.Take(take).ToList();
@@ -76,7 +106,7 @@ public static class DeathEffect
             var lf = low.Select(x => x.MatesPctGpm!.Value).ToList();
 
             splits.Add(new DeathSplit(
-                label, g.Count,
+                label, band.Count, (int)Math.Round(mid / 60.0),
                 Median(hf), Median(lf), Median(hf) - Median(lf),
                 Lead(high), Lead(low), Lead(high) - Lead(low),
                 MannWhitney(hf, lf)));
@@ -111,8 +141,9 @@ public static class DeathEffect
             return $"Chưa đủ {MinGamesPerOutcome} ván ở cả hai nhóm thắng và thua để so được.";
 
         var parts = s.Select(x =>
-            $"ván {x.Outcome}: đồng đội farm ở phân vị {x.HighDeathMatesFarm} trong nhóm bạn chết "
-            + $"nhiều nhất, so với {x.LowDeathMatesFarm} trong nhóm bạn chết ít nhất "
+            $"ván {x.Outcome} dài quanh {x.MedianMinutes} phút ({x.Games} ván): đồng đội farm ở "
+            + $"phân vị {x.HighDeathMatesFarm} trong nhóm bạn chết nhiều nhất, so với "
+            + $"{x.LowDeathMatesFarm} trong nhóm bạn chết ít nhất "
             + $"({(x.MatesFarmGap >= 0 ? "+" : "")}{x.MatesFarmGap})");
 
         return string.Join("; ", parts) + ".";

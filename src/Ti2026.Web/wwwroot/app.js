@@ -1105,8 +1105,12 @@ function deathBlock(d) {
     <p class="desc" style="margin:0 0 var(--s-3)">Câu này KHÔNG trả lời được bằng chỉ số hỗ trợ —
       hỗ trợ chỉ ghi nhận việc có mặt lúc hạ gục, mà người đã chết thì không thể có mặt ở pha hạ
       gục sau đó. Thứ đo được là <b>mức farm của 4 đồng đội trong chính ván đó</b>: nếu lối chơi
-      hi sinh có hiệu quả thì ván bạn chết nhiều phải là ván đồng đội giàu hơn thường lệ.
-      So trong <b>cùng một kết quả trận</b>, vì thắng thua kéo mọi chỉ số đi theo.</p>
+      hi sinh có hiệu quả thì ván bạn chết nhiều phải là ván đồng đội giàu hơn thường lệ.</p>
+    <p class="desc" style="margin:0 0 var(--s-3)">So trong <b>cùng một kết quả trận</b> và
+      <b>cùng một dải độ dài ván</b>. Hai điều kiện này quyết định dấu của kết quả chứ không phải
+      cho gọn: chỉ khống chế thắng/thua thì ván thua chết ít (dài, thua dai dẳng, ai cũng kịp
+      farm) bị đem so với ván thua chết nhiều (ngắn, bị đè), và phép so hoá ra đang so độ dài
+      ván. Lọc về cùng độ dài thì dấu đảo hẳn.</p>
     <div class="insight-card"><ul><li class="tone-${esc(tone)}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
            stroke-linecap="round" stroke-linejoin="round">${TONE_ICON[tone] || TONE_ICON.flat}</svg>
@@ -1114,12 +1118,13 @@ function deathBlock(d) {
     </li></ul></div>
     <div class="table-scroll"><table>
       <thead><tr>
-        <th scope="col">Nhóm ván</th><th scope="col">Ván</th>
+        <th scope="col">Nhóm ván</th><th scope="col">Dài quanh</th><th scope="col">Ván</th>
         <th scope="col">Bạn chết NHIỀU nhất</th><th scope="col">Bạn chết ÍT nhất</th>
         <th scope="col">Chênh</th><th scope="col">p</th>
       </tr></thead>
       <tbody>${de.splits.map((s) => `<tr>
         <td>${esc(s.outcome)}</td>
+        <td class="num mu">${n0(s.medianMinutes)} ph</td>
         <td class="num mu">${n0(s.games)}</td>
         <td class="num">${s.highDeathMatesFarm}</td>
         <td class="num">${s.lowDeathMatesFarm}</td>

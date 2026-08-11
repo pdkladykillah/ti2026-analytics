@@ -206,7 +206,7 @@ public static class ProfileEndpoints
             // ở pha hạ gục sau đó.
             var deathEffect = DeathEffect.Read(rows
                 .Select(m => new DeathGame(
-                    m.Won, m.PctDeaths, m.MatesPctGpm, m.TeamNetWorth, m.EnemyNetWorth))
+                    m.Won, m.PctDeaths, m.MatesPctGpm, m.TeamNetWorth, m.EnemyNetWorth, m.DurationSeconds))
                 .ToList());
 
             // ---------- Hero pool đặt cạnh meta ----------

@@ -3418,6 +3418,313 @@ function biasNote(bias) {
   return html;
 }
 
+/* ---------------------- Học lối chơi từ idol ---------------------- */
+
+const ROLE_VN = { safe: 'safe lane', mid: 'mid', off: 'offlane' };
+
+/**
+ * Giá trị đem VẼ, khác giá trị đem ĐỌC ở đúng những trục mà thấp mới tốt.
+ *
+ * Biểu đồ nhiều góc luôn được đọc là "vươn ra = nhiều hơn = mạnh hơn". Trục "giá mỗi pha hạ gục"
+ * thì ngược: vươn ra nghĩa là chết đắt hơn. Nên phải đảo giá trị lúc vẽ, VÀ dùng plotLabel do
+ * máy chủ gửi kèm — đảo số mà giữ nguyên tên thì hình đúng nhưng chữ sai.
+ */
+function plotValue(axis, index) {
+  return axis.lowerIsBetter ? 1 / index : index;
+}
+
+/**
+ * Ra-đa chữ ký lối chơi. Khác radar() ở tầng thang đo, nên là hàm riêng chứ không phải tham số.
+ *
+ * radar() vẽ phân vị 0→100, một thang TUYẾN TÍNH có hai đầu cố định. Ở đây mỗi trục là một TỈ SỐ
+ * quanh 1,0 và không có trần — nên thang phải là LOG cơ số 2, với vòng 1,0 ở đúng giữa. Log mới
+ * làm "gấp đôi" và "bằng một nửa" lệch khỏi tâm bằng nhau; thang thường thì gấp đôi trông xa gấp
+ * đôi so với bằng một nửa, và mọi hình sẽ méo về phía ngoài một cách có hệ thống.
+ *
+ * Kẹp ở khoảng 0,35×–2,83× (tức ±1,5 bậc log2). Giá trị vượt ngoài vẫn vẽ ở mép nhưng con số
+ * bên nhãn là số thật, nên không ai bị mất thông tin vì bị kẹp.
+ */
+function styleRadar(axes, series) {
+  const shown = axes.filter((a) => series.some((s) => Number.isFinite(s.values[a.key])));
+  if (shown.length < 3) return '';
+
+  const W = 460, H = 320, cx = W / 2, cy = 161, R = 112, LR = R + 22;
+  const SPAN = 1.5;
+
+  const frac = (v) => {
+    if (!Number.isFinite(v) || v <= 0) return 0;
+    const t = 0.5 + Math.log2(v) / (2 * SPAN);
+    return Math.max(0.04, Math.min(1, t));
+  };
+
+  const at = (i, t) => {
+    const a = (-90 + (i * 360) / shown.length) * Math.PI / 180;
+    return [cx + Math.cos(a) * R * t, cy + Math.sin(a) * R * t];
+  };
+
+  const poly = (fn) => shown.map((_, i) => at(i, fn(i)).join(',')).join(' ');
+
+  const rings = [0.5, 1, 2, 2.83].map((v) => `<polygon points="${poly(() => frac(v))}"
+    class="rd-ring${v === 1 ? ' rd-mid' : ''}"/>`).join('');
+
+  const spokes = shown.map((_, i) => {
+    const [x, y] = at(i, 1);
+    return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="rd-spoke"/>`;
+  }).join('');
+
+  const areas = series.map((s, si) => {
+    const pts = poly((i) => {
+      const raw = s.values[shown[i].key];
+      return Number.isFinite(raw) ? frac(plotValue(shown[i], raw)) : frac(1);
+    });
+    return `<polygon points="${pts}" class="${si === 0 ? 'rd-area' : 'rd-area2'}"/>`;
+  }).join('');
+
+  const dots = series.map((s, si) => shown.map((a, i) => {
+    const raw = s.values[a.key];
+    if (!Number.isFinite(raw)) return '';
+    const [x, y] = at(i, frac(plotValue(a, raw)));
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${si === 0 ? 4.5 : 3.5}"
+      class="${si === 0 ? 'rd-dot' : 'rd-dot2'}"><title>${esc(s.label)} — ${esc(a.label)}: ${
+      fmt(raw, 2)}× mức thường</title></circle>`;
+  }).join('')).join('');
+
+  const labels = shown.map((a, i) => {
+    const [x, y] = at(i, 1);
+    const dx = (x - cx) / R, dy = (y - cy) / R;
+    const lx = cx + dx * LR;
+
+    // Cùng lý do như radar(): nhãn TRÊN phải đẩy lên đủ cho cả hai dòng, nhãn DƯỚI chỉ đủ dòng
+    // đầu. Không tách hai chiều thì nhãn dưới cùng bị cắt mất dòng số.
+    const ly = cy + dy * LR + (dy < -0.6 ? -14 : dy > 0.55 ? 12 : -5);
+    const anchor = Math.abs(dx) < 0.3 ? 'middle' : dx > 0 ? 'start' : 'end';
+    const v = series[0].values[a.key];
+
+    return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="rd-lbl">
+      <tspan x="${lx.toFixed(1)}">${esc(a.plotLabel)}</tspan>
+      <tspan x="${lx.toFixed(1)}" dy="1.15em" class="rd-num">${
+        Number.isFinite(v) ? fmt(plotValue(a, v), 2) + '×' : '—'}</tspan>
+    </text>`;
+  }).join('');
+
+  const spoken = shown.map((a) => {
+    const v = series[0].values[a.key];
+    return `${a.plotLabel} ${Number.isFinite(v) ? fmt(plotValue(a, v), 2) : 'chưa đo'}`;
+  }).join(', ');
+
+  const [, midY] = at(0, frac(1));
+
+  return `<svg class="rd" viewBox="0 0 ${W} ${H}" role="img"
+      aria-label="Biểu đồ ${shown.length} trục, thang tỉ số quanh mức 1,00 của người bình thường cùng loại ván. ${esc(spoken)}.">
+    <g class="rd-grid">${rings}${spokes}</g>
+    ${areas}${dots}${labels}
+    <text x="${cx + 7}" y="${(midY + 4).toFixed(1)}" class="rd-hint">1,00×</text>
+  </svg>`;
+}
+
+/**
+ * Một khoảng lệch đọc thành lời. Chiều đọc phụ thuộc LOẠI trục, không phụ thuộc độ lớn.
+ *
+ * Trục "chất lượng" thì lệch về phía xấu là chỗ cần sửa. Trục "phong cách" thì lệch chỉ là khác —
+ * và nói "bạn cần tăng sát thương trên mỗi vàng" là khuyên người ta bỏ farm đi đánh nhau, tức
+ * khuyên ngược. Phân biệt này là lý do trường kind tồn tại.
+ */
+function diffText(axis, d) {
+  const ratio = d.mine / d.theirs;
+  const pct = Math.round(Math.abs(ratio - 1) * 100);
+  const more = ratio > 1;
+
+  if (axis.kind === 'phong-cach')
+    return `<b>${esc(axis.label)}</b> — bạn ${more ? 'cao' : 'thấp'} hơn ${pct}%. Khác lối chơi,
+      không phải hơn kém.`;
+
+  const worse = axis.lowerIsBetter ? more : !more;
+  return `<b>${esc(axis.label)}</b> — bạn ${more ? 'cao' : 'thấp'} hơn ${pct}%.
+    <span class="${worse ? 'neg' : 'pos'}">${worse ? 'Đây là chỗ cần sửa.' : 'Bạn đang hơn ở trục này.'}</span>`;
+}
+
+function idolWindowText(d) {
+  const from = new Date(d.window.from), to = new Date(d.window.to);
+  const f = (x) => `${x.getUTCMonth() + 1}/${x.getUTCFullYear()}`;
+  const other = d.track === 'thi-dau' ? d.trackCounts.pub : d.trackCounts['thi-dau'];
+
+  return `${n0(d.window.games)} ván ${d.track === 'thi-dau' ? 'thi đấu' : 'xếp hạng'},
+    ${f(from)}–${f(to)}${other ? ` (còn ${n0(other)} ván loại khác, không trộn vào)` : ''}`;
+}
+
+function idolCards(d) {
+  return `<div class="bento">${d.idols.map((x) => {
+    const role = x.role;
+    const roleText = role
+      ? `<b>${esc(ROLE_VN[role.role] || role.role)}</b> ở ${Math.round(role.share)}% của
+         ${n0(role.labelled)} ván có nhãn`
+      : 'chưa đủ ván có nhãn vai trò';
+
+    const thin = x.window.games < 25;
+
+    return `<article class="kpi p2">
+      <div class="kpi-label">${esc(x.name)}${x.team ? ' · ' + esc(x.team) : ''}</div>
+      <div class="kpi-value">${fmt(x.window.winrate, 0)}%</div>
+      <div class="kpi-note">${roleText}<br>${idolWindowText(x)}
+        ${thin ? '<br><span class="neg">Mẫu mỏng — đọc như dấu hiệu, không phải số đo.</span>' : ''}
+        <br>${n0(x.heroPool.covering80)} hero phủ 80% số ván (${n0(x.heroPool.distinct)} hero khác nhau)
+        ${x.note ? '<br><i>' + esc(x.note) + '</i>' : ''}</div>
+    </article>`;
+  }).join('')}</div>`;
+}
+
+function idolSignatures(d) {
+  const byIdol = {};
+  (d.matchups || []).forEach((m) => { byIdol[m.idolId] = m; });
+
+  return d.idols.map((x) => {
+    const values = {};
+    x.signature.forEach((s) => { if (s.index !== null) values[s.key] = s.index; });
+
+    if (!Object.keys(values).length)
+      return `<div class="idol-block"><h3>${esc(x.name)}</h3>
+        <div class="empty">Chưa đủ ván để dựng chữ ký (cần ${25} ván mỗi trục).</div></div>`;
+
+    const series = [{ label: x.name, values }];
+    const mine = byIdol[x.id];
+
+    if (mine) {
+      const mv = {};
+      mine.diffs.forEach((f) => { mv[f.axis] = f.mine; });
+      series.push({ label: d.me ? d.me.name : 'Bạn', values: mv });
+    }
+
+    const rows = x.signature.map((s) => {
+      const axis = d.axes.find((a) => a.key === s.key);
+      if (!axis) return '';
+      return `<tr>
+        <td>${esc(axis.label)}<div class="desc">${esc(axis.hint)}</div></td>
+        <td class="num">${fmt(s.raw, s.raw < 10 ? 3 : 0)}</td>
+        <td class="num">${s.norm === null ? '—' : fmt(s.norm, s.norm < 10 ? 3 : 0)}</td>
+        <td class="num"><b>${s.index === null ? '—' : fmt(s.index, 2) + '×'}</b></td>
+        <td>${axis.kind === 'phong-cach' ? 'phong cách' : 'chất lượng'}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="idol-block">
+      <h3>${esc(x.name)}${mine ? ` <span class="desc">— nền mờ là ${esc(d.me.name)} ở ${
+        esc(ROLE_VN[mine.role] || mine.role)}</span>` : ''}</h3>
+      ${styleRadar(d.axes, series)}
+      <div class="table-scroll"><table>
+        <thead><tr><th>Trục</th><th class="num">Của họ</th><th class="num">Mức thường</th>
+          <th class="num">Tỉ số</th><th>Loại</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+}
+
+function idolMeBlock(d) {
+  if (!d.me) return '<div class="empty">Chưa chọn được người để so.</div>';
+
+  if (!d.matchups.length)
+    return `<div class="empty">Chưa so được: cần ít nhất 3 trục chung và ${25} ván
+      <b>cùng vai trò</b> với idol. ${esc(d.me.name)} hiện có
+      ${Object.entries(d.me.roles).map(([r, v]) => `${esc(ROLE_VN[r] || r)} ${n0(v.games)} ván`).join(', ') || 'chưa có ván nào có nhãn vai trò'}.</div>`;
+
+  const closest = d.matchups[0];
+  const idolOf = (id) => d.idols.find((x) => x.id === id);
+
+  const list = d.matchups.map((m, i) => {
+    const x = idolOf(m.idolId);
+    return `<tr${i === 0 ? ' class="row-hi"' : ''}>
+      <td><b>${esc(x ? x.name : m.idolId)}</b></td>
+      <td>${esc(ROLE_VN[m.role] || m.role)}</td>
+      <td class="num">${fmt(m.distance, 2)}</td>
+      <td class="num">${m.sharedAxes}</td>
+      <td>${esc(m.diffs.slice(0, 2).map((f) => {
+        const a = d.axes.find((z) => z.key === f.axis);
+        return a ? a.label : f.axis;
+      }).join(' · '))}</td>
+    </tr>`;
+  }).join('');
+
+  const near = idolOf(closest.idolId);
+  const top = closest.diffs.slice(0, 3).map((f) => {
+    const axis = d.axes.find((a) => a.key === f.axis);
+    return axis ? `<li>${diffText(axis, f)}</li>` : '';
+  }).join('');
+
+  return `<div class="bento">
+      <article class="kpi p4">
+        <div class="kpi-label">Gần bạn nhất ở ${esc(ROLE_VN[closest.role] || closest.role)}</div>
+        <div class="kpi-value">${esc(near ? near.name : '—')}</div>
+        <div class="kpi-note">khoảng cách ${fmt(closest.distance, 2)} trên ${closest.sharedAxes} trục
+          chung — càng nhỏ càng giống</div>
+      </article>
+    </div>
+    <h3>Ba trục lệch nhất so với ${esc(near ? near.name : 'người gần nhất')}</h3>
+    <ul class="idol-diffs">${top}</ul>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Idol</th><th>Vai trò</th><th class="num">Khoảng cách</th>
+        <th class="num">Trục chung</th><th>Lệch nhiều nhất ở</th></tr></thead>
+      <tbody>${list}</tbody>
+    </table></div>
+    <p class="desc">Khoảng cách là trung bình trị tuyệt đối của hiệu <b>log</b> giữa hai chỉ số.
+      Dùng log vì đây là tỉ số: gấp đôi và bằng một nửa phải lệch như nhau, mà hiệu thường thì
+      không — và bảng này sẽ nghiêng có hệ thống về phía người vượt trội.</p>`;
+}
+
+function idolHeroes(d) {
+  return d.idols.map((x) => `<div class="idol-block">
+    <h3>${esc(x.name)} <span class="desc">— ${n0(x.heroPool.covering80)} hero phủ 80% của
+      ${n0(x.window.games)} ván</span></h3>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Hero</th><th class="num">Ván</th><th class="num">Thắng</th></tr></thead>
+      <tbody>${x.heroPool.top.map((h) => `<tr>
+        <td class="hero-cell">${heroImg(h.image)}<span>${esc(h.name)}</span></td>
+        <td class="num">${n0(h.games)}</td>
+        <td class="num">${h.games >= 5 ? fmt((100 * h.wins) / h.games, 0) + '%' : '—'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>`).join('');
+}
+
+async function loadIdols(accountId) {
+  const cards = $('#idol-cards');
+  if (!cards) return;
+  cards.innerHTML = '<div class="skeleton" style="height:140px"></div>';
+
+  try {
+    const d = await getJson('api/idols' + (accountId ? '?player=' + accountId : ''));
+
+    if (!d.ready) {
+      cards.innerHTML = `<div class="empty">${esc(d.note || 'Chưa có dữ liệu.')}</div>`;
+      return;
+    }
+
+    cards.innerHTML = idolCards(d);
+    $('#idol-signature').innerHTML = idolSignatures(d);
+    $('#idol-me').innerHTML = idolMeBlock(d);
+    $('#idol-heroes').innerHTML = idolHeroes(d);
+  } catch (e) {
+    cards.innerHTML = `<div class="empty">Không tải được: ${esc(String(e.message || e))}</div>`;
+  }
+}
+
+async function setupIdols() {
+  const sel = $('#idol-person');
+
+  // Chỉ dựng ô chọn một lần: dựng lại mỗi lần mở tab sẽ xoá mất lựa chọn người dùng vừa đổi.
+  if (sel && !sel.options.length) {
+    try {
+      const p = await getJson('api/profile/people');
+      sel.innerHTML = (p.people || [])
+        .map((x) => `<option value="${x.accountId}">${esc(x.name)}</option>`).join('');
+      sel.onchange = () => loadIdols(sel.value);
+    } catch {
+      sel.innerHTML = '';
+    }
+  }
+
+  await loadIdols(sel && sel.value ? sel.value : null);
+}
+
 async function loadFantasy() {
   loadFantasyConfig();
   loadFantasyRoster();
@@ -4175,6 +4482,11 @@ function setupTabs() {
       if (view === 'learn' && !loadedViews.has('learn')) {
         loadedViews.add('learn');
         loadLearn();
+      }
+
+      if (view === 'idols' && !loadedViews.has('idols')) {
+        loadedViews.add('idols');
+        setupIdols();
       }
     };
   });

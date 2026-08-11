@@ -31,6 +31,9 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<Item> Items => Set<Item>();
     public DbSet<HeroStat> HeroStats => Set<HeroStat>();
     public DbSet<ProPubMatch> ProPubMatches => Set<ProPubMatch>();
+    public DbSet<IdolPlayer> IdolPlayers => Set<IdolPlayer>();
+    public DbSet<IdolMatch> IdolMatches => Set<IdolMatch>();
+    public DbSet<StyleAnchor> StyleAnchors => Set<StyleAnchor>();
 
     /// <summary>
     /// Mọi DateTime ghi xuống đều chuyển sang UTC, mọi DateTime đọc lên đều được gắn
@@ -113,6 +116,24 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         b.Entity<TrackedPlayerHero>()
             .HasOne(x => x.TrackedPlayer).WithMany()
             .HasForeignKey(x => x.TrackedPlayerId).OnDelete(DeleteBehavior.Cascade);
+
+        // Danh sách người đáng học: khoá theo AccountId (một con người) và theo NameKey (một cái
+        // tên). Cần CẢ HAI vì có bốn tài khoản khác nhau mang persona "TOPSON" và ba tài khoản
+        // mang "AMMAR_THE_F" — khoá theo tên thôi thì nhặt nhầm người, khoá theo id thôi thì hai
+        // hàng cùng tên vẫn lọt vào và giao diện hiện hai thẻ giống hệt nhau.
+        b.Entity<IdolPlayer>().HasIndex(x => x.AccountId).IsUnique();
+        b.Entity<IdolPlayer>().HasIndex(x => x.NameKey).IsUnique();
+
+        b.Entity<IdolMatch>().HasIndex(x => new { x.IdolPlayerId, x.MatchId }).IsUnique();
+        b.Entity<IdolMatch>().HasIndex(x => x.StartTime);
+        b.Entity<IdolMatch>()
+            .HasOne(x => x.IdolPlayer).WithMany(x => x.Matches)
+            .HasForeignKey(x => x.IdolPlayerId).OnDelete(DeleteBehavior.Cascade);
+
+        // Một ván chỉ neo MỘT lần cho mỗi hồ. Chốt này quan trọng hơn vẻ ngoài: Malr1ne và ATF
+        // cùng đội Falcons nên phần lớn ván thi đấu của họ LÀ CÙNG MỘT VÁN, và không có chốt thì
+        // mỗi ván chung sẽ vào neo "pro" hai lần, kéo trung vị về phía những trận có hai người.
+        b.Entity<StyleAnchor>().HasIndex(x => new { x.Pool, x.MatchId }).IsUnique();
 
         // Một người trong một ván chỉ xuất hiện một lần. Không có chốt này thì mỗi lần lấy lại
         // chi tiết ván (chuyện vẫn xảy ra sau khi xin parse) sẽ nhân đôi số ván đã chơi cùng.

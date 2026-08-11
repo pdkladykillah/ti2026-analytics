@@ -103,4 +103,28 @@ public class StaticAssetTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
                  })
             profile.Should().Contain($"id=\"profile-{id}\"", $"khung profile-{id} đã biến mất");
     }
+
+    /// <summary>
+    /// Tab học lối chơi phải có đủ nút điều hướng, bốn mục con và bốn khung nội dung.
+    ///
+    /// Nút nav là thứ dễ quên nhất: thiếu section thì JS ném lỗi ngay và thấy liền, còn thiếu nút
+    /// thì cả tab tồn tại đầy đủ trong HTML mà không ai vào được — không lỗi, không dấu hiệu.
+    /// </summary>
+    [Fact]
+    public async Task Tab_hoc_loi_choi_phai_co_nut_nav_va_du_bon_muc()
+    {
+        var html = await factory.CreateClient().GetStringAsync("/index.html");
+
+        html.Should().Contain("data-view=\"idols\"",
+            "thiếu nút nav thì cả tab có trong HTML mà không có đường vào");
+
+        var view = html[html.IndexOf("id=\"view-idols\"", StringComparison.Ordinal)..];
+        view = view[..view.IndexOf("</section>", StringComparison.Ordinal)];
+
+        foreach (var sec in new[] { "Bốn người", "Chữ ký lối chơi", "So với tôi", "Hero pool" })
+            view.Should().Contain($"data-sec=\"{sec}\"", $"mục con '{sec}' đã biến mất");
+
+        foreach (var id in new[] { "cards", "signature", "me", "heroes", "person" })
+            view.Should().Contain($"id=\"idol-{id}\"", $"khung idol-{id} đã biến mất");
+    }
 }

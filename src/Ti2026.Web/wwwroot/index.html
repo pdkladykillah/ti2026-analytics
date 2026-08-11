@@ -94,6 +94,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5z"></path><path d="M9 7h7M9 11h5"></path></svg>
       Học từ pro
     </button>
+    <button role="tab" type="button" data-view="idols" aria-selected="false" aria-controls="view-idols">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7"></path><path d="M19 4.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2L16 6.7l2-.3z"></path></svg>
+      Học lối chơi
+    </button>
     <button role="tab" type="button" data-view="fantasy" aria-selected="false" aria-controls="view-fantasy">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 8a5 5 0 01-9 0z"></path><path d="M12 11v6M8.5 21h7M9 17h6"></path></svg>
       Fantasy
@@ -411,6 +415,50 @@
           <button class="pill" type="button" id="me-go">So sánh</button>
         </div>
         <div id="me-body"></div>
+      </div>
+    </section>
+
+    <!-- ===== Học lối chơi từ idol ===== -->
+    <section class="view" id="view-idols" role="tabpanel" aria-labelledby="tab-idols" hidden>
+      <div class="note" id="idol-caveat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div><b>Mọi con số ở đây là tỉ số, không phải số thô.</b> 1,00 nghĩa là đúng bằng người bình thường trong <i>cùng loại ván</i>. Phải làm vậy vì ván pub và ván chuyên nghiệp không cùng thang — đo được ván pub nhiều hơn <b>46%</b> số mạng và cao hơn <b>28%</b> sát thương trên mỗi vàng. So số thô thì bạn trông như <i>vượt</i> pro ở trục sát thương, chuẩn hoá xong mới thấy là đúng bằng.</div>
+      </div>
+
+      <div class="card" data-sec="Bốn người">
+        <header>
+          <h2>Họ là ai, và mẫu lớn cỡ nào</h2>
+          <p class="desc">Vai trò ở đây <b>đo từ nhãn replay</b> của chính những ván đã nạp, không phải nhãn gán tay — và hai thứ lệch nhau thật: ATF cả đời chỉ 64% số ván có nhãn là offlane, nhưng gần đây thì gần như toàn bộ.</p>
+        </header>
+        <div id="idol-cards"></div>
+      </div>
+
+      <div class="card" data-sec="Chữ ký lối chơi">
+        <header>
+          <h2>Hình dạng của một lối chơi</h2>
+          <p class="desc">Bảy trục, cùng một thang tỉ số. Vòng <b>đậm</b> là mức người bình thường. Trục <i>phong cách</i> vươn ra chỉ nghĩa là <b>khác</b>, không phải giỏi hơn — chỉ trục <i>chất lượng</i> mới đọc theo chiều hơn kém.</p>
+        </header>
+        <div id="idol-signature"></div>
+      </div>
+
+      <div class="card" data-sec="So với tôi">
+        <header>
+          <h2>Bạn gần ai nhất, và lệch ở đâu</h2>
+          <p class="desc">Chỉ so giữa những ván <b>cùng vai trò</b>. So chéo vai trò thì chỉ chứng minh được rằng carry chết ít hơn support — một sự thật hiển nhiên đội lốt phát hiện.</p>
+        </header>
+        <div class="controls">
+          <label class="sr-only" for="idol-person">Chọn người</label>
+          <select id="idol-person"></select>
+        </div>
+        <div id="idol-me"></div>
+      </div>
+
+      <div class="card" data-sec="Hero pool">
+        <header>
+          <h2>Muốn chơi như họ thì học hero nào</h2>
+          <p class="desc">Số hero phủ hết 80% số ván — thước đo độ hẹp của pool. Đây là phần dễ làm theo nhất trên cả trang.</p>
+        </header>
+        <div id="idol-heroes"></div>
       </div>
     </section>
 

@@ -54,6 +54,36 @@ public class OpenDotaMatchDetail
     /// không có gì đổ vỡ để báo.
     /// </summary>
     [JsonPropertyName("radiant_gold_adv")] public List<int>? RadiantGoldAdv { get; set; }
+
+    /// <summary>
+    /// Loại phòng chờ. Ranh giới giữa ván thi đấu và ván xếp hạng.
+    ///
+    /// ĐO THẬT, và nó trái với tên gọi: ván thi đấu chuyên nghiệp hiện lên là 1 ("practice"), chứ
+    /// KHÔNG phải 2 ("tournament"). Trên 300 ván gần nhất của Malr1ne có 300 ván lobby_type 1 và
+    /// 0 ván lobby_type 2. Lọc theo 2 thì được đúng con số không.
+    /// </summary>
+    [JsonPropertyName("lobby_type")] public int? LobbyType { get; set; }
+
+    /// <summary>
+    /// Khác 0 nghĩa là ván thuộc một giải chính thức.
+    ///
+    /// Chỉ có Ở ĐÂY, không có trong players/{id}/matches — danh sách ván trả về leagueid bằng 0
+    /// cho cả những ván giải thật, nên không thể dùng nó để lọc trước khi lấy chi tiết.
+    /// </summary>
+    [JsonPropertyName("leagueid")] public long? LeagueId { get; set; }
+
+    [JsonPropertyName("game_mode")] public int? GameMode { get; set; }
+
+    /// <summary>
+    /// Tên đội hai phe. Chỉ có ở ván giải, null ở ván xếp hạng.
+    ///
+    /// Đây là nguồn tên đội DUY NHẤT không tốn thêm lời gọi nào: players/{id} không trả về đội,
+    /// còn proPlayers thì trả về cả 5.127 tuyển thủ chỉ để lấy một chuỗi. Đọc từ ván thi đấu gần
+    /// nhất của chính người đó thì vừa miễn phí vừa là số đo chứ không phải giá trị gán tay sẽ mục.
+    /// </summary>
+    [JsonPropertyName("radiant_name")] public string? RadiantName { get; set; }
+
+    [JsonPropertyName("dire_name")] public string? DireName { get; set; }
 }
 
 public class OpenDotaTeamfight
@@ -188,6 +218,26 @@ public class OpenDotaMatchPlayer
     [JsonPropertyName("purchase_log")] public List<OpenDotaPurchase>? PurchaseLog { get; set; }
 
     // Chỉ có ở ván đã parse — để null khi thiếu, KHÔNG quy về 0.
+    /// <summary>
+    /// Sát thương phải chịu, TÁCH THEO TỪNG NGUỒN gây ra. Chỉ có ở ván đã parse.
+    ///
+    /// Là một từ điển chứ không phải một số, nên muốn tổng thì phải tự cộng. Cẩn thận chỗ này:
+    /// từ điển RỖNG khác null, và `dict và biểu-thức` trong nhiều ngôn ngữ sẽ trả về chính từ
+    /// điển rỗng đó rồi mang đi chia — đã mắc đúng lỗi này một lần khi dò dữ liệu.
+    ///
+    /// Cần để đo phần chịu đòn thay cho đội. Đo thật: hai người cùng đi offlane là Collapse và
+    /// ATF gánh 26,9% và 26,3% sát thương của đội, còn Malr1ne ở mid chỉ 19,9%.
+    /// </summary>
+    [JsonPropertyName("damage_taken")] public Dictionary<string, int>? DamageTaken { get; set; }
+
+    [JsonPropertyName("hero_healing")] public int? HeroHealing { get; set; }
+
+    /// <summary>
+    /// true = rời lane đi quấy sớm, do OpenDota suy ra từ replay. Chỉ có ở ván đã parse.
+    /// Phân biệt người đứng lane với người đi lang thang — hai lối chơi có chỉ số lane khác hẳn.
+    /// </summary>
+    [JsonPropertyName("is_roaming")] public bool? IsRoaming { get; set; }
+
     [JsonPropertyName("lane_role")] public int? LaneRole { get; set; }
     [JsonPropertyName("lane")] public int? Lane { get; set; }
     [JsonPropertyName("lane_efficiency_pct")] public double? LaneEfficiencyPct { get; set; }

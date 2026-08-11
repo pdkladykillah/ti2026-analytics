@@ -14,6 +14,7 @@ public class IngestPipeline(
     LeagueBackfillIngester leagueBackfill,
     TiScheduleIngester tiSchedule,
     ProPubIngester proPub,
+    IdolIngester idols,
     SnapshotWriter snapshots,
     PredictionLedger ledger,
     StaleTeamIdDetector staleTeamIds,
@@ -147,6 +148,11 @@ public class IngestPipeline(
         // vòng ghi SQLite cùng lúc là cách chắc chắn để gặp lỗi khoá sau 30 giây.
         await orchestrator.RunSourceAsync(
             ProPubIngester.Source, proPub.IngestAsync, SanityKind.None, ct);
+
+        // Cùng khuôn: tự bỏ qua nếu chưa tới hạn, và có trần số ván mỗi vòng nên lần đầu sẽ chạy
+        // vài vòng mới đủ. Lambda chứ không phải method group vì IngestAsync có tham số tuỳ chọn.
+        await orchestrator.RunSourceAsync(
+            IdolIngester.Source, c => idols.IngestAsync(c), SanityKind.None, ct);
 
         await orchestrator.RunSourceAsync(
             "snapshot",

@@ -367,7 +367,17 @@ public class TrackedMatchDetailIngester(
         {
             if (f.Players.Count != 10) continue;
 
-            var teamGold = mates.Sum(i => f.Players[i].GoldDelta ?? 0);
+            // CỘNG VÀNG CỦA 4 ĐỒNG ĐỘI, KHÔNG TÍNH CHÍNH MÌNH.
+            //
+            // Đây không phải tinh chỉnh mà là điều kiện để phép đo có nghĩa. Khi ta chết,
+            // gold_delta của chính ta đã âm sẵn — nên một pha có ta chết bắt đầu bằng một khoản
+            // trừ ĐƯƠNG NHIÊN cho phe mình. Cộng cả ta vào rồi hỏi "pha này đội có lời không"
+            // là hỏi một câu đã bị cài sẵn câu trả lời, và mọi cái chết đều sẽ trông như lỗ.
+            //
+            // Câu hỏi thật là: bốn người kia có kiếm được nhiều hơn cái giá ta trả không. Nên
+            // vế của ta bị loại khỏi tử số, còn cái giá ta trả thì vẫn nằm ở vế địch (tiền
+            // thưởng chúng nhận được khi giết ta).
+            var teamGold = mates.Where(i => i != meIndex).Sum(i => f.Players[i].GoldDelta ?? 0);
             var enemyGold = foes.Sum(i => f.Players[i].GoldDelta ?? 0);
             var swing = teamGold - enemyGold;
 

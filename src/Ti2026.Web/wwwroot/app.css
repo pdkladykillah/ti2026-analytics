@@ -989,7 +989,78 @@ select, input[type="search"], input[type="text"] {
 .idhead { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
 .idhead .desc { margin: 0; }
 
-.idpick { display: flex; flex-direction: column; gap: 5px; }
+/* margin-bottom KHÔNG được thiếu: khối ngay dưới là kết quả của chính lựa chọn ở đây, và
+   dính liền nhau thì hai thứ trông như một khối duy nhất — điều khiển bị đọc thành tiêu đề. */
+.idpick { display: flex; flex-direction: column; gap: 5px; margin-bottom: var(--s-4); }
+
+/* ---- Chọn tài khoản để so ---- */
+
+.whopick { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+.who {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 18px 8px 8px; border-radius: var(--r-pill);
+  background: var(--surface-2); border: 2px solid transparent;
+  font-family: var(--font-body); font-size: 16px; font-weight: 700;
+  color: var(--ink-2); cursor: pointer;
+  transition: background .15s var(--ease), border-color .15s var(--ease);
+}
+.who:hover { border-color: var(--border-strong); }
+
+/* Ba dấu hiệu cho trạng thái đang chọn: nền, viền, màu chữ. Một mình cái viền màu nhấn thì
+   ở chủ đề sáng chỉ đạt 2,2:1 và gần như không thấy — luật vàng-chỉ-làm-nền. */
+.who[aria-checked="true"] {
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink);
+}
+
+.who-dot {
+  width: 30px; height: 30px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: var(--surface); color: var(--muted);
+  font-family: var(--font-head); font-size: 15px; font-weight: 800;
+}
+.who[aria-checked="true"] .who-dot { background: var(--accent); color: var(--on-accent); }
+
+/* ---- Thẻ "gần bạn nhất" ---- */
+
+/* NỀN --surface-2, KHÔNG PHẢI --pastel-4.
+   Thẻ này có chữ phụ màu --muted, mà cặp (--muted, --pastel-4) không nằm trong ~45 cặp
+   ThemeContrastTests khoá — dùng nó là tự đưa ra ngoài vùng đã đo, ở cả bốn bảng màu.
+   Ba cặp dùng ở đây — --ink, --muted, --accent-ink trên --surface-2 — đều đã khoá sẵn.
+   Danh tính riêng của thẻ lấy từ VỆT màu nhấn bên trái: màu nhấn làm nền thì được, làm
+   chữ hay viền mảnh thì không. */
+.near {
+  max-width: 640px;
+  background: var(--surface-2); border-radius: var(--r-lg);
+  border-left: 4px solid var(--accent);
+  padding: var(--s-4); margin-bottom: var(--s-5);
+}
+
+.near-kicker {
+  font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--accent-ink); margin-bottom: var(--s-3);
+}
+
+.near-row { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.near-id { min-width: 0; flex: 1; }
+
+.near-name {
+  font-family: var(--font-head); font-weight: 800; font-size: 30px;
+  line-height: 1.1; color: var(--ink);
+  letter-spacing: -.02em; overflow-wrap: anywhere;
+}
+.near-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+.near-gap { text-align: right; }
+.near-gap b {
+  display: block; font-size: 27px; font-weight: 800; line-height: 1.1;
+  color: var(--ink);
+}
+.near-gap span { font-size: 12px; color: var(--muted); line-height: 1.35; display: block; margin-top: 3px; }
+
+@media (max-width: 520px) {
+  .near-gap { text-align: left; }
+}
 
 .idpick-label {
   font-size: 13px; font-weight: 800; text-transform: uppercase;

@@ -500,12 +500,14 @@
           <h2>Bạn gần ai nhất, và lệch ở đâu</h2>
           <p class="desc">Chỉ so giữa những ván <b>cùng vai trò</b>. So chéo vai trò thì chỉ chứng minh được rằng carry chết ít hơn support — một sự thật hiển nhiên đội lốt phát hiện.</p>
         </header>
+        <!-- Hai ba tài khoản thì KHÔNG dùng <select>. Ô xổ xuống giấu hết lựa chọn sau một cú
+             bấm để tiết kiệm chỗ — đáng khi có 50 mục, còn ở đây nó chỉ đổi hai cái nút thành
+             một cái nút cộng thêm một bước. Bày thẳng ra thì thấy ngay đang so với ai và có
+             thể đổi sang ai. -->
         <div class="idpick">
-          <span class="idpick-label">So với</span>
-          <div class="controls pickbox">
-            <label class="sr-only" for="idol-person">Chọn người</label>
-            <select id="idol-person"></select>
-          </div>
+          <span class="idpick-label" id="idol-person-label">So với</span>
+          <div class="whopick" id="idol-person" role="radiogroup"
+               aria-labelledby="idol-person-label"></div>
         </div>
         <div id="idol-me"></div>
       </div>

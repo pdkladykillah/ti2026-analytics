@@ -3979,14 +3979,28 @@ function idolMeBlock(d) {
     return axis ? `<li>${diffText(axis, f)}</li>` : '';
   }).join('');
 
-  return `<div class="bento">
-      <article class="kpi p4">
-        <div class="kpi-label">Gần bạn nhất ở ${esc(ROLE_VN[closest.role] || closest.role)}</div>
-        <div class="kpi-value word">${esc(near ? near.name : '—')}</div>
-        <div class="kpi-note">khoảng cách ${fmt(closest.distance, 2)} trên ${closest.sharedAxes} trục
-          chung — càng nhỏ càng giống</div>
-      </article>
-    </div>
+  // Thẻ kết quả KHÔNG kéo dài hết bề ngang. Nó chở đúng một cái tên và một con số, nên trải
+  // ra 1.800px chỉ tạo ra một mảng màu rỗng và đẩy con số ra xa cái tên nó thuộc về. Có ảnh
+  // rồi thì đây là chỗ đáng dùng nhất: câu trả lời là MỘT CON NGƯỜI.
+  const nearMeta = near
+    ? [near.team, near.role ? (ROLE_VN[near.role.role] || near.role.role) : null]
+        .filter(Boolean).join(' · ')
+    : '';
+
+  return `<article class="near">
+      <div class="near-kicker">Gần bạn nhất ở ${esc(ROLE_VN[closest.role] || closest.role)}</div>
+      <div class="near-row">
+        ${near ? idolFace(near, 58) : ''}
+        <div class="near-id">
+          <div class="near-name">${esc(near ? near.name : '—')}</div>
+          <div class="near-meta">${esc(nearMeta)}</div>
+        </div>
+        <div class="near-gap">
+          <b class="num">${fmt(closest.distance, 2)}</b>
+          <span>khoảng cách trên ${closest.sharedAxes} trục chung<br>càng nhỏ càng giống</span>
+        </div>
+      </div>
+    </article>
     <h3>Ba trục lệch nhất so với ${esc(near ? near.name : 'người gần nhất')}</h3>
     <ul class="idol-diffs">${top}</ul>
     <div class="table-scroll"><table>
@@ -4099,22 +4113,38 @@ async function loadIdols(accountId) {
   }
 }
 
-async function setupIdols() {
-  const sel = $('#idol-person');
+/** Tài khoản đang so. Giữ ngoài hàm để đổi tab rồi quay lại không mất lựa chọn. */
+let idolWho = null;
 
-  // Chỉ dựng ô chọn một lần: dựng lại mỗi lần mở tab sẽ xoá mất lựa chọn người dùng vừa đổi.
-  if (sel && !sel.options.length) {
+async function setupIdols() {
+  const box = $('#idol-person');
+
+  // Chỉ dựng bộ chọn một lần: dựng lại mỗi lần mở tab sẽ xoá mất lựa chọn người dùng vừa đổi.
+  if (box && !box.children.length) {
     try {
       const p = await getJson('api/profile/people');
-      sel.innerHTML = (p.people || [])
-        .map((x) => `<option value="${x.accountId}">${esc(x.name)}</option>`).join('');
-      sel.onchange = () => loadIdols(sel.value);
+      const people = p.people || [];
+      if (people.length) idolWho = idolWho || String(people[0].accountId);
+
+      box.innerHTML = people.map((x) => `<button type="button" class="who" role="radio"
+          data-who="${x.accountId}" aria-checked="${String(x.accountId) === idolWho}">
+        <span class="who-dot" aria-hidden="true">${esc((x.name || '?').charAt(0))}</span>
+        ${esc(x.name)}</button>`).join('');
+
+      box.onclick = (e) => {
+        const btn = e.target.closest('.who');
+        if (!btn || btn.getAttribute('aria-checked') === 'true') return;
+
+        idolWho = btn.dataset.who;
+        $$('.who', box).forEach((b) => b.setAttribute('aria-checked', String(b === btn)));
+        loadIdols(idolWho);
+      };
     } catch {
-      sel.innerHTML = '';
+      box.innerHTML = '';
     }
   }
 
-  await loadIdols(sel && sel.value ? sel.value : null);
+  await loadIdols(idolWho);
 }
 
 async function loadFantasy() {

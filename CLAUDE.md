@@ -210,13 +210,41 @@ có phải không" — khối cảnh báo giữ icon ở đầu, và bản đầ
 - Điều kiện dừng của mọi vòng nạp phải đòi hỏi ĐÃ CÓ dữ liệu, không chỉ "còn lại 0" — bảng
   trống cũng cho 0.
 
-### Chi phí
+### Chi phí API — ĐANG CHẠY BẬC MIỄN PHÍ
 
-~$0,0001 mỗi lời gọi OpenDota. Đã tiêu **~$3,6** tính tới 2026-08-12. Phần lớn khoản đó là
-do đổi lược đồ rồi phải quét lại toàn bộ ván đã lưu — **thiết kế cột một lần cho đủ**.
+**Khoá OpenDota đang TẮT** — `Ti2026__OpenDota__UseApiKey=false` trong `docker-compose.yml`.
+Khoá vẫn nằm trong `.env` để bật lại khi cần.
 
-Quy tắc: dưới $1 thì tự làm, trên $1 phải hỏi, và luôn báo **số cộng dồn** chứ không chỉ số
-của lần này.
+Đo được bằng bộ đếm ở `api/ingest/status` (đếm ngay tại `RateLimitedHandler`, nên một lời
+gọi bị 429 rồi thử lại được tính là hai — đúng như OpenDota tính tiền):
+
+| khoản | phép tính | mỗi ngày |
+|---|---|---|
+| vòng ingest thường | 36–37 × 4 vòng | ~148 |
+| `pro-pub` (80 tuyển thủ, cửa 24h) | 80 × 1 | 80 |
+| `idol` (12 người, cửa 12h) | 24 × 2 | 48 |
+| chi tiết ván idol mới | — | ~3 |
+| **tổng** | | **~279** |
+
+Bậc miễn phí là **2.000 lời gọi/ngày** → đang dùng **14%**. Hoá đơn: **0 đồng**.
+
+Dấu hiệu xác nhận đang ở bậc miễn phí: một vòng ingest mất ~57 giây thay vì ~28, vì bộ giới
+hạn 0,8 req/s trở thành thứ ràng buộc thay vì lượng việc.
+
+**BẬT KHOÁ KHI NẠP BÙ LƯỢNG LỚN.** Không khoá thì trần mỗi vòng tụt từ 2.000 xuống 300 ván
+và nhịp chậm gấp mười — đợt 1.200 ván idol sẽ mất hơn 25 phút và chiếm nửa hạn mức ngày thay
+vì 4 phút. Sửa `UseApiKey=true` trong `docker-compose.yml`, chạy `docker compose up -d app`,
+nạp xong thì trả về `false`.
+
+**CHỖ NGUY HIỂM:** header xác thực, nhịp gọi và trần ván mỗi vòng đều rẽ nhánh theo cùng một
+thuộc tính `OpenDotaOptions.HasKey`. Đừng bao giờ để ba thứ đó tự kiểm `ApiKey` riêng — gửi
+request không kèm khoá mà chạy 8 req/giây là gấp mười lần bậc miễn phí, và hậu quả không phải
+một vòng ingest hỏng mà là **VPS bị chặn IP**, mất luôn nguồn dữ liệu. Ba bài kiểm trong
+`Ti2026OptionsTests` khoá bất biến này.
+
+Đã tiêu tổng cộng **~$3,6** tính tới 2026-08-12, phần lớn do đổi lược đồ rồi quét lại toàn bộ
+ván — **thiết kế cột một lần cho đủ**.
+
 
 ---
 

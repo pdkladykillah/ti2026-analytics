@@ -1,8 +1,12 @@
 namespace Ti2026.Ingest.Analytics;
 
 /// <summary>Một ván, rút gọn còn những gì cần để xác định vai trò.</summary>
+/// <param name="HeroId">
+/// Chỉ cần khi bên gọi muốn suy lane từ tiền nghiệm hero. Mặc định 0 = không suy, để mọi chỗ
+/// gọi cũ không phải sửa.
+/// </param>
 public readonly record struct RoleGame(
-    DateTime StartTime, bool Won, int? LaneRole, int? TeamFarmRank);
+    DateTime StartTime, bool Won, int? LaneRole, int? TeamFarmRank, int HeroId = 0);
 
 /// <param name="Exact">true = nhãn thật từ replay. false = chỉ suy được core hay hỗ trợ.</param>
 public readonly record struct RoleSlice(
@@ -36,14 +40,27 @@ public static class RoleBreakdown
     /// <summary>Một năm cần ngần này ván có nhãn thì tỷ trọng lane của năm đó mới đáng đọc.</summary>
     public const int MinLabelledPerYear = 10;
 
+    /// <param name="priors">
+    /// Tiền nghiệm lane theo hero, học từ ván chuyên nghiệp. Truyền vào thì những ván CHƯA có
+    /// nhãn cũng được xếp vị trí — kèm IsExact = false. Không truyền thì giữ nguyên hành vi cũ:
+    /// ván chưa nhãn chỉ ra core/hỗ trợ.
+    ///
+    /// Đây là lựa chọn CỦA NGƯỜI DÙNG, không phải mặc định: độ chính xác đo được 65% và sai số
+    /// có cấu trúc, nên nó chỉ đáng bật khi người đọc đã biết và chấp nhận điều đó.
+    /// </param>
     public static List<RoleSlice> Slices(
-        IReadOnlyList<RoleGame> games, int minGames = MinGamesPerRole)
+        IReadOnlyList<RoleGame> games,
+        IReadOnlyDictionary<int, RoleResolver.HeroLanePrior>? priors = null,
+        int minGames = MinGamesPerRole)
     {
         var buckets = new Dictionary<string, (string Label, bool Exact, int Games, int Wins)>();
 
         foreach (var g in games)
         {
-            var v = RoleResolver.Resolve(g.LaneRole, g.TeamFarmRank);
+            RoleResolver.HeroLanePrior? prior = priors is not null
+                && priors.TryGetValue(g.HeroId, out var found) ? found : null;
+
+            var v = RoleResolver.Resolve(g.LaneRole, g.TeamFarmRank, prior);
             if (v.Code == "khong-biet") continue;
 
             var cur = buckets.GetValueOrDefault(v.Code);

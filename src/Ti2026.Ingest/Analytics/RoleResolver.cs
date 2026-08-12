@@ -52,6 +52,50 @@ public static class RoleResolver
     /// <summary>Hạng net worth từ mức này trở xuống trong đội thì là support.</summary>
     public const int SupportFarmRank = 4;
 
+    /// <summary>
+    /// Lane hay gặp nhất của một hero, học từ ván CHUYÊN NGHIỆP đã có nhãn thật.
+    /// </summary>
+    /// <param name="Share">Tỷ trọng của lane đó, 0..1. Dưới 0,5 nghĩa là chính hero cũng không có lane cố định.</param>
+    public readonly record struct HeroLanePrior(int Lane, double Share, int Samples);
+
+    /// <summary>Dưới ngần này ván pro thì tiền nghiệm của hero chỉ là nhiễu.</summary>
+    public const int MinPriorSamples = 10;
+
+    /// <summary>
+    /// Suy lane từ hero — CHỈ dùng khi người đọc đã chấp nhận con số ước lượng.
+    ///
+    /// ĐỘ CHÍNH XÁC ĐÃ ĐO: 65,0% trên 492 ván core có nhãn thật, so với mốc đoán bừa 46,4%.
+    /// Có tín hiệu thật, nhưng sai số KHÔNG ngẫu nhiên: 34% ván offlane bị đọc thành mid, và
+    /// tỷ lệ sai phụ thuộc vào chính hero — nên nó bóp méo có cấu trúc chứ không phải nhiễu đều.
+    ///
+    /// Hệ quả phải nói ra: nếu trộn ô ước lượng vào ô nhãn thật thì mọi khác biệt đo được giữa
+    /// hai vai trò sẽ CO LẠI CÒN KHOẢNG MỘT NỬA (ô A chứa 75% A và 25% B, ô B ngược lại, thì
+    /// hiệu đo được là 0,5 lần hiệu thật). Vì thế mọi kết quả từ đường này đều mang IsExact =
+    /// false và Source = "hero", và phần hiển thị phải giữ chúng ở dòng riêng.
+    ///
+    /// VÌ SAO HỌC TỪ VÁN PRO CHỨ KHÔNG TỪ VÁN CỦA CHÍNH NGƯỜI DÙNG: bộ phân loại trước đã chết
+    /// vì học "đây là ai" thay vì "ván này đi lane nào". Học từ người khác thì không thể mắc
+    /// lại lỗi đó.
+    /// </summary>
+    public static RoleVerdict Resolve(int? laneRole, int? teamFarmRank, HeroLanePrior? prior)
+    {
+        var exact = Resolve(laneRole, teamFarmRank);
+        if (exact.IsExact || prior is not { } p) return exact;
+        if (p.Samples < MinPriorSamples || p.Lane is < 1 or > 3) return exact;
+        if (teamFarmRank is not int rank || rank is < 1 or > 5) return exact;
+
+        // Lane đoán từ hero + hạng farm THẬT của chính ván đó. Nửa toạ độ là số đo, chỉ nửa
+        // còn lại là ước lượng — nên nó vẫn khá hơn hẳn đoán cả hai.
+        var guess = Resolve(p.Lane, rank);
+        if (!guess.IsExact) return exact;
+
+        return new RoleVerdict(
+            guess.Code,
+            guess.Label.Replace(")", ", ước lượng)"),
+            "hero",
+            false);
+    }
+
     public static RoleVerdict Resolve(int? laneRole, int? teamFarmRank)
     {
         // 1. NHÃN THẬT từ replay. lane_role cho biết LANE; hạng farm trong đội tách tiếp core

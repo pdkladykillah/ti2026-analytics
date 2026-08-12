@@ -153,14 +153,50 @@ public static class ProfileEndpoints
             // Một chỗ duy nhất gọi RoleResolver, rồi mọi phần bên dưới dùng lại kết quả đó. Gọi
             // rải rác thì sớm muộn sẽ có nơi tự chế một quy tắc riêng, và đó đúng là cái sai đã
             // phải sửa một lần (suy vai trò từ mức farm).
+            // TIỀN NGHIỆM LANE THEO HERO, học từ ván chuyên nghiệp đã có nhãn thật.
+            //
+            // Nhờ nó, 9.037 ván chưa parse cũng được xếp vị trí thay vì chỉ core/hỗ trợ. Đo
+            // được 65,0% chính xác so với mốc đoán bừa 46,4% — có tín hiệu thật, nhưng sai số
+            // CÓ CẤU TRÚC (34% ván offlane đọc thành mid, và tỷ lệ sai phụ thuộc chính hero).
+            //
+            // Người dùng đã biết con số đó và chọn gộp. Mọi ván đi đường này mang IsExact =
+            // false, và giao diện phải giữ chúng ở dòng riêng có nhãn "ước lượng" — trộn lặng
+            // lẽ vào ô nhãn thật sẽ làm mọi khác biệt đo được co lại còn khoảng một nửa.
+            //
+            // Học từ ván PRO chứ không từ ván của chính người dùng: bộ phân loại trước đã chết
+            // vì học "đây là ai" thay vì "ván này đi lane nào".
+            var priors = (await db.IdolMatches
+                    .Where(m => m.LaneRole >= 1 && m.LaneRole <= 3
+                                && (m.LobbyType == 1 || m.LobbyType == 2))
+                    .GroupBy(m => new { m.HeroId, m.LaneRole })
+                    .Select(g => new { g.Key.HeroId, Lane = g.Key.LaneRole, N = g.Count() })
+                    .ToListAsync())
+                .GroupBy(x => x.HeroId)
+                .ToDictionary(
+                    g => g.Key,
+                    g =>
+                    {
+                        var total = g.Sum(x => x.N);
+                        var top = g.OrderByDescending(x => x.N).First();
+                        return new RoleResolver.HeroLanePrior(
+                            top.Lane ?? 0, top.N / (double)total, total);
+                    });
+
             var roleOf = rows.ToDictionary(
-                m => m.Id, m => RoleResolver.Resolve(m.LaneRole, m.TeamFarmRank));
+                m => m.Id,
+                m => RoleResolver.Resolve(
+                    m.LaneRole, m.TeamFarmRank,
+                    priors.TryGetValue(m.HeroId, out var pr) ? pr : null));
 
             var roleGames = rows
-                .Select(m => new RoleGame(m.StartTime, m.Won, m.LaneRole, m.TeamFarmRank))
+                .Select(m => new RoleGame(m.StartTime, m.Won, m.LaneRole, m.TeamFarmRank, m.HeroId))
                 .ToList();
 
-            var roles = RoleBreakdown.Slices(roleGames);
+            var roles = RoleBreakdown.Slices(roleGames, priors);
+
+            // Biểu đồ theo NĂM vẫn CHỈ dùng nhãn thật — xem ghi chú ở RoleBreakdown.Eras: nó
+            // hỏi "trước kia đi mid, giờ đi lung tung phải không", và một biểu đồ đầy đặn dựng
+            // trên 65% phỏng đoán sẽ mượt mà và hoàn toàn bịa.
             var eras = RoleBreakdown.Eras(roleGames);
 
             // ---------- Điểm thành phần, kiểu Leetify ----------

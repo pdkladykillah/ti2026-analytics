@@ -119,4 +119,83 @@ public class RoleResolverTests
     {
         RoleResolver.CrossTab([(null, 2), (1, null), (0, 3), (9, 9)]).Should().BeEmpty();
     }
+
+    // ---------- Suy lane từ tiền nghiệm hero ----------
+    //
+    // Đường này CHỈ bật khi người đọc đã chấp nhận con số ước lượng: đo được 65,0% chính xác
+    // so với mốc đoán bừa 46,4%, và sai số có cấu trúc chứ không ngẫu nhiên. Mọi kết quả từ
+    // đây phải mang IsExact = false — đó là thứ giữ cho nó không lẫn vào nhãn thật.
+
+    private static RoleResolver.HeroLanePrior Prior(int lane, double share = 0.8, int n = 50) =>
+        new(lane, share, n);
+
+    /// <summary>
+    /// NHÃN THẬT LUÔN THẮNG. Nếu tiền nghiệm hero đè được lên nhãn replay thì cả hệ thống mất
+    /// đúng thứ quý nhất nó có — 528 ván biết chắc — để đổi lấy một phỏng đoán 65%.
+    /// </summary>
+    [Fact]
+    public void Tien_nghiem_khong_bao_gio_de_len_nhan_that()
+    {
+        // Hero này ở cấp pro gần như luôn đi mid, nhưng replay nói ván đó đi safelane.
+        var v = RoleResolver.Resolve(laneRole: 1, teamFarmRank: 1, Prior(2));
+
+        v.Code.Should().Be("pos1");
+        v.IsExact.Should().BeTrue();
+        v.Source.Should().Be("replay");
+    }
+
+    [Fact]
+    public void Tien_nghiem_du_manh_thi_suy_ra_vi_tri_nhung_phai_khai_la_uoc_luong()
+    {
+        var v = RoleResolver.Resolve(laneRole: null, teamFarmRank: 2, Prior(2));
+
+        v.Code.Should().Be("pos2");
+        v.IsExact.Should().BeFalse("65% thì không được đứng chung hàng với nhãn replay");
+        v.Source.Should().Be("hero");
+        v.Label.Should().Contain("ước lượng");
+    }
+
+    /// <summary>
+    /// Hai toạ độ, chỉ một cái là phỏng đoán. Lane suy từ hero, còn core/hỗ trợ vẫn là hạng
+    /// net worth THẬT của chính ván đó — nên hero đi safelane cộng hạng 5 phải ra pos5, không
+    /// phải pos1.
+    /// </summary>
+    [Fact]
+    public void Hang_net_worth_that_van_quyet_dinh_nua_con_lai()
+    {
+        RoleResolver.Resolve(null, 1, Prior(1)).Code.Should().Be("pos1");
+        RoleResolver.Resolve(null, 5, Prior(1)).Code.Should().Be("pos5");
+        RoleResolver.Resolve(null, 2, Prior(3)).Code.Should().Be("pos3");
+        RoleResolver.Resolve(null, 4, Prior(3)).Code.Should().Be("pos4");
+    }
+
+    /// <summary>
+    /// Hero quá ít mẫu thì tiền nghiệm là nhiễu, phải rơi về core/hỗ trợ. Một hero có 3 ván pro
+    /// mà "100% đi mid" thì con số 100% đó không mang thông tin nào.
+    /// </summary>
+    [Fact]
+    public void Hero_qua_it_mau_thi_khong_dam_suy()
+    {
+        var v = RoleResolver.Resolve(null, 2, Prior(2, share: 1.0, n: RoleResolver.MinPriorSamples - 1));
+
+        v.Code.Should().Be("core");
+        v.Source.Should().Be("doi-hinh");
+    }
+
+    /// <summary>
+    /// Không có hạng net worth thì KHÔNG suy gì cả, kể cả khi tiền nghiệm rất mạnh: thiếu một
+    /// nửa toạ độ thì nửa kia cũng vô dụng, và đoán cả hai chính là cái sai đã loại từ đầu.
+    /// </summary>
+    [Fact]
+    public void Thieu_hang_net_worth_thi_khong_suy_du_tien_nghiem_manh()
+    {
+        RoleResolver.Resolve(null, null, Prior(2, share: 1.0, n: 500)).Code.Should().Be("khong-biet");
+    }
+
+    [Fact]
+    public void Khong_truyen_tien_nghiem_thi_giu_nguyen_hanh_vi_cu()
+    {
+        RoleResolver.Resolve(null, 2, null).Code.Should().Be("core");
+        RoleResolver.Resolve(null, 5, null).Code.Should().Be("support");
+    }
 }

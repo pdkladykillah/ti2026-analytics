@@ -55,58 +55,68 @@
   </header>
 
   <nav role="tablist" aria-label="Khu vực phân tích">
-    <button role="tab" type="button" data-view="overview" aria-selected="true" aria-controls="view-overview">
+    <div class="navgroup" role="presentation">
+      <span class="navgroup-label" aria-hidden="true">Giải TI 2026</span>
+      <div class="navgroup-tabs" role="presentation">
+        <button role="tab" type="button" data-view="overview" aria-selected="true" aria-controls="view-overview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
       Tổng quan
     </button>
-    <button role="tab" type="button" data-view="schedule" aria-selected="false" aria-controls="view-schedule">
+        <button role="tab" type="button" data-view="schedule" aria-selected="false" aria-controls="view-schedule">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
       Lịch thi đấu
     </button>
-    <button role="tab" type="button" data-view="profile" aria-selected="false" aria-controls="view-profile">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-      Hồ sơ cá nhân
-    </button>
-    <button role="tab" type="button" data-view="table" aria-selected="false" aria-controls="view-table">
+        <button role="tab" type="button" data-view="table" aria-selected="false" aria-controls="view-table">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18M9 10v10"></path></svg>
       Bảng chỉ số
     </button>
-    <button role="tab" type="button" data-view="teams" aria-selected="false" aria-controls="view-teams">
+        <button role="tab" type="button" data-view="teams" aria-selected="false" aria-controls="view-teams">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
       Đội hình
     </button>
-    <button role="tab" type="button" data-view="predict" aria-selected="false" aria-controls="view-predict">
+        <button role="tab" type="button" data-view="predict" aria-selected="false" aria-controls="view-predict">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path><circle cx="12" cy="12" r="3"></circle></svg>
       Dự đoán
     </button>
-    <button role="tab" type="button" data-view="changes" aria-selected="false" aria-controls="view-changes">
+        <button role="tab" type="button" data-view="changes" aria-selected="false" aria-controls="view-changes">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
       Biến động
     </button>
-    <button role="tab" type="button" data-view="h2h" aria-selected="false" aria-controls="view-h2h">
+        <button role="tab" type="button" data-view="h2h" aria-selected="false" aria-controls="view-h2h">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"></path><path d="M6 8L2 12L6 16"></path><path d="M14.5 4l-5 16"></path></svg>
       Đối đầu
     </button>
-    <button role="tab" type="button" data-view="form" aria-selected="false" aria-controls="view-form">
+        <button role="tab" type="button" data-view="form" aria-selected="false" aria-controls="view-form">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 14l4-4 3 3 5-6"></path></svg>
       Phong độ
     </button>
-    <button role="tab" type="button" data-view="tiers" aria-selected="false" aria-controls="view-tiers">
+        <button role="tab" type="button" data-view="tiers" aria-selected="false" aria-controls="view-tiers">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.6.7-4.9 4.6 1.3 6.4L12 16.8 6.1 20l1.3-6.4L2.5 9l6.6-.7z"></path></svg>
       Tier list
     </button>
-    <button role="tab" type="button" data-view="learn" aria-selected="false" aria-controls="view-learn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5z"></path><path d="M9 7h7M9 11h5"></path></svg>
-      Học từ pro
-    </button>
-    <button role="tab" type="button" data-view="idols" aria-selected="false" aria-controls="view-idols">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7"></path><path d="M19 4.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2L16 6.7l2-.3z"></path></svg>
-      Học lối chơi
-    </button>
-    <button role="tab" type="button" data-view="fantasy" aria-selected="false" aria-controls="view-fantasy">
+        <button role="tab" type="button" data-view="fantasy" aria-selected="false" aria-controls="view-fantasy">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 8a5 5 0 01-9 0z"></path><path d="M12 11v6M8.5 21h7M9 17h6"></path></svg>
       Fantasy
     </button>
+      </div>
+    </div>
+    <div class="navgroup" role="presentation">
+      <span class="navgroup-label" aria-hidden="true">Lối chơi của tôi</span>
+      <div class="navgroup-tabs" role="presentation">
+        <button role="tab" type="button" data-view="profile" aria-selected="false" aria-controls="view-profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      Hồ sơ cá nhân
+    </button>
+        <button role="tab" type="button" data-view="idols" aria-selected="false" aria-controls="view-idols">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7"></path><path d="M19 4.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2L16 6.7l2-.3z"></path></svg>
+      Học lối chơi
+    </button>
+        <button role="tab" type="button" data-view="learn" aria-selected="false" aria-controls="view-learn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5z"></path><path d="M9 7h7M9 11h5"></path></svg>
+      Học từ pro
+    </button>
+      </div>
+    </div>
   </nav>
 
   <main id="main">

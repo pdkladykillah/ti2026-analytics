@@ -35,7 +35,7 @@ và thêm `graphify-out/` vào `.gitignore` — hiện chưa có cả hai.
 | `src/Ti2026.Ingest/OpenDota/` | Gọi API và ghi DB. |
 | `src/Ti2026.Ingest/Analytics/` | **Toàn bộ phần thống kê.** Tra ở đây trước khi viết mới. |
 | `src/Ti2026.Web/Endpoints/` | Minimal API, mỗi tab một tệp. |
-| `src/Ti2026.Web/wwwroot/` | Đúng 3 tệp: `index.html`, `app.js`, `app.css`. |
+| `src/Ti2026.Web/wwwroot/` | Đúng 3 tệp: `index.html`, `app.js`, `app.css`. Đọc mục "Bẫy trong app.js" bên dưới trước khi thêm hàm. |
 | `tests/Ti2026.Tests/` | 542 bài. Nhiều bài khoá lại một cái bẫy đã mắc — đọc doc comment của bài trước khi sửa nó. |
 
 ### Những lớp Analytics dễ bị viết lại nhất
@@ -190,6 +190,58 @@ trống, và chỗ nào có hai khối thì hai dấu xếp chồng trông như 
 
 Hover chỉ là lối tắt cho chuột: nút phải bấm được và nhận được tiêu điểm, nếu không thì với
 màn hình cảm ứng và người dùng bàn phím nội dung coi như biến mất.
+
+Chú thích KHÔNG đi sau một tiêu đề thì `hoistToHeading()` không với tới — viết thẳng bằng
+`infoDot(text)`. Việc mở/đóng do **một** bộ nghe uỷ quyền ở `document` (`setupInfoDots()`) lo;
+đừng gán `onclick` cho từng nút, gán cả hai chỗ thì mỗi cú bấm đảo trạng thái hai lần và dấu
+"i" thành ra bấm không ăn.
+
+### Khoảng hở dưới tiêu đề là của TIÊU ĐỀ, không phải của đoạn chữ dưới nó
+
+`.card h3, .card h4 { margin-bottom }` tồn tại vì một sự cố: khoảng hở đó vốn do đoạn `.desc`
+đứng ngay dưới tạo ra, mà `hoistToHeading()` lại gấp chính đoạn đó thành dấu "i" rồi đặt
+`hidden` lên nó — `[hidden]` là `display:none` nên margin biến mất theo. Mọi mục có dấu "i"
+đều dính, tức gần như mọi mục. Tiêu đề trong `<header>` thì được đặt lại về 0: ở đó nó là một
+ô của hàng flex, margin vừa thừa vừa làm lệch căn hàng.
+
+### Chữ sáng trên nền tối MỎNG hơn cùng tỉ số đó ở nền sáng
+
+Nhãn tab dùng `--ink` ở chủ đề tối chứ không phải `--ink-2`. Đây không phải lỗi tương phản —
+đo được `--ink-2` trên nền thẻ đạt **9,29:1** (tối lam) và **9,52:1** (tối vàng), vượt xa AA.
+Nhưng tỉ số đo mảng màu đặc, còn thứ mắt đọc là nét chữ 15px: khử răng cưa ăn mòn hai bên nét
+sáng nên chữ trông nhạt hơn hẳn cùng cặp màu ở chủ đề sáng.
+
+---
+
+## Bẫy trong app.js
+
+### HAI HÀM TRÙNG TÊN = một hàm chết lặng
+
+Đã xảy ra và sống sót nhiều phiên: có hai `async function loadSchedule()` — một vẽ bảng đấu
+vào `#schedule-body`, một vẽ trạng thái vòng nạp vào `#sched-body`. JavaScript **không** coi
+đó là lỗi, khai báo sau lặng lẽ đè lên khai báo trước.
+
+Hậu quả là kiểu hỏng khó truy nhất: bấm tab "Lịch thi đấu" gọi trúng hàm còn sống, nó ghi vào
+một thẻ ở **tab khác**, còn `#schedule-body` không ai đụng tới nên trắng trơn. Không ném lỗi,
+không cảnh báo, không dấu vết trong console. Mọi dấu hiệu bên ngoài đều chỉ sai chỗ —
+`api/schedule` vẫn trả đủ 27 nút, tệp triển khai vẫn khớp bản local, và bài kiểm "mọi id đều
+tồn tại" vẫn xanh vì cả hai id đều có thật.
+
+`StaticAssetTests.Khong_hai_ham_nao_trong_app_js_trung_ten` khoá lại.
+
+### Đừng lồng một chuỗi HTML có dấu nháy vào một thuộc tính HTML
+
+`teamLogo()` dùng được `onerror="this.outerHTML='<span class=&quot;…&quot;>'"` vì chuỗi thay
+thế của nó không chứa dấu nháy nào. Thêm `style="width:…"` vào đó thì nó tự cắt ngang chính
+thuộc tính `onerror`, mảnh HTML vỡ đôi và một khúc thuộc tính rơi ra thành **chữ hiện trên
+trang** — đã thấy thật: thẻ Topson hiện ra `T'"> Topson`. `idolFace()` làm cách khác: chữ cái
+dự phòng nằm dưới, ảnh phủ lên, ảnh hỏng thì chữ lộ ra. Không cần JS, không phải tự thoát.
+
+### Kiểm giao diện bằng jsdom trước khi triển khai
+
+Không có bộ kiểm DOM trong repo, nhưng `npm i jsdom` rồi nạp `index.html` + `app.js` thật với
+`fetch` giả là đủ bắt cả hai lỗi trên trong một lần chạy. Cách này tìm ra lỗi trùng tên hàm sau
+khi đọc mã ba lượt mà không thấy.
 
 Chốt chống gấp lồng nhau phải hỏi "có CON NÀO là phần đã gấp không", không hỏi "con ĐẦU TIÊN
 có phải không" — khối cảnh báo giữ icon ở đầu, và bản đầu đã tự gói 65 lớp lồng nhau.

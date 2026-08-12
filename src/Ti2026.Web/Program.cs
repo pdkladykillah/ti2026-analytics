@@ -31,6 +31,9 @@ builder.Services.AddDbContext<Ti2026DbContext>(o =>
 builder.Services.AddSingleton(new SanityThresholds(
     options.SanityGate.MinTeams, options.SanityGate.MinPlayers));
 
+// Singleton: bo dem phai song qua moi vong ingest, khong phai moi request.
+builder.Services.AddSingleton<ApiCallMeter>();
+
 builder.Services.AddHttpClient<OpenDotaClient>(c =>
     {
         c.BaseAddress = new Uri(options.OpenDota.BaseUrl);
@@ -46,8 +49,10 @@ builder.Services.AddHttpClient<OpenDotaClient>(c =>
                     "Bearer", options.OpenDota.ApiKey);
         }
     })
-    .AddHttpMessageHandler(() =>
-        new RateLimitedHandler(options.OpenDota.EffectiveRequestsPerSecond));
+    .AddHttpMessageHandler(sp =>
+        new RateLimitedHandler(
+            options.OpenDota.EffectiveRequestsPerSecond,
+            sp.GetRequiredService<ApiCallMeter>()));
 
 // API chính chủ của Valve. HttpClient RIÊNG: khác host, khác hạn mức, và nhịp 0,8 req/s đặt
 // ra để tôn trọng hạn mức OpenDota thì không có lý gì áp cho máy chủ Valve.

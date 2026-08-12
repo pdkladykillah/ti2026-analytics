@@ -9,7 +9,8 @@ namespace Ti2026.Ingest.Http;
 /// cập, không phải chỉ một vòng ingest thất bại. Vì vậy giới hạn ở phía mình chứ không đợi
 /// bị 429 rồi mới xử lý — 429 chỉ là lưới cuối.
 /// </summary>
-public sealed class RateLimitedHandler(double requestsPerSecond) : DelegatingHandler
+public sealed class RateLimitedHandler(double requestsPerSecond, ApiCallMeter? meter = null)
+    : DelegatingHandler
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly TimeSpan _minInterval =
@@ -37,6 +38,13 @@ public sealed class RateLimitedHandler(double requestsPerSecond) : DelegatingHan
         {
             _gate.Release();
         }
+
+        // Đếm ở ĐÂY, ngay trước khi gửi — không đếm ở tầng client.
+        //
+        // Tầng client không thấy hết: một lời gọi bị 429 rồi thử lại vẫn là HAI lời gọi bị
+        // tính tiền, còn tầng trên chỉ biết một. Đây là chỗ duy nhất mọi request bay ra đều
+        // đi qua, nên cũng là chỗ duy nhất đếm được đúng.
+        meter?.Record();
 
         var response = await base.SendAsync(request, ct);
 

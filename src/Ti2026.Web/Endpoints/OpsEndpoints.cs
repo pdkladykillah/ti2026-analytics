@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Ti2026.Data;
+using Ti2026.Ingest.Http;
 using Ti2026.Data.Entities;
 using Ti2026.Ingest;
 using Ti2026.Ingest.OpenDota;
@@ -58,7 +59,7 @@ public static class OpsEndpoints
         app.MapGet("/api/ingest/status", async (
             Ti2026DbContext db, IngestGate gate, IngestStatusTracker status,
             IngestSchedule schedule, IOptions<Ti2026Options> cfg,
-            StaleTeamIdDetector staleTeamIds) =>
+            StaleTeamIdDetector staleTeamIds, ApiCallMeter meter) =>
         {
             var raw = await db.IngestRuns
                 .OrderByDescending(r => r.StartedAt)
@@ -116,10 +117,28 @@ public static class OpsEndpoints
             // nguyên giải EWC 2026 mà họ vô địch, và chỉ lộ ra vì có người tình cờ hỏi đúng câu.
             var unknownSides = await staleTeamIds.FindAsync(DateTime.UtcNow, default);
 
+            // SỐ LỜI GỌI OPENDOTA — thứ duy nhất cho biết chi phí.
+            //
+            // OpenDota không có endpoint nào báo đã tiêu bao nhiêu (đã kiểm cả 55 endpoint),
+            // nên nếu tự mình không đếm thì mọi câu hỏi về tiền chỉ trả lời được bằng phỏng
+            // đoán — và phỏng đoán đã sai một lần: báo 0,59 đô trong khi số thật là 2,97.
+            //
+            // Đếm trong bộ nhớ nên MẤT khi container khởi động lại; "từ lúc" nói ra điều đó
+            // thay vì để người đọc tưởng đây là tổng của cả đời dự án.
+            var calls = meter.Snapshot();
+
             return Results.Ok(new
             {
                 running = gate.IsRunning,
                 enabled = status.Enabled,
+                apiCalls = new
+                {
+                    total = meter.Total(),
+                    since = meter.StartedAt,
+                    byDay = calls.OrderByDescending(x => x.Key)
+                        .Select(x => new { day = x.Key.ToString("yyyy-MM-dd"), calls = x.Value })
+                        .ToList(),
+                },
 
                 lineupMismatch = unknownSides
                     .GroupBy(x => x.Slug)

@@ -191,6 +191,12 @@
 
 * { box-sizing: border-box; }
 
+/* setupSubTabs() ẩn mục con bằng thuộc tính `hidden`, mà luật mặc định của trình duyệt
+   `[hidden] { display: none }` THUA bất kỳ luật display nào ta viết. Nên gắn data-sec
+   lên một phần tử có display riêng (ví dụ .team-grid là display:grid) thì nó sẽ không
+   ẩn được — mục con "tắt" vẫn hiện nguyên. Chốt một lần cho mọi lần dùng sau. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -532,10 +538,18 @@ nav button[aria-selected="true"] {
    vùng padding, chồng lên khối ghi chú bên dưới. */
 .table-scroll {
   overflow: auto;
-  max-height: min(70vh, 620px);
+  max-height: min(52vh, 460px);
   margin: 0 calc(var(--s-5) * -1);
   padding: 0 var(--s-5);
-  overscroll-behavior: contain;
+  /* BẪY CUỘN — nguyên nhân đúng nghĩa đen của lời phàn nàn "phải cuộn quá nhiều".
+     `contain` chặn cuộn chuyền trên CẢ HAI trục, nên khi con trỏ nằm trên bảng thì
+     lăn chuột không đẩy trang một pixel nào; mà với max-height 70vh thì bảng chiếm
+     gần hết màn hình nên con trỏ gần như luôn nằm trên nó. Người dùng lăn hàng nghìn
+     pixel mà trang đứng yên.
+     Tách hai trục: trục ngang giữ `contain` để không kích hoạt vuốt-lùi của trình
+     duyệt; trục dọc trả về `auto` để chạm đáy bảng thì trang đi tiếp. Kèm hạ chiều
+     cao xuống 52vh để bảng không còn phủ kín tầm nhìn. */
+  overscroll-behavior: contain auto;
 }
 
 /* Thanh cuộn mảnh và có màu theo theme — thanh mặc định của Windows trong một vùng cuộn lồng
@@ -1503,7 +1517,7 @@ tr.row-hi > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 }
 .subpill {
   border: var(--bw) solid transparent; background: transparent; color: var(--ink-2);
-  padding: 8px 16px; min-height: 42px; border-radius: var(--r-pill); cursor: pointer;
+  padding: 8px 16px; min-height: 44px; border-radius: var(--r-pill); cursor: pointer;
   font: inherit; font-size: 15px; font-weight: 700; white-space: nowrap;
   transition: background .15s var(--ease), color .15s var(--ease), box-shadow .15s var(--ease);
 }

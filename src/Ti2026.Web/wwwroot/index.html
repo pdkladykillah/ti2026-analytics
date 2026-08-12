@@ -135,7 +135,10 @@
 
     <!-- ===== Lịch thi đấu ===== -->
     <section class="view" id="view-schedule" role="tabpanel" aria-labelledby="tab-schedule" hidden>
-      <div class="card" data-sec="Lịch thi đấu">
+      <!-- Không data-sec: khu vực này chỉ có MỘT thẻ nên không có gì để chia mục con.
+           Để lại một data-sec đơn độc thì setupSubTabs() lặng lẽ bỏ qua, và người sửa sau
+           sẽ tưởng mục con đang hỏng thay vì hiểu là cố ý không có. -->
+      <div class="card">
         <header>
           <h2>Lịch thi đấu The International 2026</h2>
           <p class="desc">Giờ hiển thị theo múi giờ máy bạn. Tỷ số không nhập tay — hệ thống
@@ -198,7 +201,10 @@
 
     <!-- ===== Đội hình ===== -->
     <section class="view" id="view-teams" role="tabpanel" aria-labelledby="tab-teams" hidden>
-      <div class="card">
+      <!-- Tách hai mục con. Trước đây tab này là tab DUY NHẤT không có data-sec, nên
+           bảng chỉ số và 16 thẻ đội nằm chồng nhau thành một trang dài hơn 10.000px —
+           trong khi cơ chế setupSubTabs() đã có sẵn và 8 tab kia đều dùng. -->
+      <div class="card" data-sec="Chỉ số cá nhân">
         <header>
           <h2>Chỉ số cá nhân</h2>
           <p class="desc">Trung bình mỗi ván. Cột <b>10′ đầu</b> là số mạng hạ được trong 10 phút mở màn — chỉ có ở ván đã được phân tích timeline.</p>
@@ -210,7 +216,9 @@
         <div id="player-body"></div>
       </div>
 
-      <div class="team-grid" id="team-grid"></div>
+      <div class="card" data-sec="Thẻ đội">
+        <div class="team-grid" id="team-grid"></div>
+      </div>
     </section>
 
     <!-- ===== Dự đoán ===== -->

@@ -1349,7 +1349,7 @@ function heroBlock(d) {
   const rows = heroes.map((h) => ({ ...h, m: meta.get(h.heroId) }));
 
   return `<h3 style="margin-top:0">Hero pool</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Cột <b>Mức chung</b> là tỷ lệ thắng của chính
+    <p class="desc keep" style="margin:0 0 var(--s-3)">Cột <b>Mức chung</b> là tỷ lệ thắng của chính
       hero đó ở bậc rank cao, và <b>Chênh</b> là bạn hơn kém mức ấy bao nhiêu. Đây mới là cột
       đáng đọc: hero mạnh sẵn thì ai chơi cũng thắng, nên 53% với một hero có mức chung 53% là
       đúng bằng mọi người, còn 50% với hero có mức chung 44% là hơn hẳn. Dấu ★ là chênh lệch đã
@@ -1450,7 +1450,7 @@ function monthBlock(d) {
         <div class="pf-gpm" title="${x.pctLastHits === null ? 'chưa đủ ván có phân vị'
           : `phân vị ăn lính, ${n0(x.ratedGames)} ván`}">${x.pctLastHits === null ? '·' : x.pctLastHits}</div>
       </div>`).join('')}</div>
-    <p class="desc">Cột là số ván, số trên là tỷ lệ thắng, số dưới là <b>phân vị ăn lính</b> của
+    <p class="desc keep">Cột là số ván, số trên là tỷ lệ thắng, số dưới là <b>phân vị ăn lính</b> của
       tháng đó. Dùng phân vị chứ không dùng GPM trung bình: GPM phụ thuộc nặng vào việc tháng đó
       hay chơi hero nào — một tháng chơi nhiều hỗ trợ sẽ tụt GPM mà chẳng liên quan gì tới kỹ
       năng. Dấu · là tháng chưa đủ 5 ván có phân vị. Tháng mờ là tháng dưới 10 ván.</p>`;
@@ -4599,7 +4599,11 @@ function foldExplanations() {
     //
     // Ngưỡng 90 ký tự vẫn chặn: chú thích ngắn dưới biểu đồ không bị gấp oan. Lớp
     // .keep là đường thoát cho chú giải bắt buộc phải nằm mở.
-    ...$$('.card p.desc:not(.keep)'),
+    // Loại đoạn đã nằm TRONG một khối gập khác: khối "Cách tính và giới hạn" (.pf-more)
+    // tự nó đã là một <details>, nên gấp tiếp phần bên trong tạo ra hai nút giống hệt
+    // nhau lồng vào nhau — mở ra chỉ thấy thêm một nút nữa để bấm.
+    ...$$('.card p.desc:not(.keep)').filter(
+      (p) => !p.closest('.pf-more-body') && !p.closest('.why-body') && !p.closest('.info-pop')),
     ...$$('.note'),
   ];
 

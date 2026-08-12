@@ -105,6 +105,39 @@ public class StaticAssetTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
     }
 
     /// <summary>
+    /// Mọi khu vực dài phải chia mục con — KHÔNG được có khu vực nào chỉ có đúng 1 data-sec.
+    ///
+    /// setupSubTabs() chỉ sinh nút khi thấy từ 2 mục trở lên, nên một khu vực có đúng 1 mục sẽ
+    /// im lặng không có mục con nào — trông y hệt như cố ý. Tab Đội hình từng là khu vực DUY
+    /// NHẤT không có data-sec, và hậu quả là bảng chỉ số cùng 16 thẻ đội xếp chồng thành một
+    /// trang dài hơn 10.000px, trong khi 8 tab kia đều đã chia mục.
+    /// </summary>
+    [Fact]
+    public async Task Khong_khu_vuc_nao_co_dung_mot_muc_con()
+    {
+        var html = await factory.CreateClient().GetStringAsync("/index.html");
+
+        foreach (var view in Regex.Matches(html, "id=\"view-(\\w+)\"").Select(m => m.Groups[1].Value))
+        {
+            var at = html.IndexOf($"id=\"view-{view}\"", StringComparison.Ordinal);
+            var body = html[at..];
+            var end = body.IndexOf("</section>", StringComparison.Ordinal);
+            if (end > 0) body = body[..end];
+
+            var count = Regex.Matches(body, "data-sec=\"").Count;
+
+            count.Should().NotBe(1,
+                $"khu vực '{view}' có đúng 1 data-sec nên setupSubTabs() bỏ qua — hoặc thêm mục "
+                + "thứ hai, hoặc bỏ hẳn data-sec đi cho rõ ý định");
+        }
+
+        // Và tab Đội hình thì phải có mục con thật, đây là chỗ đã sửa.
+        var teams = html[html.IndexOf("id=\"view-teams\"", StringComparison.Ordinal)..];
+        teams = teams[..teams.IndexOf("</section>", StringComparison.Ordinal)];
+        Regex.Matches(teams, "data-sec=\"").Count.Should().BeGreaterThanOrEqualTo(2);
+    }
+
+    /// <summary>
     /// Tab học lối chơi phải có đủ nút điều hướng, bốn mục con và bốn khung nội dung.
     ///
     /// Nút nav là thứ dễ quên nhất: thiếu section thì JS ném lỗi ngay và thấy liền, còn thiếu nút

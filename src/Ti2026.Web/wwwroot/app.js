@@ -460,7 +460,7 @@ function renderRanking(data) {
         ${fmt(wr, 0, '%')}
       </span>
     </div>`;
-  }).join('') + `<p class="desc" style="margin-top:var(--s-3);text-align:center">
+  }).join('') + `<p class="desc" style="text-align:center">
       Vạch giữa là mốc hoà 50%. Thanh sang phải là thắng nhiều hơn thua.</p>`;
 }
 
@@ -736,9 +736,9 @@ function renderH2h() {
   const history = series && series.series && series.series.length
     ? `${verdictH2h(series, A, B)}
        <div style="margin-top:var(--s-5);padding-top:var(--s-4);border-top:1px solid var(--border)">
-         <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:var(--s-2)">
+         <h3 class="eyebrow">
            Toàn bộ lịch sử · ${n0(series.seriesCount ?? 0)} trận · ${n0(series.games ?? series.n)} ván</h3>
-         <p class="desc" style="margin:0 0 var(--s-3)">Kể cả ván của đội hình cũ${series.firstMet
+         <p class="desc lead">Kể cả ván của đội hình cũ${series.firstMet
             ? `, từ <b>${esc(series.firstMet)}</b> tới <b>${esc(series.lastMet)}</b>` : ''} —
             dòng mờ là ván KHÔNG tính vào nhận định ở trên.</p>
          <div class="table-scroll"><table>
@@ -850,7 +850,7 @@ const clockOf = (iso) => new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-di
 async function loadSchedule() {
   const body = $('#schedule-body');
   if (!body) return;
-  body.innerHTML = '<div class="skeleton" style="height:220px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     renderSchedule(await getJson('api/schedule'));
@@ -941,7 +941,7 @@ function renderSchedule(d) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
       <div>${esc(d.note)}</div></div>` : ''}
     ${d.stages.map(stage).join('')}
-    <p class="desc" style="margin-top:var(--s-4)">${esc(d.source || '')}</p>`;
+    <p class="desc">${esc(d.source || '')}</p>`;
 }
 
 
@@ -990,7 +990,7 @@ async function loadProfile(accountId) {
   // cũ của người cũ mà tưởng đó là dữ liệu mới.
   PROFILE_PANES.forEach((k) => {
     const el = $('#profile-' + k);
-    if (el) el.innerHTML = '<div class="skeleton" style="height:220px"></div>';
+    if (el) el.innerHTML = '<div class="skeleton sk-md"></div>';
   });
 
   try {
@@ -1033,7 +1033,7 @@ function renderProfile(d) {
         <div><span class="pf-num">${n0(m.storedGames)}</span><small>ván đã lưu</small></div>
       </div>
     </div>
-    <p class="desc" style="margin-bottom:0">Lịch sử đã lưu:
+    <p class="desc lead">Lịch sử đã lưu:
       ${m.from ? esc(m.from.slice(0, 10)) : '—'} → ${m.to ? esc(m.to.slice(0, 10)) : '—'}.
       Mọi mục bên dưới tính trên khoảng này, không phải trên toàn bộ
       ${n0(m.wins + m.losses)} ván cả đời.</p>`;
@@ -1047,7 +1047,7 @@ function renderProfile(d) {
   pane('months').innerHTML = monthBlock(d);
 
   pane('insights').innerHTML = ((d.insights || []).length
-    ? `<h3 style="margin-top:0">Hệ thống đọc được gì</h3>
+    ? `<h3>Hệ thống đọc được gì</h3>
        <div class="insight-card"><ul>${d.insights.map((i) => `
          <li class="tone-${esc(i.tone)}">
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -1056,12 +1056,12 @@ function renderProfile(d) {
          </li>`).join('')}</ul></div>`
     : '<div class="empty">Chưa đủ dữ liệu để nhận định.</div>')
     + more('Cách tính và giới hạn của từng con số', 0,
-        `<p class="desc" style="margin:0 0 var(--s-3)">Chỉ những vị trí có nhãn THẬT từ replay mới
+        `<p class="desc lead">Chỉ những vị trí có nhãn THẬT từ replay mới
            tách riêng được bằng các nút ở mục Tổng quan. Vị trí suy đoán thì không tách — nó
            không phân biệt được mid với offlane. Dải mờ hẹp nghĩa là bạn ổn định, dải rộng nghĩa
            là thất thường: hai người cùng trung vị 60 có thể là một người luôn quanh 60 và một
            người khi 90 khi 20.</p>
-         <p class="desc" style="margin:0">${esc(d.method || '')}</p>`);
+         <p class="desc">${esc(d.method || '')}</p>`);
 
   wireRoleChips(d);
 }
@@ -1072,8 +1072,8 @@ function roleBlock(d) {
   const roles = d.roles || [];
   if (!roles.length) return '<div class="empty">Chưa đủ ván để tách theo vai trò.</div>';
 
-  return `<h3 style="margin-top:0">Vai trò đã chơi</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Vị trí chính xác chỉ đến từ <b>nhãn replay</b>.
+  return `<h3>Vai trò đã chơi</h3>
+    <p class="desc lead">Vị trí chính xác chỉ đến từ <b>nhãn replay</b>.
       Ván chưa parse thì chỉ nói được core hay hỗ trợ, và dòng đó ghi rõ là suy luận — mức farm
       KHÔNG dùng để đoán lane, vì đo trên chính tài khoản này thì last hit ở safelane, mid và
       offlane lần lượt là 299 / 345 / 282, gần như bằng nhau.</p>
@@ -1112,12 +1112,12 @@ function deathBlock(d) {
 
   const [tone, verdict] = DEATH_VERDICT[de.verdict] || DEATH_VERDICT['khong-ro'];
 
-  return `<h3 style="margin-top:var(--s-5)">Cái chết của bạn có đổi được gì không</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Câu này KHÔNG trả lời được bằng chỉ số hỗ trợ —
+  return `<h3>Cái chết của bạn có đổi được gì không</h3>
+    <p class="desc lead">Câu này KHÔNG trả lời được bằng chỉ số hỗ trợ —
       hỗ trợ chỉ ghi nhận việc có mặt lúc hạ gục, mà người đã chết thì không thể có mặt ở pha hạ
       gục sau đó. Thứ đo được là <b>mức farm của 4 đồng đội trong chính ván đó</b>: nếu lối chơi
       hi sinh có hiệu quả thì ván bạn chết nhiều phải là ván đồng đội giàu hơn thường lệ.</p>
-    <p class="desc" style="margin:0 0 var(--s-3)">So trong <b>cùng một kết quả trận</b> và
+    <p class="desc lead">So trong <b>cùng một kết quả trận</b> và
       <b>cùng một dải độ dài ván</b>. Hai điều kiện này quyết định dấu của kết quả chứ không phải
       cho gọn: chỉ khống chế thắng/thua thì ván thua chết ít (dài, thua dai dẳng, ai cũng kịp
       farm) bị đem so với ván thua chết nhiều (ngắn, bị đè), và phép so hoá ra đang so độ dài
@@ -1143,7 +1143,7 @@ function deathBlock(d) {
         <td class="num mu">${s.pValue < 0.001 ? '&lt;0,001' : fmt(s.pValue, 3)}</td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <p class="desc" style="margin-top:var(--s-3)">Hai cột giữa là <b>phân vị farm của đồng đội</b>,
+    <p class="desc">Hai cột giữa là <b>phân vị farm của đồng đội</b>,
       không phải của bạn. Đây là <b>tương quan trong cùng một ván, không phải nhân quả</b>: ván
       đồng đội farm tốt cũng có thể là ván bạn dám lao vào hơn vì biết đội đang mạnh. Dữ liệu
       không phân biệt được hai chiều đó.</p>
@@ -1170,7 +1170,7 @@ function tradeBlock(d) {
   const enough = t.trades >= t.minTrades;
 
   return `<h4 style="margin:var(--s-5) 0 var(--s-2)">Đổi chác trong từng pha giao tranh</h4>
-    <p class="desc" style="margin:0 0 var(--s-3)">Mịn hơn bảng trên: thay vì hỏi cả ván, hỏi từng
+    <p class="desc lead">Mịn hơn bảng trên: thay vì hỏi cả ván, hỏi từng
       pha. Nếu cái chết của bạn kéo được 2-3 người địch đi xa thì đồng đội dọn được phần còn lại,
       và <b>pha đó vẫn lời vàng dù bạn nằm xuống</b>. Tiền thưởng của Dota tỉ lệ với độ giàu nạn
       nhân, nên "mình nghèo, đứa chết bên kia giàu" tự nằm trong con số vàng.
@@ -1188,9 +1188,9 @@ function tradeBlock(d) {
         : kpi('—', 'chênh độ giàu khi đổi mạng',
             `mới ${n0(t.trades)}/${n0(t.minTrades)} lượt đổi, chưa đủ để nói`)}
     </div>
-    <p class="desc" style="margin-top:var(--s-3)">${esc(t.text)}</p>
+    <p class="desc">${esc(t.text)}</p>
     ${(t.byRole || []).length ? `
-      <p class="desc" style="margin:var(--s-3) 0 var(--s-2)"><b>Nhưng chênh độ giàu ở trên gần
+      <p class="desc lead"><b>Nhưng chênh độ giàu ở trên gần
         như chỉ phản ánh VAI TRÒ, không phải chất lượng cái chết.</b> Hỗ trợ vốn nghèo hơn theo
         định nghĩa nên chết rẻ là đương nhiên, không phải thành tích. Tách ra thì thấy ngay:</p>
       <div class="table-scroll"><table>
@@ -1206,7 +1206,7 @@ function tradeBlock(d) {
           <td class="num ${r.goldEdge > 0 ? 'cal-good' : 'cal-bad'}">${signed(r.goldEdge)}</td>
         </tr>`).join('')}</tbody>
       </table></div>` : ''}
-    <p class="desc" style="margin-top:var(--s-3)">Vẫn là <b>tương quan</b>: pha bạn chết mà đội
+    <p class="desc">Vẫn là <b>tương quan</b>: pha bạn chết mà đội
       lời cũng có thể là pha đội vốn đã mạnh hơn, chứ không phải nhờ cái chết. Và replay của Valve
       hết hạn sau khoảng hai tháng nên phần lịch sử xa sẽ không bao giờ có dữ liệu này.</p>`;
 }
@@ -1235,8 +1235,8 @@ function laneBlock(d) {
 
   const [tone, headline] = LANE_VERDICT[l.verdict] || LANE_VERDICT['khong-du-du-lieu'];
 
-  return `<h3 style="margin-top:0">Bạn thua từ lane, hay thắng lane rồi mất?</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Đây là mục <b>ít nhiễu nhất</b> trong cả trang.
+  return `<h3>Bạn thua từ lane, hay thắng lane rồi mất?</h3>
+    <p class="desc lead">Đây là mục <b>ít nhiễu nhất</b> trong cả trang.
       Mọi chỉ số khác đo lúc ván đã xong, nên so giữa ván thắng và ván thua thì thắng cái gì cũng
       đẹp — vòng nhân quả đó đã lật kết luận bốn lần ở các mục khác. Còn hiệu suất lane và chênh
       vàng ở phút 10 được đo <b>trước khi ván ngã ngũ</b>. Chỉ tính ${n0(l.games)} ván đã parse.</p>
@@ -1259,9 +1259,9 @@ function laneBlock(d) {
         <td class="num ${s.adv30 > 0 ? 'cal-good' : s.adv30 < 0 ? 'cal-bad' : ''}">${s.adv30 === null ? '—' : signed(s.adv30)}</td>
       </tr>`).join('')}</tbody>
     </table></div>` : ''}
-    <p class="desc" style="margin-top:var(--s-3)">${esc(l.text)}</p>
+    <p class="desc">${esc(l.text)}</p>
     ${l.byRole.length ? `<h4 style="margin:var(--s-5) 0 var(--s-2)">Hiệu suất lane theo vai trò</h4>
-      <p class="desc" style="margin:0 0 var(--s-2)">Hỗ trợ vốn lấy được ít tài nguyên lane hơn
+      <p class="desc lead">Hỗ trợ vốn lấy được ít tài nguyên lane hơn
         theo định nghĩa, nên chỉ so trong cùng một vai trò mới có nghĩa.</p>
       <div class="table-scroll"><table>
         <thead><tr><th scope="col">Vai trò</th><th scope="col">Ván</th>
@@ -1313,8 +1313,8 @@ function habitBlock(d) {
       </tr>`).join('')}</tbody>
     </table></div>`;
 
-  return `<h3 style="margin-top:0">Bạn chơi hay nhất lúc nào</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Đo bằng <b>phân vị</b>, không đo bằng tỷ lệ
+  return `<h3>Bạn chơi hay nhất lúc nào</h3>
+    <p class="desc lead">Đo bằng <b>phân vị</b>, không đo bằng tỷ lệ
       thắng — hệ thống ghép trận ghim tỷ lệ thắng quanh 50% bất kể chơi hay hay dở, nên hỏi bằng
       nó thì câu trả lời luôn là "không có gì". Phiên chơi = các ván cách nhau dưới
       ${n0(h.breakMinutes)} phút; con số đó lấy từ chính phân bố khoảng nghỉ của bạn, nơi có một
@@ -1327,7 +1327,7 @@ function habitBlock(d) {
     ${table('Giờ trong ngày',
         h.byHour.map((r) => ({ ...r, name: `${String(r.hour).padStart(2, '0')}–${String(r.hour + 3).padStart(2, '0')}h` })),
         'Khung giờ')}
-    <p class="desc" style="margin-top:var(--s-3)">Giờ theo múi giờ Việt Nam. Gộp thành khối 4
+    <p class="desc">Giờ theo múi giờ Việt Nam. Gộp thành khối 4
       tiếng chứ không tách từng giờ: 24 giờ là 24 phép so, vừa mỏng vừa dính lỗi so sánh bội.</p>`;
 }
 
@@ -1348,8 +1348,8 @@ function heroBlock(d) {
   const untouched = d.metaUntouched || [];
   const rows = heroes.map((h) => ({ ...h, m: meta.get(h.heroId) }));
 
-  return `<h3 style="margin-top:0">Hero pool</h3>
-    <p class="desc keep" style="margin:0 0 var(--s-3)">Cột <b>Mức chung</b> là tỷ lệ thắng của chính
+  return `<h3>Hero pool</h3>
+    <p class="desc keep lead">Cột <b>Mức chung</b> là tỷ lệ thắng của chính
       hero đó ở bậc rank cao, và <b>Chênh</b> là bạn hơn kém mức ấy bao nhiêu. Đây mới là cột
       đáng đọc: hero mạnh sẵn thì ai chơi cũng thắng, nên 53% với một hero có mức chung 53% là
       đúng bằng mọi người, còn 50% với hero có mức chung 44% là hơn hẳn. Dấu ★ là chênh lệch đã
@@ -1374,7 +1374,7 @@ function heroBlock(d) {
         <td class="num">${fmt(h.kda, 2)}</td>
       </tr>`).join('')}</tbody>
     </table></div>
-    ${untouched.length ? `<p class="desc" style="margin-top:var(--s-3)">Đang mạnh trong meta mà
+    ${untouched.length ? `<p class="desc">Đang mạnh trong meta mà
       bạn gần như chưa chơi: ${untouched.map((u) =>
         `<b>${esc(u.name)}</b> (${fmt(u.metaWinrate, 1, '%')})`).join(', ')}.
       Cố ý không gọi đây là "nên học" — một hero mạnh ở mức chung chưa chắc hợp với vị trí hay
@@ -1397,7 +1397,7 @@ function nemesisBlock(d) {
 
   const table = (title, list, note) => `
     <h4 style="margin:var(--s-5) 0 var(--s-2)">${esc(title)}</h4>
-    <p class="desc" style="margin:0 0 var(--s-2)">${note}</p>
+    <p class="desc lead">${note}</p>
     <div class="table-scroll"><table>
       <thead><tr>
         <th scope="col">Hero</th><th scope="col">Ván gặp</th>
@@ -1413,8 +1413,8 @@ function nemesisBlock(d) {
 
   const anyStar = rows.some((h) => h.notable);
 
-  return `<h3 style="margin-top:var(--s-6)">Khi bạn ĐỐI ĐẦU hero này</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Khác hẳn bảng trên — bảng trên là hero bạn tự
+  return `<h3>Khi bạn ĐỐI ĐẦU hero này</h3>
+    <p class="desc lead">Khác hẳn bảng trên — bảng trên là hero bạn tự
       cầm, bảng này là hero <b>phe địch</b>. Cột cuối là tỷ lệ thắng khi gặp hero đó trừ đi tỷ lệ
       thắng nền của bạn (${fmt(d.me.lifetimeWinrate, 1, '%')}), chứ không phải trừ 50% — người
       thắng 55% mà gặp hero X chỉ thắng 52% thì hero đó vẫn đang khắc họ.
@@ -1424,7 +1424,7 @@ function nemesisBlock(d) {
       'Xếp theo chênh lệch, khắc nhất lên đầu.')}
     ${table('Bạn dễ thở nhất', best,
       'Mặt còn lại của cùng một bảng.')}
-    <p class="desc" style="margin-top:var(--s-3)">Số ván đối đầu lấy từ toàn bộ lịch sử theo
+    <p class="desc">Số ván đối đầu lấy từ toàn bộ lịch sử theo
       OpenDota, nên không khớp tuyệt đối với các bảng khác vốn tính trên phần đã lưu. Và đây là
       ĐỐI ĐẦU, không phải nhân quả: một hero khắc bạn có thể chỉ vì bản thân nó đang mạnh ở bậc
       rank này — đặt cạnh cột "Mức chung" ở bảng hero pool để tách hai chuyện đó.</p>`;
@@ -1439,8 +1439,8 @@ function monthBlock(d) {
   const maxG = Math.max(...months.map((x) => x.games), 1);
   const mt = d.monthTrend;
 
-  return `<h3 style="margin-top:0">Diễn biến theo tháng</h3>
-    ${mt && mt.text ? `<p class="desc" style="margin:0 0 var(--s-3)"><b>Xu hướng:</b> ${esc(mt.text)}</p>` : ''}
+  return `<h3>Diễn biến theo tháng</h3>
+    ${mt && mt.text ? `<p class="desc lead"><b>Xu hướng:</b> ${esc(mt.text)}</p>` : ''}
     <div class="pf-months">${months.map((x) => `
       <div class="pf-month${x.thin ? ' thin' : ''}">
         <div class="pf-bar" style="height:${Math.max((x.games / maxG) * 100, 6)}%"
@@ -1650,7 +1650,7 @@ function radar(components) {
     ${dots}${labels}
     <text x="${cx + 7}" y="${(midY + 4).toFixed(1)}" class="rd-hint">50</text>
   </svg>
-  <p class="desc" style="margin:var(--s-2) 0 0">Vòng đậm ở giữa là mức <b>50</b> — ngang người
+  <p class="desc">Vòng đậm ở giữa là mức <b>50</b> — ngang người
     chơi trung bình trên cùng hero. Vươn ra ngoài vòng đó là hơn người, thụt vào trong là kém.
     Thang luôn chạy đủ 0→100 nên hai người so được hình với nhau.</p>`;
 }
@@ -1708,8 +1708,8 @@ function skillBlock(d) {
 
   // Giải thích NGẮN ở đây, phần dài nằm trong khối "Cách tính" gập lại cuối trang. Ba đoạn văn
   // trước mỗi biểu đồ là cách chắc chắn để người đọc bỏ qua cả biểu đồ lẫn đoạn văn.
-  return `<h3 style="margin-top:var(--s-5)">Điểm từng mặt, so với người chơi cùng hero</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Phân vị 0→100 so với người chơi <b>cùng hero</b>.
+  return `<h3>Điểm từng mặt, so với người chơi cùng hero</h3>
+    <p class="desc lead">Phân vị 0→100 so với người chơi <b>cùng hero</b>.
       Vạch giữa là mức 50 — ngang người trung bình. Hai số ngoài cùng bên phải luôn theo thứ tự
       <b>ván thắng trước, ván thua sau</b> (<span class="cal-good">60</span>·<span class="cal-bad">26</span>
       nghĩa là thắng 60, thua 26). Đọc chúng
@@ -1750,7 +1750,7 @@ function wireRoleChips(d) {
       // thì một cột thấp ở hỗ trợ dễ bị đọc thành "chơi hỗ trợ tệ", trong khi phần lớn chênh
       // lệch đến từ việc hero hỗ trợ vốn farm ít hơn hero core.
       + (role && found
-        ? `<p class="desc" style="margin-top:var(--s-3)">Đang lọc ${esc(found.label)}:
+        ? `<p class="desc">Đang lọc ${esc(found.label)}:
              ${n0(found.games)} ván có nhãn replay, thắng ${fmt(found.winrate, 1, '%')}. Mốc so
              vẫn là mọi người chơi cùng hero — không phải mọi người chơi cùng vị trí — nên hãy
              đọc theo chiều "so với người khác dùng đúng hero này".</p>`
@@ -1774,7 +1774,7 @@ function noStarNote(d, rows) {
   const pool = d.noticePoolSize;
   if (!need || !pool) return '';
 
-  return `<p class="desc" style="margin:0 0 var(--s-3)"><b>Chưa hero nào được đánh dấu ★ — và
+  return `<p class="desc lead"><b>Chưa hero nào được đánh dấu ★ — và
     đó là kết luận, không phải lỗi.</b> Bạn chơi ${n0(pool)} hero, nên hero "nổi bật nhất" là cực
     trị của ${n0(pool)} phép so; chỉ riêng may rủi đã đủ tạo ra vài hero trông rất chênh. Để một
     cách biệt 15 điểm phần trăm đứng vững ở cỡ pool này cần khoảng <b>${n0(need)} ván trên cùng
@@ -1787,8 +1787,8 @@ function matesBlock(d) {
   const mates = d.teammates || [];
   if (!mates.length) return '';
 
-  return `<h3 style="margin-top:0">Chơi với ai thì thắng</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Cột quan trọng nhất là <b>Chênh</b>: tỷ lệ thắng
+  return `<h3>Chơi với ai thì thắng</h3>
+    <p class="desc lead">Cột quan trọng nhất là <b>Chênh</b>: tỷ lệ thắng
       khi có người đó, trừ đi tỷ lệ thắng ở những ván VẮNG họ. Không có phép trừ này thì "thắng
       62% khi chơi với A" chẳng nói lên điều gì — bạn có thể vẫn thắng 62% ở mọi ván khác.
       Dấu ★ là chênh lệch đã đủ lớn để không giải thích được bằng may rủi, sau khi đã tính tới
@@ -1827,8 +1827,8 @@ function eraBlock(d) {
   const eras = d.roleEras || [];
   if (eras.length < 2) return '';
 
-  return `<h3 style="margin-top:var(--s-5)">Vai trò dịch chuyển qua các năm</h3>
-    <p class="desc" style="margin:0 0 var(--s-3)">Chỉ đếm những ván có nhãn vị trí THẬT đọc từ
+  return `<h3>Vai trò dịch chuyển qua các năm</h3>
+    <p class="desc lead">Chỉ đếm những ván có nhãn vị trí THẬT đọc từ
       replay — phần suy đoán không phân biệt được mid với offlane nên đưa vào đây sẽ tạo ra một
       biểu đồ đầy đặn mà bịa. Đổi lại số ván có nhãn rất mỏng, nên mỗi năm đều ghi rõ nó dựng
       trên bao nhiêu ván; năm mờ là năm dưới 10 ván có nhãn.</p>
@@ -1926,7 +1926,7 @@ function renderTiers() {
   }).join('');
 
   $('#tier-body').innerHTML =
-    `<p class="desc" style="margin-bottom:var(--s-3)">${esc(pos.label || '')} — ${esc(pos.desc || '')}</p>${rows}`;
+    `<p class="desc lead">${esc(pos.label || '')} — ${esc(pos.desc || '')}</p>${rows}`;
 }
 
 /* ============================ Phong độ ============================ */
@@ -1950,7 +1950,7 @@ function setupForm() {
 
 async function loadForm() {
   const body = $('#form-body');
-  body.innerHTML = '<div class="skeleton" style="height:280px"></div>';
+  body.innerHTML = '<div class="skeleton sk-lg"></div>';
 
   try {
     const d = await getJson(`api/trend?window=${state.formWindow}`);
@@ -2067,7 +2067,7 @@ function renderForm(rows, meta) {
       `<button type="button" data-slug="${esc(s.slug)}" aria-pressed="${!state.formHidden.has(s.slug)}">
          <span class="swatch" style="background:${s.color}"></span>${esc(s.name)}
        </button>`).join('')}</div>
-    <p class="desc" style="margin-top:var(--s-3)">Bấm vào tên đội để ẩn/hiện đường của đội đó.</p>
+    <p class="desc">Bấm vào tên đội để ẩn/hiện đường của đội đó.</p>
     ${verdictTable(meta)}
     <div id="insight-body"></div>`;
 
@@ -2100,7 +2100,7 @@ async function loadInsights() {
   if (!body) return;
 
   if (insightsLoaded) { renderInsights(insightsLoaded); return; }
-  body.innerHTML = '<div class="skeleton" style="height:160px;margin-top:var(--s-5)"></div>';
+  body.innerHTML = '<div class="skeleton sk-sm" style="margin-top:var(--s-5)"></div>';
 
   try {
     insightsLoaded = await getJson('api/insights');
@@ -2149,10 +2149,10 @@ function renderInsights(data) {
     </article>`;
 
   body.innerHTML = `
-    <h3 style="margin-top:var(--s-6)">Hệ thống đọc được gì về từng đội</h3>
-    <p class="desc" style="margin:0 0 var(--s-4)">${esc(data.method || '')}</p>
+    <h3>Hệ thống đọc được gì về từng đội</h3>
+    <p class="desc lead">${esc(data.method || '')}</p>
     <div class="insight-grid">${teams.map(card).join('')}</div>
-    ${quiet.length ? `<p class="desc" style="margin-top:var(--s-4)">
+    ${quiet.length ? `<p class="desc">
        Không có nhận định nào vượt ngưỡng nhiễu cho ${n0(quiet.length)} đội:
        <b>${quiet.map((t) => esc(t.name)).join(', ')}</b>.</p>` : ''}`;
 }
@@ -2178,13 +2178,13 @@ function verdictTable(meta) {
   const moving = v.filter((x) => x.elo.direction === 'đang lên' || x.elo.direction === 'đang xuống');
 
   if (!moving.length) {
-    return `<div class="note" style="margin-top:var(--s-4)">
+    return `<div class="note">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
       <div><b>Không đội nào có xu hướng tách được khỏi nhiễu.</b><br>${esc(meta.method || '')}</div>
     </div>`;
   }
 
-  return `<h3 style="margin-top:var(--s-5)">Hệ thống nhận định</h3>
+  return `<h3>Hệ thống nhận định</h3>
     <div class="table-scroll"><table>
       <thead><tr>
         <th scope="col">Đội</th><th scope="col">Elo</th>
@@ -2198,7 +2198,7 @@ function verdictTable(meta) {
         <td>${chip(x.winrate)}</td>
       </tr>`).join('')}</tbody>
     </table></div>
-    <div class="note" style="margin-top:var(--s-3)">
+    <div class="note">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
       <div>Chỉ nêu đội có xu hướng tách được khỏi nhiễu — ${v.length - moving.length}/${v.length}
       đội còn lại đang đi ngang.<br><br>${esc(meta.method || '')}</div>
@@ -2209,7 +2209,7 @@ function verdictTable(meta) {
 
 async function setupPredict() {
   const body = $('#ratings-body');
-  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const ratings = await getJson('api/ratings');
@@ -2247,7 +2247,7 @@ async function setupPredict() {
  */
 async function loadLedger() {
   const body = $('#ledger-body');
-  body.innerHTML = '<div class="skeleton" style="height:150px"></div>';
+  body.innerHTML = '<div class="skeleton sk-sm"></div>';
 
   try {
     const d = await getJson('api/ledger');
@@ -2296,7 +2296,7 @@ async function loadLedger() {
         <div>${esc(d.caveat)}</div>
       </div>` : ''}
 
-      <h3 style="margin-top:var(--s-5)">Nói bao nhiêu, thực tế bao nhiêu</h3>
+      <h3>Nói bao nhiêu, thực tế bao nhiêu</h3>
       <div class="table-scroll"><table>
         <thead><tr>
           <th scope="col">Mức tự tin</th><th scope="col">Mô hình nói</th>
@@ -2305,7 +2305,7 @@ async function loadLedger() {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <div class="note" style="margin-top:var(--s-3)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>Mở sổ từ ${esc(since || '—')}. ${esc(d.note || '')}</div>
       </div>`;
@@ -2316,7 +2316,7 @@ async function loadLedger() {
 
 async function loadCalibration() {
   const body = $('#calibration-body');
-  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const c = await getJson('api/calibration');
@@ -2378,7 +2378,7 @@ async function loadCalibration() {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <div class="note" style="margin-top:var(--s-4)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div><b>Đọc con số này thế nào:</b> mô hình đã được hiệu chuẩn nên "65%" thật sự
         có nghĩa là khoảng 65%. Nhưng ưu thế so với đoán ngẫu nhiên chỉ khoảng
@@ -2402,7 +2402,7 @@ async function loadCalibration() {
 async function loadPatches() {
   const body = $('#patches-body');
   if (!body) return;
-  body.innerHTML = '<div class="skeleton" style="height:140px"></div>';
+  body.innerHTML = '<div class="skeleton sk-sm"></div>';
 
   try {
     const p = await getJson('api/patches');
@@ -2439,7 +2439,7 @@ async function loadPatches() {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <div class="note" style="margin-top:var(--s-4)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${off
           ? `<b>Mọi bản đang tính đủ sức nặng — và đó là kết luận từ phép đo, không phải mặc định bỏ quên.</b>
@@ -2504,14 +2504,14 @@ function renderRatings(rows) {
            <div class="elo-track"></div>
            <span class="rank-val num mu">${n0(r.eloGames ?? 0)} ván</span>
          </div>`).join('')}
-         <p class="desc" style="margin-top:var(--s-2)">Đội hình TI2026 của các đội này chưa đá
+         <p class="desc">Đội hình TI2026 của các đội này chưa đá
            đủ ván với một đội hình TI2026 khác. Elo khởi điểm ở 1500 nên nếu vẫn hiện số, họ sẽ
            nằm đúng giữa bảng và trông như đội trung bình — trong khi thật ra là <b>chưa
            biết</b>.</p>
        </div>`
     : '';
 
-  $('#ratings-body').innerHTML = rankedHtml + unrankedHtml + `<p class="desc" style="margin-top:var(--s-3)">
+  $('#ratings-body').innerHTML = rankedHtml + unrankedHtml + `<p class="desc">
       Chỉ tính ván mà <b>cả hai bên</b> đều ra sân đúng đội hình TI2026 — Elo là số so sánh giữa
       hai đội, chấm đội hôm nay bằng một trận của đội hình cũ thì sai cả hai phía.
       Chênh 100 điểm Elo ≈ 64% cơ hội thắng; chênh 200 điểm ≈ 76%.
@@ -2528,7 +2528,7 @@ async function loadPredict() {
     return;
   }
 
-  body.innerHTML = '<div class="skeleton" style="height:240px"></div>';
+  body.innerHTML = '<div class="skeleton sk-lg"></div>';
 
   try {
     renderPredict(await getJson(`api/predict?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`));
@@ -2585,7 +2585,7 @@ function renderPredict(p) {
            ? `<p class="pred-h2h num"><b>${lv.winsA}</b> – <b>${lv.winsB}</b>
                 <span class="mu">sau ${n0(lv.games)} ván đúng đội hình</span></p>`
            : `<p class="pred-h2h num mu">chưa có ván nào đúng đội hình</p>`}
-         ${lv ? `<p class="desc" style="margin:0 0 var(--s-3)">${esc(lv.text)}</p>` : ''}
+         ${lv ? `<p class="desc lead">${esc(lv.text)}</p>` : ''}
          ${p.headToHead.recent.map((m) => {
            const off = m.keptA !== undefined && Math.min(m.keptA, m.keptB) < 5;
            return `<div class="pred-hist${off ? ' off-lineup' : ''}">
@@ -2639,7 +2639,7 @@ function setupChanges() {
  */
 async function loadChanges() {
   const body = $('#changes-body');
-  body.innerHTML = '<div class="skeleton" style="height:160px"></div>';
+  body.innerHTML = '<div class="skeleton sk-sm"></div>';
 
   try {
     const r = await getJson('api/changes');
@@ -2649,7 +2649,7 @@ async function loadChanges() {
       return;
     }
 
-    body.innerHTML = `<p class="desc" style="margin-bottom:var(--s-3)">
+    body.innerHTML = `<p class="desc lead">
         ${n0(r.changes.length)} biến động, tự rà ${(r.horizons || []).map((d) => d + ' ngày').join(' · ')}
         · tính tới <b>${esc(r.latest)}</b></p>` +
       r.changes.map((c) => `<div class="change ${c.improved ? 'up' : 'down'}">
@@ -2661,7 +2661,7 @@ async function loadChanges() {
               · mạnh gấp ${c.magnitude}× ngưỡng · mốc so sánh ${esc(c.baseline)}</div>
           </div>
         </div>`).join('') +
-      `<div class="note" style="margin-top:var(--s-4)">
+      `<div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(r.method || '')}${r.pending ? '<br><br>' + esc(r.pending) : ''}</div>
       </div>`;
@@ -2710,7 +2710,7 @@ function setupPlayerStats() {
 
 async function loadPlayerStats(team) {
   const body = $('#player-body');
-  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const r = await getJson('api/player-stats' + (team ? `?team=${encodeURIComponent(team)}` : ''));
@@ -2756,7 +2756,7 @@ function setupHeroPool() {
 
 async function loadHeroPool(team) {
   const body = $('#hero-pool-body');
-  body.innerHTML = '<div class="skeleton" style="height:140px"></div>';
+  body.innerHTML = '<div class="skeleton sk-sm"></div>';
 
   try {
     const r = await getJson('api/heroes' + (team ? `?team=${encodeURIComponent(team)}` : ''));
@@ -2825,7 +2825,7 @@ async function loadLearn() {
 async function loadProPub() {
   const body = $('#propub-body');
   if (!body) return;
-  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const d = await getJson('api/pro-pub');
@@ -2869,7 +2869,7 @@ async function loadProPub() {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <div class="note" style="margin-top:var(--s-4)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.method || '')}<br><br>${esc(d.caveat || '')}</div>
       </div>
@@ -2905,7 +2905,7 @@ const RUN_TONE = { Succeeded: 'ok', Failed: 'bad', Running: 'run', Interrupted: 
 async function loadSchedule() {
   const body = $('#sched-body');
   if (!body) return;
-  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const d = await getJson('api/ingest/status');
@@ -2962,7 +2962,7 @@ async function loadSchedule() {
            aria-valuemin="0" aria-valuemax="100" aria-label="Tiến độ nạp chi tiết trận">
         <span style="width:${bf.donePercent}%"></span>
       </div>
-      <p class="desc" style="margin:var(--s-2) 0 var(--s-4)">Còn <b>${bf.pending.toLocaleString('vi-VN')}</b> ván
+      <p class="desc lead">Còn <b>${bf.pending.toLocaleString('vi-VN')}</b> ván
       cần nạp lại ở phiên bản dữ liệu ${bf.schemaVersion}, tối đa ${bf.perRun} ván mỗi vòng —
       khoảng <b>${Math.ceil(bf.pending / bf.perRun)}</b> vòng nữa${bf.estimatedCostUsd
         ? `, chi phí ước tính <b>$${bf.estimatedCostUsd.toFixed(2)}</b>` : ''}.</p>
@@ -3044,7 +3044,7 @@ const TIER_META = {
 
 async function loadTierList() {
   const body = $('#tl-body');
-  body.innerHTML = '<div class="skeleton" style="height:280px"></div>';
+  body.innerHTML = '<div class="skeleton sk-lg"></div>';
 
   const q = new URLSearchParams({ source: TL.source });
   if (TL.position) q.set('position', TL.position);
@@ -3090,7 +3090,7 @@ async function loadTierList() {
         <div>${esc(d.thinSample)}</div>
       </div>` : ''}
 
-      <div class="note" style="margin-top:var(--s-4)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div><b>${esc(d.patch)}</b> · ${d.draftsAnalysed} bàn draft
         · mẫu hiệu dụng ${d.effectiveMatches} bàn.
@@ -3107,7 +3107,7 @@ async function loadTierList() {
 
 async function loadLanes(role) {
   const body = $('#lane-body');
-  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const d = await getJson('api/lanes' + (role ? `?role=${role}` : ''));
@@ -3166,7 +3166,7 @@ async function loadLanes(role) {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <div class="note" style="margin-top:var(--s-4)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>Mốc trung vị từng vị trí: ${baseline}.<br><br>${esc(d.caveat || '')}</div>
       </div>`;
@@ -3199,7 +3199,7 @@ async function loadMe(rawId) {
     return;
   }
 
-  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const d = await getJson(`api/me?id=${encodeURIComponent(id)}`);
@@ -3234,7 +3234,7 @@ async function loadMe(rawId) {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <div class="note" style="margin-top:var(--s-4)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.caveat || '')}<br><br><small>${esc(d.privacy || '')}</small></div>
       </div>`;
@@ -3246,7 +3246,7 @@ async function loadMe(rawId) {
 
 async function loadDraft() {
   const body = $('#draft-body');
-  body.innerHTML = '<div class="skeleton" style="height:220px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const d = await getJson('api/draft');
@@ -3289,7 +3289,7 @@ async function loadDraft() {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-      <p class="desc" style="margin-top:var(--s-3)">Chỉ hiện hero xuất hiện từ ${d.minAppearances} bàn draft trở lên —
+      <p class="desc">Chỉ hiện hero xuất hiện từ ${d.minAppearances} bàn draft trở lên —
       dưới mức đó tỷ lệ nhảy quá mạnh theo từng ván. <b>Lượt cấm TB</b> càng nhỏ càng bị e dè;
       số đỏ là hero thường bị gạt ngay đầu bàn.</p>`;
   } catch (err) {
@@ -3322,7 +3322,7 @@ async function loadItemHeroes() {
 
 async function loadItems(heroId) {
   const body = $('#item-body');
-  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const d = await getJson(`api/items?hero=${encodeURIComponent(heroId)}`);
@@ -3372,7 +3372,7 @@ async function loadItems(heroId) {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <div class="note" style="margin-top:var(--s-4)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.caveat || '')}<br><br><small>${esc(d.filterNote || '')}</small></div>
       </div>`;
@@ -3733,7 +3733,7 @@ function idolHeroes(d) {
 async function loadIdols(accountId) {
   const cards = $('#idol-cards');
   if (!cards) return;
-  cards.innerHTML = '<div class="skeleton" style="height:140px"></div>';
+  cards.innerHTML = '<div class="skeleton sk-sm"></div>';
 
   try {
     const d = await getJson('api/idols' + (accountId ? '?player=' + accountId : ''));
@@ -3789,7 +3789,7 @@ async function loadFantasy() {
 
 async function loadFantasyTitles() {
   const body = $('#fantasy-titles');
-  body.innerHTML = '<div class="skeleton" style="height:200px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     // Prefix nằm ở /optimize vì nó phụ thuộc đội hình; suffix ở /titles vì nó không. Nhưng
@@ -3829,7 +3829,7 @@ async function loadFantasyTitles() {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <div class="note" style="margin-top:var(--s-3)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>Đo trên <b>${d.sampleGames}</b> ván. ${esc(d.suffixNote || '')}</div>
       </div>
@@ -3856,7 +3856,7 @@ const calcState = { playerId: null, slots: [] };
 
 async function loadFantasyCalc() {
   const body = $('#fantasy-calc');
-  body.innerHTML = '<div class="skeleton" style="height:180px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const [cfg, players] = await Promise.all([
@@ -3983,7 +3983,7 @@ async function runCalc() {
         </tr>`).join('')}</tbody>
       </table></div>
 
-      ${d.tierVsTrait ? `<div class="note" style="margin-top:var(--s-3)">
+      ${d.tierVsTrait ? `<div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div><b>Tier ${esc(d.tierVsTrait.tierRange)} · Trait ${esc(d.tierVsTrait.traitRange)}</b><br>
         ${esc(d.tierVsTrait.verdict)}</div>
@@ -3991,7 +3991,7 @@ async function runCalc() {
 
       ${d.slots.map((s) => altTable(s)).join('')}
 
-      <div class="note" style="margin-top:var(--s-3)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.note || '')}</div>
       </div>`;
@@ -4068,7 +4068,7 @@ async function loadFantasyConfig() {
         <tbody>${rows}</tbody>
       </table></div>
 
-      <p class="desc" style="margin-top:var(--s-3)">Suất đội hình: <b>${esc(slots || '—')}</b>
+      <p class="desc">Suất đội hình: <b>${esc(slots || '—')}</b>
       ${c.slotsConfirmed ? '' : ' — <b>chưa xác nhận</b> theo luật TI2026, đang là phỏng đoán.'}</p>
 
       <div class="note warn" style="margin-top:var(--s-4)">
@@ -4102,7 +4102,7 @@ function rosterCard(p) {
 
 async function loadFantasyBaseline() {
   const body = $('#fantasy-baseline');
-  body.innerHTML = '<div class="skeleton" style="height:160px"></div>';
+  body.innerHTML = '<div class="skeleton sk-sm"></div>';
 
   try {
     const d = await getOptimize();
@@ -4123,7 +4123,7 @@ async function loadFantasyBaseline() {
         <div><b>Chưa hiện tổng điểm — cố ý.</b><br>${esc(b.incomparableNote || '')}</div>
       </div>`}
 
-      <div class="note" style="margin-top:var(--s-3)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(b.note || '')}</div>
       </div>`;
@@ -4134,7 +4134,7 @@ async function loadFantasyBaseline() {
 
 async function loadFantasyRoster() {
   const body = $('#fantasy-roster');
-  body.innerHTML = '<div class="skeleton" style="height:160px"></div>';
+  body.innerHTML = '<div class="skeleton sk-sm"></div>';
 
   try {
     const d = await getOptimize();
@@ -4164,7 +4164,7 @@ async function loadFantasyRoster() {
         <div>Chưa đủ người cho vài suất: ${d.shortfall.map((s) => esc(s)).join(' · ')}</div>
       </div>` : ''}
 
-      <div class="note" style="margin-top:var(--s-4)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.method || '')}<br><br><b>${esc(d.limitation || '')}</b>
         <br><br><button class="pill go" type="button" data-goto-sec="Máy tính emblem">Mở máy tính emblem →</button></div>
@@ -4206,9 +4206,9 @@ function titleNote(d) {
 
   if (!d.prefix && !d.suffix) return '';
 
-  return `<h3 style="margin-top:var(--s-6)">Danh hiệu đi kèm đội hình này</h3>
+  return `<h3>Danh hiệu đi kèm đội hình này</h3>
     <div class="bento">${cell(d.prefix, 'Prefix')}${cell(d.suffix, 'Suffix')}</div>
-    <div class="note" style="margin-top:var(--s-3)">
+    <div class="note">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
       <div>${esc(d.titleNote || '')}</div>
     </div>`;
@@ -4243,7 +4243,7 @@ function bannerSlots(b) {
 
 async function loadFantasyPlayers() {
   const body = $('#fantasy-players');
-  body.innerHTML = '<div class="skeleton" style="height:220px"></div>';
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
     const d = await getJson('api/fantasy/players');
@@ -4290,7 +4290,7 @@ async function loadFantasyPlayers() {
         <div>${esc(d.bannerNote || '')}</div>
       </div>
 
-      <div class="note" style="margin-top:var(--s-3)">
+      <div class="note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16.5v.01"/></svg>
         <div>${esc(d.method || '')}<br><br>${esc(d.caveat || '')}</div>
       </div>`;

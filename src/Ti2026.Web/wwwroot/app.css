@@ -238,6 +238,20 @@ h1, h2, h3 {
    trong một thẻ trông ngang với tiêu đề của cả thẻ. Ba bậc, hết: 30 / 22 / 17. */
 h3 { font-size: 17px; }
 
+/* Khoảng hở TRƯỚC một tiêu đề mục, do VỊ TRÍ quyết định chứ không do từng chỗ gọi tự
+   chọn. h3 đứng đầu thẻ thì sát mép (không luật nào áp vào), h3 nối sau nội dung khác
+   thì có khoảng thở. Luật này thay 15 thuộc tính style nội tuyến vốn dao động giữa
+   0 / s-5 / s-6 cho cùng một tình huống — ba khoảng cách khác nhau cho cùng một quan hệ
+   thì mắt đọc ra ba mức quan trọng khác nhau. */
+.card * + h3 { margin-top: var(--s-5); }
+
+/* Nhãn nhỏ chữ hoa. Trước đây bộ kiểu này được chép nguyên vào một style nội tuyến vì
+   không có lớp nào để dùng lại. */
+.eyebrow {
+  font-size: 13px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted); margin-bottom: var(--s-2);
+}
+
 /* ---------------------------------------------------------------------------
    KHỐI LỒNG TRONG THẺ — tách bằng NỀN, không bằng viền.
 
@@ -448,7 +462,21 @@ nav button[aria-selected="true"] {
 }
 .card > header { margin-bottom: var(--s-4); }
 .card h2 { font-size: 22px; }
-.card .desc { color: var(--ink-2); font-size: 15px; margin: 5px 0 0; line-height: 1.5; }
+/* NHỊP DỌC CỦA CHÚ THÍCH — một luật, không phải 60 quyết định rời rạc.
+   Trước đây 42 trong 52 đoạn .desc mang margin riêng do từng chỗ gọi tự đặt, nên cùng
+   một cặp "chú thích + thứ nó chú thích" chỗ thì cách 8px chỗ thì 32px — mắt đọc ra là
+   hai mức quan hệ khác nhau trong khi thực ra giống hệt.
+
+   HAI VAI TRÒ CÓ THẬT, nên hai lớp chứ không phải một: .desc đứng SAU thứ nó mô tả
+   (mặc định, margin trên) và .desc.lead đứng TRƯỚC (margin dưới). Đây là ngữ nghĩa,
+   không phải tuỳ tiện — gom cả hai vào một luật sẽ làm hỏng một nửa số chỗ. */
+.card .desc { color: var(--ink-2); font-size: 15px; margin: var(--s-3) 0 0; line-height: 1.5; }
+.card .desc.lead { margin: 0 0 var(--s-3); }
+
+/* Đoạn ngay dưới tiêu đề thì sát hơn: nó thuộc về tiêu đề, không phải một khối riêng. */
+.card > header > .desc { margin-top: 5px; }
+
+.note { margin-top: var(--s-4); }
 
 /* ---------------------------------------------------------------------------
    "Vì sao?" — phần giải thích được GẤP LẠI mặc định.
@@ -1110,6 +1138,14 @@ tr.off-lineup td, .pred-hist.off-lineup { opacity: .5; }
 .empty { border: 1px dashed var(--border-strong); color: var(--muted); }
 .error { background: var(--neg-soft); color: var(--neg); border: 1px solid transparent; }
 .loading { color: var(--muted); }
+
+/* BA BẬC CHIỀU CAO, không phải 8 con số tự chế.
+   Trước đây mỗi chỗ gọi tự nghĩ ra một chiều cao (140/150/160/180/200/220/240/280),
+   nên mở mỗi tab là khung chờ nhấp nháy một hình dạng khác — trông như trang đang lỗi
+   chứ không như đang tải. Ba bậc thì người dùng nhận ra đó là cùng một thứ. */
+.skeleton.sk-sm { height: 160px; }
+.skeleton.sk-md { height: 200px; }
+.skeleton.sk-lg { height: 260px; }
 
 .skeleton {
   background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 37%, var(--surface-2) 63%);

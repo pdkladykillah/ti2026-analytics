@@ -1602,5 +1602,4 @@ details:not(.why):not(.pf-more) > summary {
   background: var(--surface-2); font-size: 14px;
 }
 details:not(.why):not(.pf-more) > summary:hover { border-color: var(--border-strong); }
-details:not(.why) [open] > summary,
-details:not(.why)[open] > summary { margin-bottom: var(--s-1); }
+details:not(.why):not(.pf-more)[open] > summary { margin-bottom: var(--s-1); }

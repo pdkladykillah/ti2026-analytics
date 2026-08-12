@@ -160,16 +160,26 @@
 
     <!-- ===== Lịch thi đấu ===== -->
     <section class="view" id="view-schedule" role="tabpanel" aria-labelledby="tab-schedule" hidden>
-      <!-- Không data-sec: khu vực này chỉ có MỘT thẻ nên không có gì để chia mục con.
-           Để lại một data-sec đơn độc thì setupSubTabs() lặng lẽ bỏ qua, và người sửa sau
-           sẽ tưởng mục con đang hỏng thay vì hiểu là cố ý không có. -->
-      <div class="card">
+      <div class="card" data-sec="Lịch theo ngày">
         <header>
           <h2>Lịch thi đấu The International 2026</h2>
           <p class="desc">Giờ hiển thị theo múi giờ máy bạn. Tỷ số không nhập tay — hệ thống
             tự đọc từ ván thật ngay khi trận đá xong.</p>
         </header>
         <div id="schedule-body" aria-live="polite"></div>
+      </div>
+
+      <!-- Nhánh đấu tách thành mục con riêng, KHÔNG ghép vào lịch: hai câu hỏi khác nhau.
+           Lịch trả lời "mấy giờ xem gì", nhánh trả lời "thua trận này thì rơi đi đâu" — và
+           câu thứ hai cần thứ tự theo CÂY, ngược hẳn thứ tự theo giờ của câu thứ nhất. -->
+      <div class="card" data-sec="Nhánh đấu">
+        <header>
+          <h2>Nhánh đấu</h2>
+          <p class="desc">Chỉ vòng loại trực tiếp mới có nhánh. Vòng Swiss cố ý không vẽ ở đây:
+            nó ghép cặp theo thành tích ở từng lượt chứ không theo cây, nên vẽ thành cây là bịa
+            ra một cấu trúc không tồn tại.</p>
+        </header>
+        <div id="bracket-body" aria-live="polite"></div>
       </div>
     </section>
 

@@ -199,6 +199,32 @@ public class StaticAssetTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
     }
 
     /// <summary>
+    /// Tab lịch phải có CẢ lịch theo ngày LẪN nhánh đấu, và app.js phải ghi vào cả hai khung.
+    ///
+    /// Khung nhánh là thứ dễ mất lặng lẽ nhất trong tab này: nếu #bracket-body biến mất khỏi
+    /// index.html thì renderBracket() chỉ `return` và không có gì báo — đúng kiểu hỏng mà tab
+    /// lịch đã dính một lần rồi (hai hàm trùng tên, xem bài dưới).
+    /// </summary>
+    [Fact]
+    public async Task Tab_lich_co_du_lich_theo_ngay_va_nhanh_dau()
+    {
+        var client = factory.CreateClient();
+        var html = await client.GetStringAsync("/index.html");
+        var js = await client.GetStringAsync("/app.js");
+
+        var view = html[html.IndexOf("id=\"view-schedule\"", StringComparison.Ordinal)..];
+        view = view[..view.IndexOf("</section>", StringComparison.Ordinal)];
+
+        view.Should().Contain("data-sec=\"Lịch theo ngày\"");
+        view.Should().Contain("data-sec=\"Nhánh đấu\"");
+        view.Should().Contain("id=\"schedule-body\"");
+        view.Should().Contain("id=\"bracket-body\"");
+
+        js.Should().Contain("renderBracket",
+            "có khung nhánh trong HTML mà không ai vẽ vào thì tab hiện một ô trống");
+    }
+
+    /// <summary>
     /// KHÔNG ĐƯỢC CÓ HAI HÀM CÙNG TÊN Ở CẤP NGOÀI CÙNG app.js.
     ///
     /// Bài này khoá lại một sự cố đã xảy ra và đã sống sót nhiều phiên làm việc: có hai

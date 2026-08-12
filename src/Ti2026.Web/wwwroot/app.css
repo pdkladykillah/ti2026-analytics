@@ -719,6 +719,9 @@ nav button[aria-selected="true"] {
   opacity: 0; visibility: hidden;
   transition: opacity .14s var(--ease), visibility .14s var(--ease);
 }
+/* Không đủ chỗ bên dưới thì lật lên trên — placeInfoPop() gắn lớp này sau khi đo. */
+.info-pop.flip-up { top: auto; bottom: calc(100% + 9px); }
+
 .info-pop > :first-child { margin-top: 0; }
 .info-pop > :last-child { margin-bottom: 0; }
 
@@ -1356,6 +1359,81 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 /* h4.sc-day chứ không phải .sc-day: nhãn ngày là nhãn, không phải tiêu đề mục, nên nó giữ
    nhịp riêng chật hơn. Mà `.card h4` cũng là hai bậc đặc hiệu, nên viết trần .sc-day thì
    thua và nhãn ngày bị nong ra theo tiêu đề mục. */
+/* ---- Nhánh đấu ---- */
+
+.br-side + .br-side { margin-top: var(--s-6); }
+.br-title { font-size: 15px; margin-bottom: var(--s-3); }
+.br-title .mu { font-weight: 600; font-size: 13px; }
+
+/* Cây rộng hơn màn hình thì CUỘN TRONG KHUNG CỦA NÓ, không đẩy cả trang trượt ngang.
+   Một cây loại kép không thể nén vừa màn hình điện thoại mà vẫn đọc được, nên chọn cuộn
+   có chủ đích thay vì thu nhỏ chữ tới mức phải ghé sát. */
+.br-scroll { overflow-x: auto; padding-bottom: var(--s-2); }
+
+.br-cols { display: flex; gap: 30px; align-items: stretch; min-width: min-content; }
+
+.br-col { display: flex; flex-direction: column; min-width: 200px; }
+
+.br-round {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 700; margin-bottom: var(--s-2);
+}
+
+/* space-around: mỗi vòng tự dàn đều theo chiều cao, nên thẻ của vòng sau nằm ngay giữa
+   cặp đã sinh ra nó — đó là thứ làm hình này đọc được như một cái cây. */
+.br-list { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: var(--s-3); }
+
+.br-pair { position: relative; display: grid; gap: var(--s-3); }
+
+/* Đường nối dọc là thuộc tính của CẶP, không phải của từng thẻ — xem ghi chú ở bracketSide().
+   Chỉ vẽ khi cặp có thật (hai thẻ cùng chảy về một nút). */
+.br-pair.joined::after {
+  content: ""; position: absolute;
+  left: 100%; margin-left: 15px;
+  top: 25%; bottom: 25%;
+  border-right: 2px solid var(--border-strong);
+}
+
+.br-card {
+  background: var(--surface-2); border-radius: var(--r-md);
+  border: var(--bw) solid var(--card-edge);
+  padding: var(--s-2) var(--s-3);
+  position: relative;
+}
+
+/* Cuống nối ngang: mọi thẻ trong một cột không phải cột đầu đều nhận đội từ bên trái. */
+.br-col + .br-col .br-card::before {
+  content: ""; position: absolute;
+  right: 100%; width: 15px; top: 50%;
+  border-top: 2px solid var(--border-strong);
+}
+.br-card::after {
+  content: ""; position: absolute;
+  left: 100%; width: 15px; top: 50%;
+  border-top: 2px solid var(--border-strong);
+}
+/* Cột cuối không đi đâu nữa. */
+.br-col:last-child .br-card::after { content: none; }
+
+.br-head {
+  display: flex; justify-content: space-between; gap: var(--s-2);
+  font-size: 11px; color: var(--muted); margin-bottom: 5px;
+}
+
+.br-team {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13.5px; padding: 3px 0; min-width: 0;
+}
+.br-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.br-team .num { margin-left: auto; font-size: 14px; color: var(--muted); }
+
+/* Đội thắng loạt: đậm + màu, VÀ tỷ số đậm theo. Màu không bao giờ là kênh duy nhất. */
+.br-team.won { font-weight: 800; color: var(--ink); }
+.br-team.won .num { color: var(--pos); font-weight: 800; }
+
+.br-card.status-dang-dien-ra { border-color: var(--accent); }
+.br-card.status-chua-xep-gio { opacity: .72; }
+
 h4.sc-day {
   font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
   color: var(--muted); margin: var(--s-4) 0 var(--s-2); font-weight: 600;

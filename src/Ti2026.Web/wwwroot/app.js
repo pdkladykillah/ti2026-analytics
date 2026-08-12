@@ -849,14 +849,19 @@ const clockOf = (iso) => new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-di
 
 async function loadSchedule() {
   const body = $('#schedule-body');
+  const bracket = $('#bracket-body');
   if (!body) return;
   body.innerHTML = '<div class="skeleton sk-md"></div>';
+  if (bracket) bracket.innerHTML = '<div class="skeleton sk-md"></div>';
 
   try {
-    renderSchedule(await getJson('api/schedule'));
+    const d = await getJson('api/schedule');
+    renderSchedule(d);
+    if (bracket) renderBracket(d);
   } catch (err) {
     body.innerHTML = `<div class="error">Không tải được <code>api/schedule</code>.<br>
       <small>${esc(err.message)}</small></div>`;
+    if (bracket) bracket.innerHTML = '';
   }
 }
 
@@ -944,6 +949,183 @@ function renderSchedule(d) {
     <p class="desc">${esc(d.source || '')}</p>`;
 }
 
+
+/* ============================== Nhánh đấu ============================== */
+
+/**
+ * Dựng nhánh đấu từ ĐỒ THỊ Valve trả về, không viết cứng id nút nào.
+ *
+ * Bốn cạnh làm nên hình dạng: `in1`/`in2` nói nút này nhận đội từ đâu, `winTo`/`loseTo` nói
+ * người thắng và người thua đi đâu tiếp. Loại kép khác loại đơn đúng ở chỗ có `loseTo` — và đó
+ * cũng là cách phân biệt hai nhánh mà không cần biết trước giải có bao nhiêu vòng.
+ *
+ * VÒNG SWISS CỐ Ý KHÔNG VẼ. Valve không trả cạnh nào cho tám nút của nó, và đúng vậy: Swiss
+ * ghép cặp theo thành tích ở từng lượt, không theo cây. Vẽ nó thành cây là bịa ra một cấu trúc
+ * không tồn tại — nên luật ở đây là "vòng nào có cạnh thì mới vẽ", suy từ dữ liệu.
+ */
+function bracketGraph(series) {
+  const byId = new Map(series.map((s) => [s.nodeId, s]));
+
+  // Cạnh vào của từng nút, kèm loại: đi tiếp vì THẮNG hay rơi xuống vì THUA.
+  const feeds = new Map();
+  const addFeed = (to, from, kind) => {
+    if (!to || !byId.has(to)) return;
+    if (!feeds.has(to)) feeds.set(to, []);
+    feeds.get(to).push({ from, kind });
+  };
+
+  for (const s of series) {
+    addFeed(s.winTo, s.nodeId, 'win');
+    addFeed(s.loseTo, s.nodeId, 'lose');
+  }
+
+  // Nút có tham gia đồ thị: có ít nhất một cạnh vào hoặc ra. Nút Swiss không có cái nào.
+  const inGraph = series.filter((s) =>
+    s.winTo || s.loseTo || s.in1 || s.in2 || feeds.has(s.nodeId));
+
+  if (inGraph.length < 3) return null;
+
+  // Chung kết tổng: nút duy nhất không đi tiếp đâu nữa.
+  const final = inGraph.find((s) => !s.winTo && !s.loseTo) || null;
+
+  // Ở nhánh THUA nếu nhận một đội rơi xuống, HOẶC nhận từ một nút vốn đã ở nhánh thua.
+  // Nhánh nhì cần cả hai vế: vòng trong cùng nhánh thua chỉ nhận cạnh 'win' của nhau, nên
+  // chỉ hỏi "có cạnh thua nào không" sẽ xếp nhầm chúng sang nhánh thắng.
+  const lowerCache = new Map();
+  const isLower = (id, seen = new Set()) => {
+    if (final && id === final.nodeId) return false;
+    if (lowerCache.has(id)) return lowerCache.get(id);
+    if (seen.has(id)) return false;
+    seen.add(id);
+
+    const list = feeds.get(id) || [];
+    const out = list.some((f) => f.kind === 'lose' || isLower(f.from, seen));
+    lowerCache.set(id, out);
+    return out;
+  };
+
+  // Cột = độ sâu dài nhất tính từ nút gốc. Dùng đường DÀI NHẤT chứ không phải ngắn nhất:
+  // chung kết nhánh thua nhận một đội rơi thẳng từ chung kết nhánh thắng, nên đường ngắn
+  // nhất sẽ kéo nó lùi về sát đầu bảng và cây gãy.
+  const depthCache = new Map();
+  const depth = (id, seen = new Set()) => {
+    if (depthCache.has(id)) return depthCache.get(id);
+    if (seen.has(id)) return 0;
+    seen.add(id);
+
+    const list = feeds.get(id) || [];
+    const out = list.length ? 1 + Math.max(...list.map((f) => depth(f.from, seen))) : 0;
+    depthCache.set(id, out);
+    return out;
+  };
+
+  const side = (s) => (final && s.nodeId === final.nodeId ? 'final' : isLower(s.nodeId) ? 'low' : 'up');
+
+  const group = (which) => {
+    const nodes = inGraph.filter((s) => side(s) === which);
+    if (!nodes.length) return [];
+
+    const levels = [...new Set(nodes.map((s) => depth(s.nodeId)))].sort((a, b) => a - b);
+    return levels.map((lv, i) => ({
+      last: i === levels.length - 1,
+      index: i + 1,
+      nodes: nodes.filter((s) => depth(s.nodeId) === lv),
+    }));
+  };
+
+  return { up: group('up'), low: group('low'), final, feeds };
+}
+
+/** Một ô đội trong thẻ nhánh. Chưa biết đội thì nói nó CHỜ AI, không để trống. */
+function bracketTeam(team, fromNode, wins, decided, won) {
+  const inner = team
+    ? `${teamLogo({ name: team.name, logo: team.logo }, 22)}<span>${esc(team.name)}</span>`
+    : `<span class="sc-tbd">${fromNode ? `Thắng nút ${n0(fromNode)}` : 'Chưa xác định'}</span>`;
+
+  return `<div class="br-team${decided && won ? ' won' : ''}">
+    ${inner}<b class="num">${decided ? n0(wins) : ''}</b></div>`;
+}
+
+function bracketCard(s) {
+  const decided = s.status === 'da-xong' || s.status === 'dang-dien-ra';
+  const when = s.scheduledAt ? clockOf(s.scheduledAt) : 'chưa xếp giờ';
+
+  return `<article class="br-card status-${esc(s.status)}" data-node="${s.nodeId}">
+    <div class="br-head">
+      <span>${esc(s.name || 'Nút ' + s.nodeId)}</span>
+      <span class="mu">${esc(decided ? (STATUS_LABEL[s.status] || '') : when)}</span>
+    </div>
+    ${bracketTeam(s.team1, s.from1, s.wins1, decided, s.wins1 > s.wins2)}
+    ${bracketTeam(s.team2, s.from2, s.wins2, decided, s.wins2 > s.wins1)}
+  </article>`;
+}
+
+function bracketSide(title, hint, rounds, feeds) {
+  if (!rounds.length) return '';
+
+  const cols = rounds.map((r) => {
+    // Gom những nút cùng chảy về một nút sau thành MỘT cụm: đường nối dọc là thuộc tính của
+    // cặp, không phải của từng thẻ. Vẽ theo thẻ thì cặp lệch nhau nửa ô mỗi khi hai vòng
+    // liền nhau không chia đôi đúng — mà nhánh thua thì gần như không bao giờ chia đôi đúng.
+    const pairs = new Map();
+    for (const s of r.nodes) {
+      const key = s.winTo || 'x' + s.nodeId;
+      if (!pairs.has(key)) pairs.set(key, []);
+      pairs.get(key).push(s);
+    }
+
+    const groups = [...pairs.values()].map((list) =>
+      `<div class="br-pair${list.length > 1 ? ' joined' : ''}">${list.map(bracketCard).join('')}</div>`
+    ).join('');
+
+    return `<div class="br-col">
+      <div class="br-round">${esc(r.last ? 'Chung kết nhánh' : 'Vòng ' + r.index)}</div>
+      <div class="br-list">${groups}</div>
+    </div>`;
+  }).join('');
+
+  return `<section class="br-side">
+    <h4 class="br-title">${esc(title)}<span class="mu"> — ${esc(hint)}</span></h4>
+    <div class="br-scroll"><div class="br-cols">${cols}</div></div>
+  </section>`;
+}
+
+function renderBracket(d) {
+  const box = $('#bracket-body');
+  if (!box) return;
+
+  if (!d.ready) {
+    box.innerHTML = `<div class="empty">${esc(d.note || 'Chưa nạp được bảng đấu.')}</div>`;
+    return;
+  }
+
+  const all = d.stages.flatMap((st) => st.series.map((s) => ({ ...s, stage: st.name })));
+  const g = bracketGraph(all);
+
+  if (!g) {
+    box.innerHTML = `<div class="empty">Valve chưa công bố liên kết giữa các nút, nên chưa
+      dựng được nhánh. Lịch từng loạt vẫn xem được ở mục bên cạnh.</div>`;
+    return;
+  }
+
+  const outside = all.filter((s) => !s.winTo && !s.loseTo && !s.in1 && !s.in2
+    && !(g.final && s.nodeId === g.final.nodeId));
+
+  const stages = [...new Set(outside.map((s) => s.stage))];
+
+  box.innerHTML = `
+    ${bracketSide('Nhánh thắng', 'thua một lần là rơi xuống nhánh thua', g.up, g.feeds)}
+    ${bracketSide('Nhánh thua', 'thua lần nữa là dừng giải', g.low, g.feeds)}
+    ${g.final ? `<section class="br-side">
+      <h4 class="br-title">Chung kết tổng</h4>
+      <div class="br-cols"><div class="br-col"><div class="br-list">
+        <div class="br-pair">${bracketCard(g.final)}</div>
+      </div></div></div>
+    </section>` : ''}
+    ${stages.length ? `<p class="desc">${esc(stages.join(', '))} không có nhánh: Valve không
+      trả liên kết cho những nút đó, vì các vòng này ghép cặp theo thành tích chứ không theo
+      cây. Xem chúng ở mục <b>Lịch theo ngày</b>.</p>` : ''}`;
+}
 
 /* ============================ Hồ sơ cá nhân ============================ */
 
@@ -4943,6 +5125,44 @@ function infoDot(text, label = 'Giải thích') {
  * Gán tay từng nút thì nút do JS vẽ lại sau đó sẽ mất handler mà không có gì báo — đúng loại
  * hỏng lặng lẽ mà tệp này đã dính vài lần. Uỷ quyền thì nút sinh ra lúc nào cũng chạy.
  */
+/**
+ * Kéo popover về trong khung nhìn.
+ *
+ * VÌ SAO PHẢI TÍNH BẰNG JS: popover neo vào dấu "i", mà dấu "i" thì nằm ở bất kỳ đâu — kể cả
+ * mép phải màn hình. CSS không có cách nào hỏi "mày có tràn ra ngoài không", nên một giá trị
+ * `left` cố định sẽ đúng ở giữa trang và sai ở rìa. Đã thấy thật: thẻ Dukalis ở cột cuối làm
+ * popover thò ra ngoài body và sinh ra THANH CUỘN NGANG cho cả trang — tức một chú thích tự
+ * làm hỏng bố cục của mọi thứ khác.
+ *
+ * Chỉ dời theo trục ngang và chỉ khi cần: dời cả khi không cần thì popover rời khỏi dấu "i"
+ * đã mở ra nó, và mất luôn mối liên hệ giữa hai thứ.
+ */
+function placeInfoPop(btn) {
+  const pop = btn.parentElement && btn.parentElement.querySelector('.info-pop');
+  if (!pop) return;
+
+  // Trả về vị trí gốc trước khi đo — đo trong lúc còn dịch của lần mở trước thì mỗi lần mở
+  // lại cộng dồn thêm một khoảng.
+  pop.style.left = '';
+  pop.style.top = '';
+  pop.classList.remove('flip-up');
+
+  const pad = 10;
+  const r = pop.getBoundingClientRect();
+  const base = -8;
+
+  let shift = 0;
+  if (r.right > window.innerWidth - pad) shift = window.innerWidth - pad - r.right;
+  if (r.left + shift < pad) shift = pad - r.left;
+  if (shift) pop.style.left = (base + shift) + 'px';
+
+  // Không đủ chỗ bên dưới nhưng dư bên trên thì lật lên. Trên màn hình thấp, một chú thích
+  // bốn dòng mở xuống dưới sẽ nằm ngoài tầm nhìn hoàn toàn.
+  const after = pop.getBoundingClientRect();
+  if (after.bottom > window.innerHeight - pad && btn.getBoundingClientRect().top > after.height + pad)
+    pop.classList.add('flip-up');
+}
+
 function setupInfoDots() {
   document.addEventListener('click', (e) => {
     const btn = e.target.closest?.('.info-btn');
@@ -4953,7 +5173,33 @@ function setupInfoDots() {
     });
 
     if (!btn) return;
-    btn.setAttribute('aria-expanded', String(btn.getAttribute('aria-expanded') !== 'true'));
+
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+
+    // Đo SAU khi đã mở: lúc còn ẩn thì popover không có kích thước để đo.
+    if (open) placeInfoPop(btn);
+  });
+
+  // HOVER CŨNG PHẢI DỜI CHỖ. `.info:hover .info-pop` mở popover mà không đi qua nhánh bấm ở
+  // trên, nên nếu chỉ tính lúc bấm thì đúng ca đã gây lỗi — rê chuột vào dấu "i" ở cột cuối —
+  // lại là ca duy nhất không được sửa. mouseover chứ không phải mouseenter: mouseenter không
+  // nổi bọt nên uỷ quyền ở document không bắt được.
+  document.addEventListener('mouseover', (e) => {
+    const wrap = e.target.closest?.('.info');
+    const btn = wrap && wrap.querySelector('.info-btn');
+    if (btn) placeInfoPop(btn);
+  });
+
+  document.addEventListener('focusin', (e) => {
+    const btn = e.target.closest?.('.info-btn');
+    if (btn) placeInfoPop(btn);
+  });
+
+  // Cuộn hay đổi cỡ cửa sổ thì vị trí vừa tính không còn đúng. Đóng lại thay vì tính lại:
+  // tính lại mỗi khung hình khi cuộn là công việc thật sự tốn cho một thứ dùng vài giây.
+  addEventListener('resize', () => {
+    $$('.info-btn[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
   });
 
   // Rời tiêu điểm thì đóng — bàn phím phải thoát ra được, không chỉ chuột.

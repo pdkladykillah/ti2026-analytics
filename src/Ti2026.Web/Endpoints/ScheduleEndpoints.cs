@@ -71,6 +71,18 @@ public static class ScheduleEndpoints
                         from1 = s.TeamId1 == null && s.ValveTeamId1 == null ? s.IncomingNodeId1 : null,
                         from2 = s.TeamId2 == null && s.ValveTeamId2 == null ? s.IncomingNodeId2 : null,
 
+                        // CẠNH CỦA ĐỒ THỊ, trả về LUÔN LUÔN — khác hẳn from1/from2 ở trên vốn
+                        // chỉ là chữ hiển thị khi chưa biết đội và biến mất ngay khi biết.
+                        //
+                        // Không có bốn trường này thì không dựng được nhánh đấu: hình dạng của
+                        // một bảng loại kép nằm ở chỗ ai đi tiếp và ai rơi xuống nhánh thua,
+                        // mà đó chính là winTo/loseTo. Và phải giữ cả sau khi trận đã đá xong,
+                        // vì cây vẫn phải vẽ được khi mọi ô đã điền đội.
+                        in1 = s.IncomingNodeId1,
+                        in2 = s.IncomingNodeId2,
+                        winTo = s.WinningNodeId,
+                        loseTo = s.LosingNodeId,
+
                         team1 = TeamDto(s.Team1?.Slug, s.Team1?.Name, s.Team1?.LogoUrl, s.ValveTeamId1),
                         team2 = TeamDto(s.Team2?.Slug, s.Team2?.Name, s.Team2?.LogoUrl, s.ValveTeamId2),
                     }).ToList(),

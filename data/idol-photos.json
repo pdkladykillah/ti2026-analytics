@@ -1,0 +1,18 @@
+{
+  "_doc": "Ảnh tuyển thủ cho tab 'Học lối chơi'. Khoá là tên trong IdolIngester.Seed (không phân biệt hoa thường), giá trị là URL ảnh hoặc đường dẫn dưới wwwroot. Để trống thì rơi về avatar Steam.",
+  "_vi_sao_phai_dien_tay": "Không có nguồn nào lấy được tự động. Valve trả registered_players rỗng và không có endpoint ảnh tuyển thủ; OpenDota chỉ có avatar Steam; Liquipedia, STRATZ và Dotabuff đều ghi 'User-agent: ClaudeBot -> Disallow: /' trong robots.txt nên không được truy cập.",
+  "_cach_dung": "Dán URL ảnh vào đúng dòng của người đó rồi lưu. Thư mục data gắn thẳng vào container nên KHÔNG cần dựng lại image, tải lại trang là thấy. Ảnh nên là chân dung, cạnh vuông, tối thiểu 200px.",
+
+  "Topson": "",
+  "Malr1ne": "",
+  "No[o]ne-": "",
+  "gpk-": "",
+  "Nisha": "",
+  "Collapse": "",
+  "ATF": "",
+  "Yatoro": "",
+  "Satanic": "",
+  "Save-": "",
+  "Whitemon": "",
+  "Dukalis": ""
+}

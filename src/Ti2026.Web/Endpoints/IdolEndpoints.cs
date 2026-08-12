@@ -31,11 +31,13 @@ public static class IdolEndpoints
 
     public static void MapIdolEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/idols", async (Ti2026DbContext db, long? player) =>
+        app.MapGet("/api/idols", async (Ti2026DbContext db, Ti2026Paths paths, long? player) =>
         {
             var idols = await db.IdolPlayers.OrderBy(x => x.SortOrder).ToListAsync();
             if (idols.Count == 0)
                 return Results.Ok(new { ready = false, note = "Chưa nạp dữ liệu tuyển thủ nào." });
+
+            var photos = ReadPhotos(paths.EditorialDirectory);
 
             var since = DateTime.UtcNow - Window;
 
@@ -115,7 +117,16 @@ public static class IdolEndpoints
                     name = idol.Name,
                     team = idol.TeamName,
                     note = idol.Note,
-                    avatar = idol.AvatarUrl,
+
+                    // Ảnh biên tập ĐÈ LÊN avatar Steam, và avatar chỉ là phương án cuối.
+                    //
+                    // Vì sao không tự lấy ảnh thi đấu: không có nguồn nào được phép. Valve trả
+                    // registered_players RỖNG và không có endpoint ảnh tuyển thủ nào khác;
+                    // OpenDota chỉ có avatar Steam; còn Liquipedia, STRATZ, Dotabuff đều ghi
+                    // thẳng "User-agent: ClaudeBot → Disallow: /" trong robots.txt. Nên chỗ
+                    // này là một lớp thủ công có chủ ý, không phải chưa làm xong.
+                    avatar = photos.GetValueOrDefault(IdolPlayer.MakeNameKey(idol.Name))
+                             ?? idol.AvatarUrl,
                     declaredRole = idol.DeclaredRole,
                     track = track.Key,
                     trackCounts = tracks.ToDictionary(t => t.Key, t => t.Value.Count),
@@ -294,6 +305,42 @@ public static class IdolEndpoints
     {
         key = v.Key, games = v.Games, raw = v.Raw, norm = v.Norm, index = v.Index,
     };
+
+    /// <summary>Tên tệp ảnh biên tập, đặt cạnh teams.json trong thư mục dữ liệu biên tập.</summary>
+    public const string PhotoFile = "idol-photos.json";
+
+    /// <summary>
+    /// Bản đồ NameKey → đường dẫn ảnh, đọc lại ở MỖI request.
+    ///
+    /// Đọc mỗi request chứ không nạp một lần lúc khởi động, cùng lý do với api/schedule: thư mục
+    /// data gắn thẳng từ máy chủ nên sửa tệp là thấy ngay, không phải dựng lại image cho một
+    /// đường dẫn ảnh. Tệp này chỉ 12 dòng nên chi phí đọc không đáng kể.
+    ///
+    /// KHÔNG ném khi tệp hỏng. Đây là lớp trang trí: một dấu phẩy thừa không được phép làm chết
+    /// cả tab phân tích, nó chỉ nên khiến ảnh rơi về avatar Steam.
+    /// </summary>
+    private static Dictionary<string, string> ReadPhotos(string editorialDirectory)
+    {
+        var path = Path.Combine(editorialDirectory, PhotoFile);
+        if (!File.Exists(path)) return [];
+
+        try
+        {
+            var raw = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                File.ReadAllText(path));
+
+            return raw is null
+                ? []
+                // Khoá bắt đầu bằng '_' là chú thích trong chính tệp — tệp này người ta sửa
+                // tay, nên hướng dẫn phải nằm NGAY TRONG nó chứ không ở một chỗ khác.
+                : raw.Where(kv => !kv.Key.StartsWith('_') && !string.IsNullOrWhiteSpace(kv.Value))
+                     .ToDictionary(kv => IdolPlayer.MakeNameKey(kv.Key), kv => kv.Value.Trim());
+        }
+        catch
+        {
+            return [];
+        }
+    }
 
     private static StyleGame ToGame(IdolMatch m) => new(
         m.Kills, m.Deaths, m.Assists, m.LastHits, m.HeroDamage, m.TowerDamage, m.NetWorth,

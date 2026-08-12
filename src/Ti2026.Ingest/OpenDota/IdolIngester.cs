@@ -340,10 +340,19 @@ public class IdolIngester(
             done++;
         }
 
-        foreach (var (idolId, (_, name)) in teamNames)
+        // CHỈ GHI ĐÈ KHI VÁN MỚI HƠN VÁN ĐÃ SINH RA TÊN ĐANG LƯU.
+        //
+        // `teamNames` chỉ chứa ván của LÔ NÀY (tối đa 400 ván mỗi vòng), nên "mới nhất trong lô"
+        // không phải "mới nhất của người đó". Bản trước ghi đè vô điều kiện, và kết quả là tên
+        // đội bị quyết định bởi lô nào tình cờ chạy sau cùng: Satanic ra "Team Falcons" còn hai
+        // đồng đội cùng ván ra "PVISION". So với mốc đã lưu thì thứ tự lô không còn ảnh hưởng gì.
+        foreach (var (idolId, (when, name)) in teamNames)
         {
             var idol = await db.IdolPlayers.FirstOrDefaultAsync(x => x.Id == idolId, ct);
-            if (idol is not null) idol.TeamName = name;
+            if (idol is null || when <= idol.TeamNameAt) continue;
+
+            idol.TeamName = name;
+            idol.TeamNameAt = when;
         }
 
         await db.SaveChangesAsync(ct);

@@ -337,6 +337,92 @@ public class IdolIngesterTests : IDisposable
     }
 
     /// <summary>
+    /// VÁN CŨ HƠN KHÔNG ĐƯỢC GHI ĐÈ TÊN ĐỘI ĐANG LƯU.
+    ///
+    /// Đây là lỗi người dùng bắt được trên trang thật. Vòng chi tiết lấy tối đa 400 ván mỗi lượt,
+    /// nên "ván mới nhất trong lô" không phải "ván mới nhất của người đó" — và bản trước ghi đè vô
+    /// điều kiện, tức tên đội bị quyết định bởi lô nào tình cờ chạy sau cùng.
+    ///
+    /// Bằng chứng nó không vô hại: Satanic, No[o]ne- và Dukalis cùng phe Radiant trong ĐÚNG MỘT
+    /// ván (8904419709, radiant_name = "PVISION") mà ra ba kết quả — hai người ra PVISION, Satanic
+    /// ra "Team Falcons". Whitemon thì đứng lại ở "Tundra Esports" trong khi ván giải mới nhất
+    /// (8930664368) ghi anh ở phe Dire của "1w".
+    /// </summary>
+    [Fact]
+    public async Task Van_cu_hon_khong_ghi_de_ten_doi_moi_hon()
+    {
+        await using var db = NewDb();
+
+        var moiHon = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc);
+
+        db.IdolPlayers.Add(new IdolPlayer
+        {
+            AccountId = 94054712, Name = "Topson", NameKey = "TOPSON",
+            MatchesFetchedAt = DateTime.UtcNow,
+            TeamName = "Đội mới nhất", TeamNameAt = moiHon,
+        });
+        await db.SaveChangesAsync();
+
+        var idol = await db.IdolPlayers.FirstAsync();
+
+        // Ván giải THẬT, tên phe hợp lệ — chỉ có mỗi tội cũ hơn ván đã sinh ra tên đang lưu.
+        db.IdolMatches.Add(new IdolMatch
+        {
+            IdolPlayerId = idol.Id, MatchId = 8_444_444, HeroId = 10,
+            StartTime = moiHon.AddMonths(-1), Won = true, IsRadiant = true, LobbyType = 1,
+        });
+        await db.SaveChangesAsync();
+
+        await Make(db, new DetailHandler()).IngestAsync(CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var after = await db.IdolPlayers.SingleAsync(x => x.AccountId == 94054712);
+
+        after.TeamName.Should().Be("Đội mới nhất",
+            "một ván cũ hơn không nói được gì về đội hiện tại — nó chỉ nói người này TỪNG ở đâu");
+        after.TeamNameAt.Should().Be(moiHon);
+    }
+
+    /// <summary>
+    /// Và chiều ngược lại phải chạy: ván mới hơn thì đổi tên, kèm mốc giờ mới.
+    /// Thiếu nửa này thì "không ghi đè" có thể được cài đúng bằng cách không bao giờ ghi gì cả.
+    /// </summary>
+    [Fact]
+    public async Task Van_moi_hon_thi_doi_ten_doi_va_ghi_lai_moc()
+    {
+        await using var db = NewDb();
+
+        var cuHon = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        db.IdolPlayers.Add(new IdolPlayer
+        {
+            AccountId = 94054712, Name = "Topson", NameKey = "TOPSON",
+            MatchesFetchedAt = DateTime.UtcNow,
+            TeamName = "Đội cũ", TeamNameAt = cuHon,
+        });
+        await db.SaveChangesAsync();
+
+        var idol = await db.IdolPlayers.FirstAsync();
+        var vanMoi = cuHon.AddMonths(2);
+
+        db.IdolMatches.Add(new IdolMatch
+        {
+            IdolPlayerId = idol.Id, MatchId = 8_555_555, HeroId = 10,
+            StartTime = vanMoi, Won = true, IsRadiant = true, LobbyType = 1,
+        });
+        await db.SaveChangesAsync();
+
+        await Make(db, new DetailHandler()).IngestAsync(CancellationToken.None);
+
+        db.ChangeTracker.Clear();
+        var after = await db.IdolPlayers.SingleAsync(x => x.AccountId == 94054712);
+
+        // Topson ngồi ghế đầu phe Radiant trong DetailHandler.
+        after.TeamName.Should().Be("Tundra Esports");
+        after.TeamNameAt.Should().Be(vanMoi);
+    }
+
+    /// <summary>
     /// Chênh lệch vàng phải ĐẢO DẤU cho phe Dire.
     ///
     /// radiant_gold_adv luôn là Radiant trừ Dire. Quên đảo thì gần nửa số ván đọc ngược và trung

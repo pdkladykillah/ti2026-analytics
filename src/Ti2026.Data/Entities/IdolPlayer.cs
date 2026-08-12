@@ -45,6 +45,18 @@ public class IdolPlayer
     /// </summary>
     public string? TeamName { get; set; }
 
+    /// <summary>
+    /// Mốc giờ của ván đã sinh ra <see cref="TeamName"/>. KHÔNG được bỏ cột này đi.
+    ///
+    /// Thiếu nó thì phép "ván giải GẦN NHẤT" chỉ đúng trong phạm vi một lô nạp: vòng chi tiết
+    /// lấy 400 ván mỗi lượt, nên tên đội bị ghi đè theo lô nào chạy sau cùng chứ không theo ván
+    /// nào mới nhất. Đã xảy ra thật và người dùng bắt được: Satanic hiện "Team Falcons" trong khi
+    /// ván giải mới nhất của anh (2026-07-19) ghi PVISION, và Whitemon hiện "Tundra Esports"
+    /// trong khi ván mới nhất (2026-08-05) ghi 1w. Hai đồng đội cùng một ván — Satanic, No[o]ne-,
+    /// Dukalis đều cùng phe Radiant — mà ra ba tên khác nhau, tức con số không hề vô hại.
+    /// </summary>
+    public DateTime? TeamNameAt { get; set; }
+
     public string? AvatarUrl { get; set; }
 
     /// <summary>

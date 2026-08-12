@@ -122,7 +122,7 @@ async function boot() {
 
     renderStatus();
     renderOverview();
-  loadSchedule();
+    loadIngestStatus();
     renderTable();
     renderTeams();
     setupH2h();
@@ -2902,7 +2902,18 @@ function fmtClock(iso) {
 
 const RUN_TONE = { Succeeded: 'ok', Failed: 'bad', Running: 'run', Interrupted: 'bad' };
 
-async function loadSchedule() {
+/**
+ * Trạng thái VÒNG NẠP DỮ LIỆU — không phải lịch thi đấu.
+ *
+ * TÊN NÀY TỪNG LÀ loadSchedule VÀ ĐÓ LÀ MỘT SỰ CỐ THẬT. Hàm vẽ bảng đấu ở trên cũng tên
+ * loadSchedule, mà khai báo hàm sau ĐÈ LÊN hàm trước — không cảnh báo, không lỗi lúc dịch,
+ * không lỗi lúc chạy. Hậu quả: bấm tab "Lịch thi đấu" thì gọi trúng hàm này, nó ghi vào
+ * #sched-body của tab Tổng quan, còn #schedule-body không ai đụng tới. Tab lịch trắng trơn
+ * suốt trong khi api/schedule vẫn trả về đủ 27 nút — tức mọi dấu hiệu đều chỉ sai chỗ.
+ *
+ * Hai thứ khác nhau thì phải mang hai tên khác nhau. StaticAssetTests khoá lại luật này.
+ */
+async function loadIngestStatus() {
   const body = $('#sched-body');
   if (!body) return;
   body.innerHTML = '<div class="skeleton sk-md"></div>';
@@ -3560,78 +3571,194 @@ function idolWindowText(d) {
     ${f(from)}–${f(to)}${other ? ` (còn ${n0(other)} ván loại khác, không trộn vào)` : ''}`;
 }
 
-function idolCards(d) {
-  return `<div class="bento">${d.idols.map((x) => {
-    const role = x.role;
-    const roleText = role
-      ? `<b>${esc(ROLE_VN[role.role] || role.role)}</b> ở ${Math.round(role.share)}% của
-         ${n0(role.labelled)} ván có nhãn`
-      : 'chưa đủ ván có nhãn vai trò';
+/**
+ * Ảnh đại diện tuyển thủ, có sẵn phương án dự phòng là chữ cái đầu.
+ *
+ * DỰ PHÒNG BẰNG LỚP CHỒNG, KHÔNG BẰNG onerror. teamLogo() ở trên dùng onerror được vì chuỗi
+ * thay thế của nó không chứa dấu nháy nào; ở đây thì có — kích thước phải đi kèm, và một
+ * style="..." lồng trong onerror="..." tự cắt ngang chính thuộc tính đó. Kết quả là mảnh HTML
+ * vỡ đôi và một khúc thuộc tính rơi ra thành CHỮ hiện trên trang: đã thấy thật, thẻ Topson hiện
+ * ra `T'"> Topson`.
+ *
+ * Chữ cái nằm dưới, ảnh phủ lên. Ảnh hỏng thì chữ lộ ra — không cần một dòng JS nào, và không
+ * có chuỗi HTML nào phải tự thoát cho một chuỗi HTML khác.
+ */
+function idolFace(x, size) {
+  const initial = esc((x.name || '?').charAt(0));
+  const px = `style="width:${size}px;height:${size}px"`;
 
+  // aria-hidden: chữ cái dự phòng là thứ THAY THẾ HÌNH, không phải nội dung. Bỏ ra thì trình
+  // đọc màn hình đọc "T Topson" — cái tên bị lặp nửa vời ở mọi chỗ có ảnh.
+  return `<span class="face-img" ${px}>
+    <span class="face-alt" aria-hidden="true">${initial}</span>
+    ${x.avatar ? `<img src="${esc(x.avatar)}" alt="" loading="lazy">` : ''}
+  </span>`;
+}
+
+/**
+ * Thẻ tiêu điểm tuyển thủ.
+ *
+ * Bản trước là thẻ KPI thường: một con số, rồi sáu dòng chữ nhỏ dính liền nhau — ngày tháng,
+ * tên đội, độ rộng hero pool, lời giới thiệu, cảnh báo mẫu mỏng, tất cả cùng một cỡ và cùng một
+ * sắc độ. Xếp phẳng như vậy thì không có thứ bậc nào: mắt phải đọc hết mới biết cái nào đáng
+ * nhớ, mà phần lớn thì không.
+ *
+ * Ba tầng thay cho một khối:
+ *   ẢNH + TÊN + đội/vai trò  — nhận ra người này là ai, bằng hình chứ không bằng chữ
+ *   BA CON SỐ                — thắng / số ván / độ hẹp pool, cùng cỡ, đọc ngang được giữa các thẻ
+ *   một dòng chân thẻ        — cửa sổ thời gian; phần còn lại nằm sau dấu "i"
+ *
+ * Lời giới thiệu và cảnh báo mẫu mỏng KHÔNG mất đi, chúng chuyển vào dấu "i" — cùng cơ chế đã
+ * dùng cho mọi chú thích khác trên trang, nên chỗ này không phải là một ngoại lệ phải nhớ.
+ */
+function idolCards(d) {
+  return `<div class="spot-grid">${d.idols.map((x) => {
+    const role = x.role;
     const thin = x.window.games < 25;
 
     // Tên đội gọi ĐÚNG thứ đang đo: "đội ở ván giải gần nhất", không phải "đội hiện tại".
-    //
-    // Hai thứ đó khác nhau thật. Topson bán nghỉ nên ván giải gần nhất của anh đá dưới tên một
-    // stack, trong khi danh sách tuyển thủ chuyên nghiệp vẫn ghi affiliation cũ. Sửa cái NHÃN cho
-    // khớp phép đo thì đúng cả hai nghĩa; sửa phép đo cho khớp kỳ vọng thì phải thêm một lời gọi
-    // tải về 5.127 tuyển thủ, và vẫn hiện một con số không phải điều ta đang đo.
-    return `<article class="kpi p2">
-      <div class="kpi-label">${esc(x.name)}</div>
-      <div class="kpi-value">${fmt(x.window.winrate, 0)}%</div>
-      <div class="kpi-note">${roleText}<br>${idolWindowText(x)}
-        ${x.team ? `<br>đội ở ván giải gần nhất: <b>${esc(x.team)}</b>` : ''}
-        ${thin ? '<br><span class="neg">Mẫu mỏng — đọc như dấu hiệu, không phải số đo.</span>' : ''}
-        <br>${n0(x.heroPool.covering80)} hero phủ 80% số ván (${n0(x.heroPool.distinct)} hero khác nhau)
-        ${x.note ? '<br><i>' + esc(x.note) + '</i>' : ''}</div>
+    // Hai thứ đó khác nhau thật — Topson bán nghỉ nên ván giải gần nhất của anh đá dưới tên một
+    // stack. Nên nhãn đầy đủ nằm trong dấu "i", còn dòng ngắn chỉ hiện chuỗi tên.
+    const meta = [
+      x.team ? esc(x.team) : null,
+      role ? esc(ROLE_VN[role.role] || role.role) : null,
+    ].filter(Boolean).join(' · ');
+
+    const note = [
+      x.note || '',
+      x.team ? `Đội hiện là tên phe ở ván giải gần nhất, không phải hợp đồng hiện tại.` : '',
+      role ? `Vai trò đo từ nhãn replay: ${Math.round(role.share)}% của ${n0(role.labelled)} ván có nhãn.`
+           : 'Chưa đủ ván có nhãn vai trò để đo vị trí.',
+      thin ? 'Mẫu mỏng (dưới 25 ván) — đọc như dấu hiệu, không phải số đo.' : '',
+    ].filter(Boolean).join(' ');
+
+    const stat = (v, label, tone) =>
+      `<div class="spot-stat"><b class="num${tone ? ' ' + tone : ''}">${v}</b><span>${label}</span></div>`;
+
+    return `<article class="spot${thin ? ' spot-thin' : ''}">
+      <div class="spot-top">
+        ${idolFace(x, 52)}
+        <div class="spot-id">
+          <div class="spot-name">${esc(x.name)}${infoDot(note, 'Về ' + x.name)}</div>
+          <div class="spot-meta">${meta || '—'}</div>
+        </div>
+      </div>
+      <div class="spot-stats">
+        ${stat(fmt(x.window.winrate, 0) + '%', 'thắng',
+               x.window.winrate >= 55 ? 'cal-good' : x.window.winrate <= 45 ? 'cal-bad' : '')}
+        ${stat(n0(x.window.games), x.track === 'thi-dau' ? 'ván thi đấu' : 'ván xếp hạng')}
+        ${stat(n0(x.heroPool.covering80), 'hero là 80% pool')}
+      </div>
+      <div class="spot-foot">${esc(idolWindowText(x).replace(/\s+/g, ' ').trim())}</div>
     </article>`;
   }).join('')}</div>`;
 }
 
+/**
+ * Người đang xem ở màn chữ ký. Giữ ngoài hàm render để đổi người chọn KHÔNG mất khi
+ * tải lại dữ liệu (đổi tài khoản so sánh sẽ gọi lại loadIdols).
+ */
+let sigPick = null;
+
+/**
+ * Chữ ký lối chơi: MỘT người mỗi lần, chọn bằng dải ảnh.
+ *
+ * Bản trước vẽ cả 12 người xếp dọc — mỗi người một biểu đồ radar cộng bảng bảy dòng, tức khoảng
+ * 12 màn hình phải cuộn qua để xem một người. Và không ai so 12 hình radar bằng cách cuộn: đến
+ * người thứ ba thì hình thứ nhất đã ra khỏi trí nhớ, nên cái giá cuộn đó không mua được gì.
+ *
+ * Ô chọn <select> cũng không phải câu trả lời ở đây, dù nó gọn: danh sách này là NGƯỜI, mà người
+ * thì nhận ra bằng mặt nhanh hơn bằng cách đọc tên trong một danh sách xổ xuống — nhất là với
+ * những cái tên viết kiểu "No[o]ne-" hay "gpk-". Dải ảnh vừa là bộ chọn vừa là bảng danh sách.
+ */
 function idolSignatures(d) {
-  const byIdol = {};
-  (d.matchups || []).forEach((m) => { byIdol[m.idolId] = m; });
+  const pick = d.idols.find((x) => x.id === sigPick) || d.idols[0];
+  if (!pick) return '<div class="empty">Chưa có tuyển thủ nào.</div>';
+  sigPick = pick.id;
 
-  return d.idols.map((x) => {
-    const values = {};
-    x.signature.forEach((s) => { if (s.index !== null) values[s.key] = s.index; });
+  const faces = d.idols.map((x) => {
+    const role = x.role ? (ROLE_VN[x.role.role] || x.role.role) : '—';
+    return `<button type="button" class="face" role="tab" data-idol="${x.id}"
+        aria-selected="${x.id === pick.id}">
+      ${idolFace(x, 44)}
+      <span class="face-name">${esc(x.name)}</span>
+      <span class="face-role">${esc(role)}</span>
+    </button>`;
+  }).join('');
 
-    if (!Object.keys(values).length)
-      return `<div class="idol-block"><h3>${esc(x.name)}</h3>
-        <div class="empty">Chưa đủ ván để dựng chữ ký (cần ${25} ván mỗi trục).</div></div>`;
+  return `<div class="facepick" role="tablist" aria-label="Chọn tuyển thủ">${faces}</div>
+    <div class="sig-panel" id="sig-panel" aria-live="polite">${signaturePanel(d, pick)}</div>`;
+}
 
-    const series = [{ label: x.name, values }];
-    const mine = byIdol[x.id];
+function signaturePanel(d, x) {
+  const mine = (d.matchups || []).find((m) => m.idolId === x.id);
 
-    if (mine) {
-      const mv = {};
-      mine.diffs.forEach((f) => { mv[f.axis] = f.mine; });
-      series.push({ label: d.me ? d.me.name : 'Bạn', values: mv });
-    }
+  const values = {};
+  x.signature.forEach((s) => { if (s.index !== null) values[s.key] = s.index; });
 
-    const rows = x.signature.map((s) => {
+  const head = `<div class="sig-head">
+    ${idolFace(x, 46)}
+    <div>
+      <div class="sig-name">${esc(x.name)}</div>
+      <div class="sig-meta">${esc([x.team, x.role ? (ROLE_VN[x.role.role] || x.role.role) : null]
+        .filter(Boolean).join(' · ') || '—')}</div>
+    </div>
+    ${mine ? `<span class="sig-vs">nền mờ là ${esc(d.me.name)} ở ${
+      esc(ROLE_VN[mine.role] || mine.role)}</span>` : ''}
+  </div>`;
+
+  if (!Object.keys(values).length)
+    return `${head}<div class="empty">Chưa đủ ván để dựng chữ ký (cần 25 ván mỗi trục).</div>`;
+
+  const series = [{ label: x.name, values }];
+
+  if (mine) {
+    const mv = {};
+    mine.diffs.forEach((f) => { mv[f.axis] = f.mine; });
+    series.push({ label: d.me ? d.me.name : 'Bạn', values: mv });
+  }
+
+  // Ba trục lệch nhất đưa lên thành chữ, trước cả bảng: bảng bảy dòng trả lời được mọi câu hỏi
+  // nhưng không trả lời câu ĐẦU TIÊN — "người này khác thường ở chỗ nào".
+  const far = x.signature
+    .filter((s) => s.index !== null)
+    .map((s) => ({ s, gap: Math.abs(Math.log(s.index)) }))
+    .sort((a, b) => b.gap - a.gap)
+    .slice(0, 3)
+    .map(({ s }) => {
       const axis = d.axes.find((a) => a.key === s.key);
       if (!axis) return '';
-      return `<tr>
-        <td>${esc(axis.label)}<div class="desc">${esc(axis.hint)}</div></td>
-        <td class="num">${fmt(s.raw, s.raw < 10 ? 3 : 0)}</td>
-        <td class="num">${s.norm === null ? '—' : fmt(s.norm, s.norm < 10 ? 3 : 0)}</td>
-        <td class="num"><b>${s.index === null ? '—' : fmt(s.index, 2) + '×'}</b></td>
-        <td>${axis.kind === 'phong-cach' ? 'phong cách' : 'chất lượng'}</td>
-      </tr>`;
+      const up = s.index >= 1;
+      const pct = Math.round(Math.abs(s.index - 1) * 100);
+      return `<li><b>${esc(axis.label)}</b>
+        <span class="num ${up ? 'cal-good' : 'cal-bad'}">${up ? '+' : '−'}${pct}%</span>
+        <span class="mu">so với mức thường</span></li>`;
     }).join('');
 
-    return `<div class="idol-block">
-      <h3>${esc(x.name)}${mine ? ` <span class="desc">— nền mờ là ${esc(d.me.name)} ở ${
-        esc(ROLE_VN[mine.role] || mine.role)}</span>` : ''}</h3>
+  const rows = x.signature.map((s) => {
+    const axis = d.axes.find((a) => a.key === s.key);
+    if (!axis) return '';
+    return `<tr>
+      <td>${esc(axis.label)}<div class="desc">${esc(axis.hint)}</div></td>
+      <td class="num">${fmt(s.raw, s.raw < 10 ? 3 : 0)}</td>
+      <td class="num">${s.norm === null ? '—' : fmt(s.norm, s.norm < 10 ? 3 : 0)}</td>
+      <td class="num"><b>${s.index === null ? '—' : fmt(s.index, 2) + '×'}</b></td>
+      <td>${axis.kind === 'phong-cach' ? 'phong cách' : 'chất lượng'}</td>
+    </tr>`;
+  }).join('');
+
+  return `${head}
+    <div class="sig-body">
       ${styleRadar(d.axes, series)}
+      <ul class="sig-far">${far}</ul>
+    </div>
+    <details class="pf-more"><summary>Bảy trục, số đầy đủ</summary>
       <div class="table-scroll"><table>
         <thead><tr><th>Trục</th><th class="num">Của họ</th><th class="num">Mức thường</th>
           <th class="num">Tỉ số</th><th>Loại</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-    </div>`;
-  }).join('');
+    </details>`;
 }
 
 function idolMeBlock(d) {
@@ -3730,6 +3857,42 @@ function idolHeroes(d) {
   }).join('')}</div>`;
 }
 
+/**
+ * Nối dải ảnh với khung nội dung. Chỉ VẼ LẠI KHUNG, không vẽ lại dải ảnh — vẽ lại cả cụm thì
+ * nút vừa bấm bị thay bằng nút mới và tiêu điểm bàn phím rơi về đầu trang.
+ */
+function wireFacePick(d) {
+  const pickRow = $('.facepick');
+  const panel = $('#sig-panel');
+  if (!pickRow || !panel) return;
+
+  pickRow.onclick = (e) => {
+    const btn = e.target.closest('.face');
+    if (!btn) return;
+
+    const idol = d.idols.find((x) => x.id === Number(btn.dataset.idol));
+    if (!idol) return;
+
+    sigPick = idol.id;
+    $$('.face', pickRow).forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+    panel.innerHTML = signaturePanel(d, idol);
+  };
+
+  // Mũi tên trái/phải chạy dọc dải ảnh — đây là một tablist, bàn phím phải đi được như tablist.
+  pickRow.onkeydown = (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+
+    const all = $$('.face', pickRow);
+    const at = all.indexOf(document.activeElement.closest('.face'));
+    if (at < 0) return;
+
+    e.preventDefault();
+    const next = all[(at + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length];
+    next.focus();
+    next.click();
+  };
+}
+
 async function loadIdols(accountId) {
   const cards = $('#idol-cards');
   if (!cards) return;
@@ -3747,6 +3910,8 @@ async function loadIdols(accountId) {
     $('#idol-signature').innerHTML = idolSignatures(d);
     $('#idol-me').innerHTML = idolMeBlock(d);
     $('#idol-heroes').innerHTML = idolHeroes(d);
+
+    wireFacePick(d);
   } catch (e) {
     cards.innerHTML = `<div class="empty">Không tải được: ${esc(String(e.message || e))}</div>`;
   }
@@ -4746,12 +4911,9 @@ function hoistToHeading(el, details, label) {
   const body = details.querySelector('.why-body');
   while (body && body.firstChild) pop.appendChild(body.firstChild);
 
-  btn.onclick = () => {
-    const open = btn.getAttribute('aria-expanded') === 'true';
-    btn.setAttribute('aria-expanded', String(!open));
-  };
-  btn.onblur = () => btn.setAttribute('aria-expanded', 'false');
-
+  // KHÔNG gán onclick ở đây. Việc mở/đóng do một bộ nghe uỷ quyền ở document lo — xem
+  // setupInfoDots(). Gán cả hai chỗ thì mỗi cú bấm đảo trạng thái hai lần và dấu "i" thành
+  // ra bấm không ăn.
   wrap.append(btn, pop);
   title.appendChild(wrap);
 
@@ -4760,6 +4922,50 @@ function hoistToHeading(el, details, label) {
   details.remove();
   el.hidden = true;
   return true;
+}
+
+/**
+ * Dấu "i" viết THẲNG trong HTML do JS sinh ra, không qua đường gấp .desc.
+ *
+ * Cần vì không phải chú thích nào cũng đi sau một tiêu đề: thẻ tuyển thủ muốn dán dấu "i" vào
+ * đuôi cái TÊN, mà tên ở đó là một ô trong bố cục chứ không phải thẻ h3 — hoistToHeading()
+ * không với tới. Dùng chung đúng bộ lớp CSS nên hai lối tạo ra một thứ giống hệt nhau.
+ */
+function infoDot(text, label = 'Giải thích') {
+  if (!text) return '';
+  return `<span class="info"><button type="button" class="info-btn" aria-expanded="false"
+      aria-label="${esc(label)}">i</button><span class="info-pop" role="tooltip">${esc(text)}</span></span>`;
+}
+
+/**
+ * MỘT bộ nghe cho MỌI dấu "i", uỷ quyền ở document.
+ *
+ * Gán tay từng nút thì nút do JS vẽ lại sau đó sẽ mất handler mà không có gì báo — đúng loại
+ * hỏng lặng lẽ mà tệp này đã dính vài lần. Uỷ quyền thì nút sinh ra lúc nào cũng chạy.
+ */
+function setupInfoDots() {
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest?.('.info-btn');
+
+    // Bấm ra ngoài thì đóng hết: không có nhánh này thì mở ba dấu "i" là ba popover chồng nhau.
+    $$('.info-btn[aria-expanded="true"]').forEach((b) => {
+      if (b !== btn) b.setAttribute('aria-expanded', 'false');
+    });
+
+    if (!btn) return;
+    btn.setAttribute('aria-expanded', String(btn.getAttribute('aria-expanded') !== 'true'));
+  });
+
+  // Rời tiêu điểm thì đóng — bàn phím phải thoát ra được, không chỉ chuột.
+  document.addEventListener('focusout', (e) => {
+    const btn = e.target.closest?.('.info-btn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    $$('.info-btn[aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+  });
 }
 
 function watchForExplanations() {
@@ -4820,5 +5026,6 @@ setupTabs();
 setupSubTabs();
 setupTableSorting();
 setupModes();
+setupInfoDots();
 watchForExplanations();
 boot();

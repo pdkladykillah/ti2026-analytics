@@ -319,6 +319,20 @@ h3 { font-size: 17px; }
    thì mắt đọc ra ba mức quan trọng khác nhau. */
 .card * + h3 { margin-top: var(--s-5); }
 
+/* Khoảng hở SAU tiêu đề mục. Luật này tồn tại vì một sự cố có thật, không phải cho cân đối:
+   khoảng hở đó vốn KHÔNG thuộc về tiêu đề mà do đoạn .desc đứng ngay dưới tạo ra — rồi
+   hoistToHeading() gấp chính đoạn đó thành dấu "i" và đặt hidden lên nó. [hidden] là
+   display:none, nên margin của nó biến mất theo, và tiêu đề dính sát vào bảng bên dưới.
+   Mọi mục có dấu "i" đều mắc, tức gần như mọi mục.
+
+   Tiêu đề phải TỰ MANG khoảng hở của nó. Mượn của hàng xóm thì mất hàng xóm là mất luôn. */
+.card h3, .card h4 { margin-bottom: var(--s-3); }
+
+/* Trừ tiêu đề nằm trong <header>: ở đó nó là một ô của hàng ngang (.sc-stage, .team-card
+   đều là flex có align-items), nên margin-bottom vừa thừa vừa làm lệch căn hàng — khoảng
+   hở của cả khối là việc của chính <header>. */
+.card header h3, .card header h4 { margin-bottom: 0; }
+
 /* Nhãn nhỏ chữ hoa. Trước đây bộ kiểu này được chép nguyên vào một style nội tuyến vì
    không có lớp nào để dùng lại. */
 .eyebrow {
@@ -503,6 +517,22 @@ nav button {
 }
 nav button svg { width: 19px; height: 19px; flex: none; stroke-width: 2.3; }
 nav button:hover { background: var(--surface-2); color: var(--ink); }
+
+/* NỀN TỐI THÌ NHÃN TAB PHẢI SÁNG HẲN, KHÔNG DÙNG BẬC CHỮ PHỤ.
+
+   Đây KHÔNG phải lỗi tương phản: đo ra --ink-2 trên nền thẻ đạt 9,29:1 ở chủ đề tối lam
+   và 9,52:1 ở chủ đề tối vàng — vượt xa mức AA 4,5:1. Nhưng tỉ số tương phản đo mảng màu
+   đặc, còn thứ mắt đọc ở đây là nét chữ 15px nặng 600: trên nền tối, khử răng cưa ăn mòn
+   hai bên nét sáng nên chữ MỎNG đi và trông nhạt hơn đúng cặp màu đó ở chủ đề sáng. Cùng
+   một con số, hai cảm nhận khác nhau — đúng tinh thần "hai chủ đề, hai chiến lược".
+
+   Không sợ mất thứ bậc với tab đang chọn: tab đó phân biệt bằng NỀN đặc màu nhấn, nên
+   nhãn các tab còn lại sáng lên không hề làm nó chìm. 14,09:1 sau khi đổi. */
+   Viết :not(...) chứ không dựa vào thứ tự dòng: luật màu của tab ĐANG CHỌN (--on-accent)
+   có cùng độ đặc hiệu, nên nếu chỉ dựa vào ai đứng sau thì một lần dời khối là chữ trên
+   nền màu nhấn đổi màu mà không ai thấy. Hai luật loại trừ nhau thì thứ tự hết quan trọng. */
+[data-theme="dark"] nav button:not([aria-selected="true"]),
+[data-theme="dark"] .mode-btn:not([aria-pressed="true"]) { color: var(--ink); }
 
 /* Tab đang chọn: nền vàng đặc + NỔI LÊN bằng bóng, không viền sẫm.
    Viền sẫm quanh một mảng vàng là thứ làm giao diện nặng nét — mà nó cũng thừa:
@@ -1323,7 +1353,10 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .sc-stage h3 { font-size: 17px; }
 .sc-progress { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
-.sc-day {
+/* h4.sc-day chứ không phải .sc-day: nhãn ngày là nhãn, không phải tiêu đề mục, nên nó giữ
+   nhịp riêng chật hơn. Mà `.card h4` cũng là hai bậc đặc hiệu, nên viết trần .sc-day thì
+   thua và nhãn ngày bị nong ra theo tiêu đề mục. */
+h4.sc-day {
   font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
   color: var(--muted); margin: var(--s-4) 0 var(--s-2); font-weight: 600;
 }
@@ -1542,6 +1575,137 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .rd-hint { font-size: 12px; fill: var(--muted); }
 
 /* ---- Học lối chơi từ idol ---- */
+
+/* ẢNH TUYỂN THỦ — dùng chung cho thẻ tiêu điểm và dải chọn người.
+   Nền + viền là bắt buộc: ảnh Steam nhiều cái nền tối thui, thả thẳng lên nền tối thì
+   biến mất viền và trông như một lỗ thủng. */
+.face-img {
+  position: relative; overflow: hidden; flex: none;
+  display: block; border-radius: 50%;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+}
+.face-img img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+}
+
+/* Nằm DƯỚI ảnh, chỉ lộ ra khi ảnh không tải được. Xem ghi chú ở idolFace(). */
+.face-alt {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-family: var(--font-head); font-weight: 800; font-size: 18px;
+  color: var(--muted);
+}
+
+/* ---- Thẻ tiêu điểm tuyển thủ ---- */
+
+.spot-grid {
+  display: grid; gap: var(--s-3);
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+}
+
+.spot {
+  display: grid; gap: var(--s-3);
+  background: var(--surface-2); border-radius: var(--r-lg);
+  border: var(--bw) solid var(--card-edge);
+  padding: var(--s-4);
+}
+
+.spot-top { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+.spot-id { min-width: 0; }
+
+/* Tên là thứ to thứ hai trên thẻ, sau con số. Dùng font tiêu đề chứ không phải font số:
+   tên người không phải đại lượng đo được, và trộn hai giọng đó lại thì bảng số mất nghĩa. */
+.spot-name {
+  font-family: var(--font-head); font-weight: 800; font-size: 18px;
+  line-height: 1.2; color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.spot-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+/* Ba con số CHIA ĐỀU, không co theo độ dài: cột bằng nhau thì mắt so ngang được giữa các
+   thẻ, còn cột co giãn thì mỗi thẻ một nhịp và phép so phải đọc lại nhãn từng lần. */
+.spot-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--s-2);
+  padding: var(--s-3) 0;
+  border-block: 1px solid var(--border);
+}
+.spot-stat { text-align: center; min-width: 0; }
+.spot-stat b {
+  display: block; font-size: 25px; font-weight: 800;
+  line-height: 1.1; color: var(--ink);
+  letter-spacing: -.02em;
+}
+.spot-stat span {
+  display: block; font-size: 12px; color: var(--muted);
+  line-height: 1.25; margin-top: 3px;
+}
+
+.spot-foot { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+
+/* Mẫu mỏng thì nói bằng NÉT chứ không chỉ bằng chữ trong dấu "i": một thẻ 12 ván không được
+   trông y hệt thẻ 300 ván. Gạch bên trái, không phải màu chữ — màu không bao giờ là kênh duy nhất. */
+.spot-thin { border-left: 3px solid var(--neg); }
+
+/* ---- Dải ảnh chọn tuyển thủ ---- */
+
+.facepick {
+  display: flex; flex-wrap: wrap; gap: var(--s-2);
+  margin-bottom: var(--s-4);
+}
+
+.face {
+  display: grid; justify-items: center; gap: 3px;
+  width: 92px; padding: var(--s-2) 6px;
+  background: none; border: 2px solid transparent; border-radius: var(--r-md);
+  cursor: pointer; font-family: var(--font-body);
+  transition: background .15s var(--ease), border-color .15s var(--ease);
+}
+.face:hover { background: var(--surface-2); }
+
+/* Người đang xem: nền đặc + viền màu nhấn + tên đậm. BA dấu hiệu chứ không một —
+   viền mảnh màu nhấn một mình thì ở chủ đề sáng nó chỉ đạt 2,2:1 và gần như không thấy. */
+.face[aria-selected="true"] {
+  background: var(--accent-soft); border-color: var(--accent);
+}
+.face[aria-selected="true"] .face-name { color: var(--accent-ink); font-weight: 800; }
+.face[aria-selected="true"] .face-img { border-color: var(--accent); }
+
+.face-name {
+  font-size: 12.5px; font-weight: 700; color: var(--ink-2);
+  line-height: 1.2; text-align: center; overflow-wrap: anywhere;
+}
+.face-role { font-size: 11px; color: var(--muted); line-height: 1.2; }
+
+/* ---- Khung chữ ký của người đang chọn ---- */
+
+.sig-head {
+  display: flex; align-items: center; gap: var(--s-3);
+  flex-wrap: wrap; margin-bottom: var(--s-4);
+}
+.sig-name { font-family: var(--font-head); font-weight: 800; font-size: 20px; line-height: 1.2; }
+.sig-meta { font-size: 13px; color: var(--muted); }
+.sig-vs { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+
+/* Radar và ba trục lệch nhất NẰM CẠNH nhau khi đủ chỗ: hình trả lời "hình dạng thế nào",
+   chữ trả lời "khác thường ở đâu" — hai câu khác nhau, đọc cùng lúc thì mới nối được. */
+.sig-body {
+  display: grid; gap: var(--s-4);
+  grid-template-columns: minmax(240px, 1fr) minmax(220px, 1fr);
+  align-items: center;
+}
+@media (max-width: 620px) {
+  .sig-body { grid-template-columns: 1fr; }
+}
+
+.sig-far { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.sig-far li {
+  background: var(--surface-2); border-radius: var(--r-md);
+  padding: var(--s-3); font-size: 14px; line-height: 1.45;
+}
+.sig-far .num { font-size: 17px; font-weight: 800; margin: 0 4px; }
 
 .idol-block { padding-top: var(--s-4); }
 .idol-block + .idol-block { margin-top: var(--s-4); border-top: 1px solid var(--border); }

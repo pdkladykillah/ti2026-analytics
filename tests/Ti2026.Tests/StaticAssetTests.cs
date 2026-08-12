@@ -197,4 +197,43 @@ public class StaticAssetTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
         foreach (var id in new[] { "cards", "signature", "me", "heroes", "person" })
             view.Should().Contain($"id=\"idol-{id}\"", $"khung idol-{id} đã biến mất");
     }
+
+    /// <summary>
+    /// KHÔNG ĐƯỢC CÓ HAI HÀM CÙNG TÊN Ở CẤP NGOÀI CÙNG app.js.
+    ///
+    /// Bài này khoá lại một sự cố đã xảy ra và đã sống sót nhiều phiên làm việc: có hai
+    /// <c>async function loadSchedule()</c> — một vẽ bảng đấu vào #schedule-body, một vẽ trạng
+    /// thái vòng nạp vào #sched-body. JavaScript không coi đó là lỗi: khai báo hàm sau lặng lẽ
+    /// ĐÈ LÊN hàm trước.
+    ///
+    /// Hậu quả là kiểu hỏng khó truy nhất trong tệp này — không ném lỗi, không cảnh báo, không
+    /// dấu vết trong console. Bấm tab "Lịch thi đấu" thì gọi trúng hàm còn sống, nó ghi vào một
+    /// thẻ ở TAB KHÁC, còn #schedule-body không ai đụng tới nên trắng trơn. Mọi dấu hiệu bên
+    /// ngoài đều chỉ sai chỗ: api/schedule vẫn trả đủ 27 nút, tệp triển khai vẫn khớp bản local,
+    /// và bài kiểm "mọi id đều tồn tại" ở trên vẫn xanh vì cả hai id đều có thật.
+    /// </summary>
+    [Fact]
+    public async Task Khong_hai_ham_nao_trong_app_js_trung_ten()
+    {
+        var js = await factory.CreateClient().GetStringAsync("/app.js");
+
+        // Chỉ cấp ngoài cùng: hàm lồng bên trong một hàm khác thì trùng tên là chuyện bình thường
+        // và vô hại. Neo vào đầu dòng là cách phân biệt đủ dùng ở tệp này (2 dấu cách trở lên là
+        // đang thụt vào trong một khối).
+        var names = Regex.Matches(js, @"^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)",
+                RegexOptions.Multiline)
+            .Select(m => m.Groups[1].Value)
+            .ToList();
+
+        names.Should().NotBeEmpty("không khớp được hàm nào thì bài kiểm này đang tự lừa mình");
+
+        var duplicates = names.GroupBy(n => n)
+            .Where(g => g.Count() > 1)
+            .Select(g => $"{g.Key} ({g.Count()} lần)")
+            .ToList();
+
+        duplicates.Should().BeEmpty(
+            "khai báo hàm sau đè lên hàm trước mà không báo gì — bản đầu tiên thành mã chết và "
+            + "mọi lời gọi tới nó lặng lẽ chạy sang hàm khác: " + string.Join(", ", duplicates));
+    }
 }

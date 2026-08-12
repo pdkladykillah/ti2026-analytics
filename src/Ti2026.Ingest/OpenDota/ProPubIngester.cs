@@ -29,7 +29,13 @@ public class ProPubIngester(
     /// không cần nhịp đó: hero pool của một tuyển thủ không đổi trong nửa ngày, và mỗi lần chạy
     /// tốn 96 request.
     /// </summary>
-    public static readonly TimeSpan MinInterval = TimeSpan.FromHours(12);
+    /// <remarks>
+    /// 24 giờ, không phải 12. Đây là nguồn TỐN NHẤT của cả trang: 80 tuyển thủ × 1 lời gọi mỗi
+    /// vòng, tức 160 lời gọi mỗi ngày ở nhịp 12 giờ — bằng 45% toàn bộ chi phí API, chỉ để dò
+    /// xu hướng hero. Mà hero pool của một tuyển thủ không đổi trong một ngày, nên 12 giờ vốn
+    /// đã thừa: giãn lên 24 giờ cắt đúng một nửa khoản lớn nhất mà không mất tín hiệu nào.
+    /// </remarks>
+    public static readonly TimeSpan MinInterval = TimeSpan.FromHours(24);
 
     /// <summary>Số ván gần nhất lấy cho mỗi người. Một request bất kể số này.</summary>
     public const int MatchesPerPlayer = 20;

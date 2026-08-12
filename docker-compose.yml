@@ -28,9 +28,25 @@ services:
       - Ti2026__IngestIntervalHours=6
       - Ti2026__IngestToken=${TI2026_INGEST_TOKEN:?Thieu TI2026_INGEST_TOKEN trong .env}
 
-      # API key OpenDota. KHÔNG bắt buộc: thiếu thì chạy bậc miễn phí 3000/ngày, 0.8 req/s.
-      # Có thì gỡ trần ngày và nâng nhịp lên 8 req/s. Giá trị nằm trong .env, không vào git.
+      # API key OpenDota. Giá trị nằm trong .env, không vào git.
       - Ti2026__OpenDota__ApiKey=${TI2026_OPENDOTA_API_KEY:-}
+
+      # KHOÁ ĐANG TẮT — cố ý, và đây là thứ quyết định hoá đơn.
+      #
+      # Đo được: trạng thái thường tốn ~355 lời gọi/ngày (36 mỗi vòng ingest × 4 vòng, cộng
+      # 80 cho pro-pub và 51 cho idol), tức 18% của bậc miễn phí 2.000/ngày. Trả tiền cho
+      # lượng đó là trả tiền cho thứ vốn miễn phí.
+      #
+      # BẬT LẠI KHI NẠP BÙ LƯỢNG LỚN. Không khoá thì trần mỗi vòng tụt từ 2.000 xuống 300
+      # ván và nhịp chậm gấp mười, nên một đợt 1.200 ván mất hơn 25 phút và chiếm nửa hạn
+      # mức ngày thay vì 4 phút. Cách bật:
+      #
+      #   docker compose run --rm -e Ti2026__OpenDota__UseApiKey=true app   # hoặc
+      #   sửa dòng dưới thành true, `docker compose up -d app`, nạp xong thì trả về false
+      #
+      # Một cờ này điều khiển CẢ BA: header xác thực, nhịp gọi, trần ván mỗi vòng. Xem ghi
+      # chú ở OpenDotaOptions.HasKey — tách chúng ra là con đường tới bị chặn IP.
+      - Ti2026__OpenDota__UseApiKey=false
       # KHÔNG đặt RequestsPerSecond ở đây. Dòng cũ ghi "=1" và nó ghi đè đúng mặc định 0.8
       # đặt trong code để tránh 429 — hạn mức OpenDota là 60/phút, mà 1 req/s bằng đúng 60/phút.
       # Một giá trị cấu hình ghi đè một quyết định đã được đo là cách âm thầm huỷ bản sửa.

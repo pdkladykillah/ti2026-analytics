@@ -119,7 +119,33 @@ public class OpenDotaOptions
     /// </summary>
     public double ApprovalThresholdUsd { get; set; } = 1.0;
 
-    public bool HasKey => !string.IsNullOrWhiteSpace(ApiKey);
+    /// <summary>
+    /// Có DÙNG khoá hay không — tách khỏi việc CÓ khoá hay không.
+    ///
+    /// Trạng thái thường của trang tốn khoảng 355 lời gọi mỗi ngày (đo được: 36 mỗi vòng ingest
+    /// × 4 vòng, cộng 160 cho pro-pub và 51 cho idol), tức chỉ 18% của bậc miễn phí 2.000/ngày.
+    /// Trả tiền cho lượng đó là trả tiền cho thứ vốn miễn phí.
+    ///
+    /// Nhưng khoá vẫn phải nằm sẵn trong .env, vì lúc NẠP BÙ thì nó đáng: không khoá thì trần
+    /// mỗi vòng tụt từ 2.000 xuống 300 ván và nhịp chậm gấp mười, nên một đợt 1.200 ván mất hơn
+    /// 25 phút và chiếm nửa hạn mức ngày thay vì 4 phút. Bật lại bằng đúng một biến môi trường
+    /// rồi dựng lại container.
+    ///
+    /// Đặt mặc định true để không đổi hành vi của bất kỳ nơi triển khai nào đang chạy — chỗ nào
+    /// muốn tắt thì khai rõ trong docker-compose, và khai rõ như vậy thì đọc file là thấy.
+    /// </summary>
+    public bool UseApiKey { get; set; } = true;
+
+    /// <summary>
+    /// MỘT quyết định, ba hệ quả. Cả header xác thực, nhịp gọi, lẫn trần ván mỗi vòng đều rẽ
+    /// nhánh theo đúng thuộc tính này.
+    ///
+    /// Đây là chỗ NGUY HIỂM nhất của cả lớp: nếu ba thứ đó tách ra tự quyết, sẽ có lúc ta gửi
+    /// request không kèm khoá nhưng vẫn chạy 8 req/giây — tức gấp mười lần bậc miễn phí cho
+    /// phép — và hậu quả không phải một vòng ingest hỏng mà là VPS bị chặn IP, mất luôn nguồn
+    /// dữ liệu. Vì thế mọi nơi phải hỏi thuộc tính này, không ai được tự kiểm ApiKey.
+    /// </summary>
+    public bool HasKey => UseApiKey && !string.IsNullOrWhiteSpace(ApiKey);
 
     /// <summary>Nhịp thực tế: có key thì nhanh, không thì giữ mức tôn trọng bậc miễn phí.</summary>
     public double EffectiveRequestsPerSecond => HasKey ? RequestsPerSecondWithKey : RequestsPerSecond;

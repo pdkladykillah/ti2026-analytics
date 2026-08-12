@@ -4590,7 +4590,16 @@ const FOLD_MIN_CHARS = 90;
  */
 function foldExplanations() {
   const targets = [
-    ...$$('.card > header > p.desc'),
+    // MỌI p.desc trong thẻ, không riêng cái nằm ở header.
+    //
+    // Bản trước chỉ quét header, nên 42 đoạn .desc do JS sinh ra TRONG thân mục không
+    // bao giờ được gấp. Gần như toàn bộ số đó thuộc tab Hồ sơ cá nhân — tức tab dài
+    // nhất vẫn là bức tường chữ luôn mở, đúng hai lời phàn nàn "quá nhiều chữ" và
+    // "cuộn quá nhiều", chỉ vì nó sinh chữ bằng JS thay vì viết trong index.html.
+    //
+    // Ngưỡng 90 ký tự vẫn chặn: chú thích ngắn dưới biểu đồ không bị gấp oan. Lớp
+    // .keep là đường thoát cho chú giải bắt buộc phải nằm mở.
+    ...$$('.card p.desc:not(.keep)'),
     ...$$('.note'),
   ];
 

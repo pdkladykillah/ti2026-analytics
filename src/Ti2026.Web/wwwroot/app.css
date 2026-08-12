@@ -47,7 +47,14 @@
   /* --- Chữ: đen ấm, không bao giờ #000 --- */
   --ink: #2a241a;
   --ink-2: #554c3b;
-  --muted: #7d735f;
+
+  /* Sẫm hơn bản đầu (#7d735f). Lý do: token này chỉ được kiểm trên nền --surface, mà
+     nó còn được dùng nhiều trên --surface-2 (đầu bảng, rãnh mục con, chip, hộp lồng)
+     — ở đó nó chỉ đạt 3,84:1, dưới ngưỡng AA, và chỉ hỏng ở chủ đề SÁNG nên rất dễ
+     lọt. Sửa TOKEN chứ không sửa từng chỗ dùng: --surface-2 có mặt ở quá nhiều nơi,
+     chữa từng chỗ thì lần sau lại có chỗ mới. Giờ đạt 6,09 / 5,08 / 5,50 trên
+     surface / surface-2 / bg, và vẫn nhạt hơn --ink-2 đủ để giữ vai trò "chữ mờ". */
+  --muted: #6a604b;
 
   /* --- Điểm nhấn: vàng Aegis --- */
   --accent: #e8a317;
@@ -481,6 +488,19 @@ nav button[aria-selected="true"] {
 table { width: 100%; border-collapse: collapse; font-size: 15px; }
 
 th, td { padding: 11px 12px; text-align: right; white-space: nowrap; }
+
+/* CHÚ THÍCH TRONG Ô BẢNG PHẢI XUỐNG DÒNG.
+   Bảng chữ ký idol nhồi cả câu 95 ký tự vào ô đầu dòng, mà td đang nowrap nên cột
+   đầu phình ra ~700px — VÀ cột đầu là cột dính khi cuộn ngang, nên nó chiếm hơn nửa
+   màn hình và người đọc gần như không kéo tới được cột "Tỉ số", cột duy nhất đáng đọc.
+   Độ ưu tiên phải là (0,2,1) mới đè nổi .card .desc (0,2,0) — viết `td .desc` thôi
+   thì thua và cỡ chữ vẫn 15,5px, tức chú thích to hơn cái nhãn nó chú thích. */
+.card td .desc, .card th .desc {
+  white-space: normal;
+  max-width: 26rem;
+  font-size: 13px;
+  margin-top: 3px;
+}
 th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; }
 
 thead th {
@@ -494,7 +514,10 @@ thead th:first-child { z-index: 3; background: var(--surface-2); border-radius: 
 thead th:last-child { border-radius: 0 var(--r-sm) 0 0; }
 thead th:hover { color: var(--ink); }
 thead th .sort { opacity: .45; margin-left: 3px; }
-thead th[aria-sort] .sort { opacity: 1; color: var(--accent); }
+/* --accent-ink, KHÔNG phải --accent. Mũi tên này là dấu hiệu DUY NHẤT cho biết bảng
+   đang sắp theo cột nào, mà vàng trên nền đầu bảng chỉ đạt 1,78:1 — gần như vô hình
+   đúng ở chỗ cần thấy nhất. Token -ink đã đảo chiều sẵn theo chủ đề. */
+thead th[aria-sort] .sort { opacity: 1; color: var(--accent-ink); }
 
 tbody tr { border-bottom: 1px solid var(--border); }
 tbody tr:hover td { background: var(--surface-2); }
@@ -871,7 +894,10 @@ tr.off-lineup td, .pred-hist.off-lineup { opacity: .5; }
 .pred-elo { font-size: 12px; color: var(--muted); }
 
 .pred-odds { display: grid; grid-template-columns: auto 1fr auto; gap: var(--s-2); align-items: center; }
-.pred-pct { font-family: var(--font-head); font-size: 20px; font-weight: 600; color: var(--accent); }
+/* Cùng lý do: 2,13:1 với --accent, trong khi .pred-pct.right ngay cạnh dùng màu lam
+   đạt 7,95:1. Hai vế của cùng một so sánh mà một bên mờ hẳn thì người đọc sẽ tưởng
+   bên đậm là bên được chọn. */
+.pred-pct { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--accent-ink); }
 .pred-pct.right { color: var(--pastel-3-ink); }
 .pred-split { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--surface-2); }
 .pred-split span:first-child { background: var(--accent); }
@@ -1168,11 +1194,20 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .chips .chip { cursor: pointer; font-family: inherit; }
 .chips .chip small { color: var(--muted); font-size: 11px; margin-left: 5px; }
-.chips .chip:hover { border-color: var(--accent); }
+/* BỘ LỌC VAI TRÒ DÙNG CHUNG NGÔN NGỮ VỚI .pill — cả trang chỉ nên có một cách vẽ
+   trạng thái bật.
+   Bản trước: nền bật --accent-soft chỉ chênh 1,13:1 so với nền tắt, viền bật là vàng
+   1px (1,38:1 so với viền thường — một sợi chỉ vô hình), và cả hai trạng thái cùng
+   font-weight 600 nên không còn kênh phi màu nào. Tệ hơn, :hover cũng đổi viền sang
+   đúng màu vàng đó, nên rê chuột qua chip CHƯA chọn cho ra gần đúng hình chip ĐÃ chọn. */
+.chips .chip { min-height: 44px; }
+.chips .chip:hover { background: var(--surface-2); border-color: var(--border-strong); }
 .chips .chip.on {
-  background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600;
+  background: var(--accent); border-color: var(--accent);
+  color: var(--on-accent); font-weight: 800;
+  box-shadow: var(--shadow-sm);
 }
-.chips .chip.on small { color: var(--ink-2); }
+.chips .chip.on small { color: var(--on-accent); opacity: .8; }
 
 /* --------------------- Đổi chác trong pha giao tranh --------------------- */
 
@@ -1189,7 +1224,10 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
   font-variant-numeric: tabular-nums; letter-spacing: -.02em;
 }
 .tr-lbl { font-size: 12.5px; color: var(--ink); margin-top: 2px; line-height: 1.35; }
-.tr-note { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+/* --ink-2 chu khong --muted: chu nay nam tren nen --surface-2, ma --muted tren nen
+   do chi dat 3,84:1 — duoi nguong AA. Cap mau nay lot khoi bo test vi test chi kiem
+   chu tren --bg va --surface. */
+.tr-note { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
 
 /* ------------------------------ Ra-đa 7 góc ------------------------------ */
 
@@ -1416,6 +1454,18 @@ tr.row-hi > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   box-shadow: var(--shadow-md);
 }
 
+/* CHỦ ĐỀ TỐI ĐI NGƯỢC CHIỀU ĐỘ SÂU nếu để nguyên.
+   Rãnh là --surface-2 #2a2318, ô nổi là --surface #201a12 — ô "nổi" lại TỐI HƠN cái
+   rãnh chứa nó, chênh đúng 1,11:1. Và bóng đổ không cứu được: chính tệp này đã kết
+   luận ở phần token rằng bóng trên nền tối gần như không tồn tại, rồi đặt ra quy tắc
+   "sáng thì độ sâu, tối thì nét" — nhưng .subpill lại dùng độ sâu cho cả hai.
+   Nên ở chủ đề tối: đảo hai nền cho đúng chiều, và cấp cho ô đang chọn một NÉT thật. */
+[data-theme="dark"] .subnav { background: var(--bg); }
+[data-theme="dark"] .subpill[aria-selected="true"] {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
 @media (max-width: 560px) {
   .subnav { width: 100%; }
   .subpill { flex: 1 1 auto; text-align: center; padding: 8px 10px; }
@@ -1434,7 +1484,7 @@ tr.row-hi > td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   line-height: 1.25; max-width: 92px;
 }
 /* Con số luôn đi kèm hero: một cái tên trần không nói được vì sao nó ở tier đó */
-.tl-num { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tl-num { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
 .who { font-size: 12px; color: var(--muted); max-width: 260px; }
 
@@ -1537,10 +1587,20 @@ thead th[data-sort-ready]:hover { color: var(--accent-ink); background: var(--su
 
 /* Bảng thay thế emblem: gập lại theo mặc định vì mỗi banner có ba ô, mở hết cùng lúc thì
    quay lại đúng vấn đề lăn chuột. */
-details > summary {
+/* KHOANH VÙNG luật chung này lại — nó chỉ dành cho <details> TRẦN.
+   Đây là nguyên nhân thật của cái nút "vì sao?" xấu, và nó đã thoát ba lần sửa liên
+   tiếp vì tôi chỉ nhìn vào .why mà không nhìn xuống cuối tệp. .why > summary có độ
+   ưu tiên CAO HƠN (0,1,1 so với 0,0,2) nên nó thắng — nhưng độ ưu tiên tính theo
+   TỪNG THUỘC TÍNH, mà .why không khai báo background/border, nên đúng hai thuộc tính
+   đó rơi xuống luật này. Kết quả: một dấu ? lẽ ra không nền không viền lại nằm trong
+   viên thuốc bo góc có viền, và vì .why để padding 3px 0 nên viền ôm sát chữ.
+   Chữa bằng :not() chứ không bằng cách khai báo lại background:none ở .why — khai
+   báo lại là chữa triệu chứng, lần sau thêm một lớp <details> nữa lại dính y hệt. */
+details:not(.why):not(.pf-more) > summary {
   cursor: pointer; padding: var(--s-2) var(--s-3);
   border: 1px solid var(--border); border-radius: var(--r-md);
   background: var(--surface-2); font-size: 14px;
 }
-details > summary:hover { border-color: var(--border-strong); }
-details[open] > summary { margin-bottom: var(--s-1); }
+details:not(.why):not(.pf-more) > summary:hover { border-color: var(--border-strong); }
+details:not(.why) [open] > summary,
+details:not(.why)[open] > summary { margin-bottom: var(--s-1); }

@@ -89,6 +89,14 @@ public class ThemeContrastTests(Ti2026TestFactory factory) : IClassFixture<Ti202
 
                      ("--pos", "--surface"), ("--neg", "--surface"), ("--warn", "--surface"),
                      ("--pos", "--pos-soft"), ("--neg", "--neg-soft"),
+
+                     // CHỮ TRÊN NỀN --surface-2. Bộ kiểm đầu bỏ sót đúng nền này, và một
+                     // vòng soi đã tìm ra bốn chỗ chữ nhỏ 11–12,5px đặt --muted lên nó:
+                     // chỉ 3,84:1, dưới ngưỡng AA, và chỉ hỏng ở chủ đề SÁNG nên dễ lọt
+                     // khi người sửa chỉ xem một chủ đề. Nền này có mặt ở đầu bảng, rãnh
+                     // mục con, khối gập và nhiều hộp lồng — bỏ sót nó là bỏ sót nửa trang.
+                     ("--ink", "--surface-2"), ("--muted", "--surface-2"),
+                     ("--accent-ink", "--surface-2"),
                      ("--pastel-1-ink", "--pastel-1"), ("--pastel-2-ink", "--pastel-2"),
                      ("--pastel-3-ink", "--pastel-3"), ("--pastel-4-ink", "--pastel-4"),
                      ("--pastel-5-ink", "--pastel-5"),

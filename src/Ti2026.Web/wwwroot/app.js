@@ -5145,21 +5145,37 @@ function placeInfoPop(btn) {
   // lại cộng dồn thêm một khoảng.
   pop.style.left = '';
   pop.style.top = '';
+  pop.style.maxWidth = '';
   pop.classList.remove('flip-up');
 
-  const pad = 10;
+  const pad = 12;
+
+  // documentElement.clientWidth, KHÔNG PHẢI window.innerWidth.
+  //
+  // innerWidth tính cả thanh cuộn dọc — trên Chrome/Windows là khoảng 15px. Kẹp theo nó thì
+  // popover được phép chạm tới mép ngoài của thanh cuộn, tức vẫn thò ra khỏi vùng nội dung
+  // đúng 15px và trang vẫn sinh thanh cuộn ngang. Bản sửa trước dùng innerWidth nên chỉ đỡ
+  // được phần lớn chứ không hết, đúng như quan sát: "vẫn tràn, dù đã đỡ hơn".
+  const view = document.documentElement.clientWidth;
+  const room = view - pad * 2;
+
+  // Rộng hơn cả khoảng trống thì phải THU LẠI, không dời được. Dời một hộp rộng hơn khung
+  // thì bên nào cũng thò, và vòng kẹp bên dưới sẽ giằng qua giằng lại.
+  if (pop.getBoundingClientRect().width > room) pop.style.maxWidth = room + 'px';
+
   const r = pop.getBoundingClientRect();
   const base = -8;
 
   let shift = 0;
-  if (r.right > window.innerWidth - pad) shift = window.innerWidth - pad - r.right;
+  if (r.right > view - pad) shift = view - pad - r.right;
   if (r.left + shift < pad) shift = pad - r.left;
   if (shift) pop.style.left = (base + shift) + 'px';
 
   // Không đủ chỗ bên dưới nhưng dư bên trên thì lật lên. Trên màn hình thấp, một chú thích
   // bốn dòng mở xuống dưới sẽ nằm ngoài tầm nhìn hoàn toàn.
   const after = pop.getBoundingClientRect();
-  if (after.bottom > window.innerHeight - pad && btn.getBoundingClientRect().top > after.height + pad)
+  const tall = document.documentElement.clientHeight;
+  if (after.bottom > tall - pad && btn.getBoundingClientRect().top > after.height + pad)
     pop.classList.add('flip-up');
 }
 

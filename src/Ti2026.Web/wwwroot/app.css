@@ -130,6 +130,51 @@
   --logo-edge: rgba(42, 36, 26, .55);
 }
 
+/* ============================================================================
+   CHẾ ĐỘ "LỐI CHƠI CỦA TÔI" — nền lạnh, điểm nhấn lam ngọc.
+
+   VÌ SAO HAI BẢNG MÀU CHỨ KHÔNG PHẢI MỘT. Trang làm hai việc khác hẳn nhau và người
+   dùng ở hai tâm thế khác nhau: xem giải thì là không khí sự kiện, còn soi hồ sơ mình
+   thì là ngồi đọc số. Vàng Aegis đúng cho cái thứ nhất và hơi ồn cho cái thứ hai.
+
+   Sắc lam ngọc vẫn thuộc về Dota — nó là màu mana và màu rune trên bản đồ — nên đổi
+   chế độ vẫn ở trong cùng một thế giới, chỉ đổi tâm trạng.
+
+   MÀU NGỮ NGHĨA (--pos, --neg) GIỮ NGUYÊN qua cả hai chế độ. Thắng và thua phải trông
+   giống nhau ở mọi nơi, nếu không thì mỗi lần đổi chế độ người đọc lại phải học lại
+   bảng màu. Và chúng đã được cân cho người mù màu đỏ-lục, đổi là phá.
+   ========================================================================= */
+[data-mode="me"] {
+  --bg: #eef2f5;
+  --surface: #fcfdfe;
+  --surface-2: #e1e9ee;
+  --border: #c9d7de;
+  --border-strong: #a4b8c2;
+
+  --ink: #17232a;
+  --ink-2: #41535d;
+  --muted: #50626d;          /* đạt AA trên cả ba nền, xem ghi chú ở --muted chế độ TI */
+
+  --accent: #2ec4d6;
+  --accent-hover: #1fb0c2;
+  --accent-soft: #d5f1f6;
+  --accent-ink: #0a6673;
+  --on-accent: #062329;
+
+  --pastel-1: #d5f1f6;  --pastel-1-ink: #0a6673;
+  --pastel-3: #dce9f7;  --pastel-3-ink: #1b4f86;
+  --pastel-4: #d9eee9;  --pastel-4-ink: #10614f;
+
+  --heat-lo: #eef2f5;
+  --heat-hi: #b9d6e6;
+
+  --shadow-sm: 0 1px 2px rgba(23, 46, 58, .10);
+  --shadow-md: 0 2px 4px rgba(23, 46, 58, .10), 0 8px 18px rgba(23, 46, 58, .12);
+  --shadow-lg: 0 4px 8px rgba(23, 46, 58, .12), 0 18px 44px rgba(23, 46, 58, .18);
+
+  --logo-edge: rgba(23, 35, 42, .55);
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
 
@@ -185,6 +230,35 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
   --shadow-md: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 20px rgba(0, 0, 0, .45);
   --shadow-lg: 0 2px 4px rgba(0, 0, 0, .35), 0 16px 40px rgba(0, 0, 0, .55);
+}
+
+/* Chế độ "lối chơi của tôi" ở chủ đề TỐI. Phải đặt SAU khối [data-theme="dark"], nếu
+   không nó bị khối kia ghi đè — hai bộ chọn cùng độ ưu tiên thì cái viết sau thắng. */
+[data-theme="dark"][data-mode="me"] {
+  --bg: #101a1e;
+  --surface: #172429;
+  --surface-2: #20313a;
+  --border: #2d414b;
+  --border-strong: #3f5a66;
+
+  --ink: #e9f3f6;
+  --ink-2: #b6c9d2;
+  --muted: #93a9b4;
+
+  --accent: #47d6e6;
+  --accent-hover: #6ce2f0;
+  --accent-soft: #123239;
+  --accent-ink: #7ce3ef;
+  --on-accent: #062329;
+
+  --pastel-1: #123239;  --pastel-1-ink: #7ce3ef;
+  --pastel-3: #14283f;  --pastel-3-ink: #9cc4f0;
+  --pastel-4: #10312b;  --pastel-4-ink: #7fd9c3;
+
+  --heat-lo: #172429;
+  --heat-hi: #2f5468;
+
+  --logo-edge: rgba(233, 243, 246, .45);
 }
 
 /* ============================ Cơ bản ============================ */
@@ -367,22 +441,56 @@ nav {
   box-shadow: var(--shadow-sm);
 }
 
-.navgroup { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
-.navgroup + .navgroup { border-top: 1px solid var(--border); padding-top: var(--s-2); }
+.navgroup-tabs { display: flex; flex-wrap: wrap; gap: var(--s-1); }
 
-.navgroup-label {
-  flex: none; width: 6.5rem;
-  font-size: 12px; font-weight: 800; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--muted); line-height: 1.2;
+/* ---------------------------------------------------------------------------
+   CÔNG TẮC HAI CHẾ ĐỘ — kiểu thanh trượt phân đoạn.
+
+   Hai ô CHIA ĐỀU bằng grid, không phải flex ôm sát chữ: con thoi trượt được là nhờ
+   hai ô rộng bằng nhau, còn nếu ô co theo độ dài chữ ("Giải TI 2026" ngắn hơn "Lối
+   chơi của tôi") thì translateX(100%) sẽ trượt sai chỗ.
+
+   Con thoi là một phần tử RIÊNG nằm dưới, không phải nền của nút: nền của nút thì
+   nhảy tức thì khi đổi, còn phần tử riêng thì trượt được và mắt theo kịp chuyển động
+   — đó chính là thứ làm kiểu điều khiển này dễ hiểu.
+   --------------------------------------------------------------------------- */
+.modeswitch {
+  position: relative;
+  display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+  padding: 4px; margin-bottom: var(--s-3);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / .06);
 }
 
-.navgroup-tabs { display: flex; flex-wrap: wrap; gap: var(--s-1); flex: 1 1 auto; }
+.mode-btn {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 0; background: none; cursor: pointer;
+  padding: 10px 22px; min-height: 46px; border-radius: var(--r-pill);
+  font-family: var(--font-body); font-size: 15px; font-weight: 700;
+  color: var(--ink-2); white-space: nowrap;
+  transition: color .22s var(--ease);
+}
+.mode-btn svg { width: 18px; height: 18px; flex: none; }
+.mode-btn[aria-pressed="true"] { color: var(--on-accent); font-weight: 800; }
+
+.mode-thumb {
+  position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 4px;
+  width: calc(50% - 4px);
+  background: var(--accent); border-radius: var(--r-pill);
+  box-shadow: var(--shadow-sm);
+  transition: transform .28s var(--ease), background .22s var(--ease);
+}
+[data-mode="me"] .mode-thumb { transform: translateX(100%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-thumb { transition: none; }
+}
 
 @media (max-width: 560px) {
-  /* Nhãn nhóm lên thành một dòng riêng: giữ cột 6,5rem trên màn hẹp thì phần tab
-     còn chưa tới nửa chiều ngang và mỗi tab tự xuống dòng. */
-  .navgroup { display: block; }
-  .navgroup-label { width: auto; display: block; margin-bottom: var(--s-1); }
+  .modeswitch { display: grid; width: 100%; }
+  .mode-btn { padding: 10px 12px; font-size: 14px; }
 }
 
 nav button {
@@ -583,6 +691,12 @@ nav button[aria-selected="true"] {
 }
 .info-pop > :first-child { margin-top: 0; }
 .info-pop > :last-child { margin-bottom: 0; }
+
+/* Vạch ngăn giữa nhiều đoạn giải thích đã gộp vào cùng một dấu "i". */
+.info-sep {
+  border: 0; border-top: 1px solid var(--border);
+  margin: var(--s-3) 0;
+}
 
 .info:hover .info-pop,
 .info-btn:focus-visible ~ .info-pop,

@@ -29,20 +29,55 @@ public class ThemeContrastTests(Ti2026TestFactory factory) : IClassFixture<Ti202
             .GroupBy(m => m.Groups[1].Value)
             .ToDictionary(g => g.Key, g => g.Last().Groups[2].Value);
 
-    private async Task<(Dictionary<string, string> Light, Dictionary<string, string> Dark)> LoadAsync()
+    /// <summary>
+    /// Đọc một khối bộ chọn theo đúng tên, cắt tại dấu } đầu tiên.
+    /// </summary>
+    private static Dictionary<string, string> Block(string css, string selector)
+    {
+        var at = css.IndexOf(selector + " {", StringComparison.Ordinal);
+        if (at < 0) return [];
+
+        var end = css.IndexOf('}', at);
+        return Tokens(css[at..(end < 0 ? css.Length : end)]);
+    }
+
+    /// <summary>
+    /// Bốn bảng màu: hai chế độ nhân hai chủ đề.
+    ///
+    /// Mỗi khối chỉ khai LẠI phần đổi nên phải chồng lên nhau theo đúng thứ tự thác đổ của CSS,
+    /// nếu không mọi token không đổi sẽ thành "thiếu". Thứ tự: gốc → chế độ → chủ đề → giao của
+    /// hai cái sau. Ba khối giữa cùng độ ưu tiên (một thuộc tính) nên thứ tự trong TỆP quyết
+    /// định; khối cuối có hai thuộc tính nên luôn thắng.
+    /// </summary>
+    private async Task<Dictionary<string, Dictionary<string, string>>> PalettesAsync()
     {
         var css = await CssAsync();
-        var darkAt = css.IndexOf("[data-theme=\"dark\"]", StringComparison.Ordinal);
-        darkAt.Should().BeGreaterThan(0, "không tìm thấy khối chủ đề tối");
 
-        var light = Tokens(css[css.IndexOf(":root {", StringComparison.Ordinal)..darkAt]);
+        var root = Block(css, ":root");
+        root.Should().NotBeEmpty("không đọc được khối token gốc");
 
-        // Chủ đề tối chỉ khai LẠI phần đổi, phần còn lại thừa kế từ :root — nên phải chồng lên
-        // chứ không đọc riêng, nếu không mọi token không đổi sẽ thành "thiếu".
-        var dark = new Dictionary<string, string>(light);
-        foreach (var (k, v) in Tokens(css[darkAt..])) dark[k] = v;
+        Dictionary<string, string> Merge(params Dictionary<string, string>[] layers)
+        {
+            var outp = new Dictionary<string, string>(root);
+            foreach (var layer in layers)
+                foreach (var (k, v) in layer) outp[k] = v;
+            return outp;
+        }
 
-        return (light, dark);
+        var me = Block(css, "[data-mode=\"me\"]");
+        var dark = Block(css, "[data-theme=\"dark\"]");
+        var darkMe = Block(css, "[data-theme=\"dark\"][data-mode=\"me\"]");
+
+        me.Should().NotBeEmpty("thiếu bảng màu chế độ 'lối chơi của tôi'");
+        darkMe.Should().NotBeEmpty("thiếu biến thể tối của chế độ đó");
+
+        return new Dictionary<string, Dictionary<string, string>>
+        {
+            ["ti-sáng"] = Merge(),
+            ["ti-tối"] = Merge(dark),
+            ["tôi-sáng"] = Merge(me),
+            ["tôi-tối"] = Merge(me, dark, darkMe),
+        };
     }
 
     private static double[] Rgb(string hex)
@@ -75,7 +110,7 @@ public class ThemeContrastTests(Ti2026TestFactory factory) : IClassFixture<Ti202
     {
         var data = new TheoryData<string, string, string>();
 
-        foreach (var theme in new[] { "light", "dark" })
+        foreach (var theme in new[] { "ti-sáng", "ti-tối", "tôi-sáng", "tôi-tối" })
         foreach (var (fg, bg) in new[]
                  {
                      ("--ink", "--bg"), ("--ink", "--surface"),
@@ -110,8 +145,7 @@ public class ThemeContrastTests(Ti2026TestFactory factory) : IClassFixture<Ti202
     [MemberData(nameof(Pairs))]
     public async Task Moi_cap_chu_nen_deu_dat_muc_AA(string theme, string fg, string bg)
     {
-        var (light, dark) = await LoadAsync();
-        var t = theme == "dark" ? dark : light;
+        var t = (await PalettesAsync())[theme];
 
         t.Should().ContainKey(fg).And.ContainKey(bg);
 
@@ -155,12 +189,13 @@ public class ThemeContrastTests(Ti2026TestFactory factory) : IClassFixture<Ti202
     /// mọi chỗ dùng cặp này vẫn phải kèm dấu, chữ hoặc thứ tự.
     /// </summary>
     [Theory]
-    [InlineData("light")]
-    [InlineData("dark")]
+    [InlineData("ti-sáng")]
+    [InlineData("ti-tối")]
+    [InlineData("tôi-sáng")]
+    [InlineData("tôi-tối")]
     public async Task Thang_thua_van_tach_duoc_khi_mu_mau(string theme)
     {
-        var (light, dark) = await LoadAsync();
-        var t = theme == "dark" ? dark : light;
+        var t = (await PalettesAsync())[theme];
 
         var a = Deuteranope(t["--pos"]);
         var b = Deuteranope(t["--neg"]);

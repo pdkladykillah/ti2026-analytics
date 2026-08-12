@@ -4686,17 +4686,47 @@ function foldExplanations() {
  * Trả về true nếu đã gắn được. Không gắn được (không có tiêu đề nào đứng trước) thì
  * để nguyên dạng gấp cũ — vẫn đọc được, chỉ là chiếm một dòng.
  */
-function hoistToHeading(el, details, label) {
-  // CHỈ khi đoạn này nằm trong <header> của chính thẻ đó.
-  //
-  // Bản đầu để `el.parentElement` làm phương án dự phòng, và nó sai ở khối .note cấp
-  // trang: cha của nó là cả <section>, nên querySelector sẽ bắt được tiêu đề của một
-  // THẺ KHÁC bên dưới và dán lời cảnh báo vào đúng chỗ không liên quan.
-  const head = el.closest('header');
-  if (!head || el.classList.contains('note')) return false;
+/**
+ * Tiêu đề mà đoạn này thuộc về.
+ *
+ * Tìm theo ANH CHỊ EM ĐỨNG TRƯỚC, rồi mới tới <header> của thẻ. Không bao giờ dùng
+ * `parentElement.querySelector` làm phương án dự phòng: cha của một khối .note cấp trang
+ * là cả <section>, nên nó sẽ bắt trúng tiêu đề của một THẺ KHÁC bên dưới và dán lời giải
+ * thích vào đúng chỗ không liên quan.
+ */
+function nearestHeading(el) {
+  for (let p = el.previousElementSibling; p; p = p.previousElementSibling)
+    if (p.matches('h1, h2, h3, h4')) return p;
 
-  const title = head.querySelector('h1, h2, h3');
-  if (!title || title.querySelector('.info')) return false;
+  const head = el.closest('header');
+  return head ? head.querySelector('h1, h2, h3, h4') : null;
+}
+
+function hoistToHeading(el, details, label) {
+  // Khối .note cấp trang không thuộc tiêu đề nào — giữ dạng gấp.
+  if (el.classList.contains('note')) return false;
+
+  const title = nearestHeading(el);
+  if (!title) return false;
+
+  // MỘT TIÊU ĐỀ, MỘT DẤU "i" — dù có mấy đoạn giải thích.
+  //
+  // Nhiều mục có hai ba đoạn .desc dưới cùng một tiêu đề. Tạo mỗi đoạn một nút thì lại
+  // ra đúng cảnh cũ: mấy dấu "?" xếp chồng nhau trông như lỗi hiển thị. Gộp nội dung vào
+  // popover đã có thì tiêu đề vẫn chỉ mang một dấu, mà không mất chữ nào.
+  const existing = title.querySelector('.info .info-pop');
+  if (existing) {
+    const more = details.querySelector('.why-body');
+    if (more && more.textContent.trim()) {
+      const hr = document.createElement('hr');
+      hr.className = 'info-sep';
+      existing.appendChild(hr);
+      while (more.firstChild) existing.appendChild(more.firstChild);
+    }
+    details.remove();
+    el.hidden = true;
+    return true;
+  }
 
   const wrap = document.createElement('span');
   wrap.className = 'info';
@@ -4750,9 +4780,45 @@ function watchForExplanations() {
   }).observe(document.body, { childList: true, subtree: true });
 }
 
+/* ---------------------- Hai chế độ, hai bảng màu ---------------------- */
+
+/**
+ * Công tắc chế độ: đổi bảng màu VÀ đổi nhóm tab đang hiện.
+ *
+ * Vì sao hai chế độ chứ không phải một dãy 13 tab: trang phục vụ hai mục đích khác hẳn
+ * nhau — theo dõi giải TI 2026, và soi lối chơi của chính mình. Trộn chung thì mỗi lần
+ * tìm phải quét cả 13 nhãn dù chỉ quan tâm một nửa.
+ *
+ * Nhớ lựa chọn vào localStorage: chế độ là thói quen của người dùng, không phải trạng
+ * thái của một phiên. Ai chủ yếu soi hồ sơ mình thì không nên phải bấm lại mỗi lần mở.
+ */
+function setupModes() {
+  const btns = $$('.mode-btn');
+  if (!btns.length) return;
+
+  const apply = (mode, focusTab) => {
+    document.documentElement.dataset.mode = mode;
+    btns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+
+    $$('.navgroup').forEach((g) => { g.hidden = g.dataset.mode !== mode; });
+
+    // Nếu tab đang mở thuộc nhóm vừa bị ẩn thì phải chuyển sang tab đầu của nhóm mới —
+    // không thì người dùng đổi chế độ mà nội dung đứng yên, trông như nút hỏng.
+    const active = $('nav button[role="tab"][aria-selected="true"]');
+    if (focusTab && (!active || active.closest('.navgroup').hidden))
+      $(`.navgroup[data-mode="${mode}"] button[role="tab"]`)?.click();
+
+    localStorage.setItem('ti2026-mode', mode);
+  };
+
+  btns.forEach((b) => { b.onclick = () => apply(b.dataset.mode, true); });
+  apply(localStorage.getItem('ti2026-mode') === 'me' ? 'me' : 'ti', true);
+}
+
 setupTheme();
 setupTabs();
 setupSubTabs();
 setupTableSorting();
+setupModes();
 watchForExplanations();
 boot();

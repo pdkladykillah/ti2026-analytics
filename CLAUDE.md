@@ -230,3 +230,34 @@ của lần này.
   giờ** đặt vào query string, và `api/ingest/status` **không được** trả về giá trị của nó.
 - Còn treo: `TI2026_INGEST_TOKEN` từng lọt vào một bản ghi hội thoại; lời đề nghị xoay khoá
   chưa được trả lời.
+
+---
+
+## Hai chế độ xem
+
+Công tắc phân đoạn ở đầu trang đổi **cả bảng màu lẫn nhóm tab**, lưu vào `localStorage`:
+
+- **Giải TI 2026** — 10 tab, vàng Aegis, nền ấm.
+- **Lối chơi của tôi** — 3 tab (Hồ sơ, Học lối chơi, Học từ pro), lam ngọc, nền lạnh.
+
+Thành **bốn** bảng màu (2 chế độ × 2 chủ đề). `ThemeContrastTests` kiểm cả bốn — 89 bài.
+Màu ngữ nghĩa `--pos`/`--neg` **giữ nguyên qua mọi chế độ**: thắng/thua phải trông giống
+nhau ở mọi nơi, và chúng đã được cân cho người mù màu đỏ-lục.
+
+Thứ tự khối trong `app.css` quan trọng: `:root` → `[data-mode="me"]` → `[data-theme="dark"]`
+→ `[data-theme="dark"][data-mode="me"]`. Ba khối giữa cùng độ ưu tiên nên thứ tự trong tệp
+quyết định.
+
+## Đã thử và ĐÃ GỠ BỎ: suy vị trí bằng tiền nghiệm hero
+
+Học lane hay gặp của từng hero từ 3.297 ván chuyên nghiệp rồi ghép với hạng net worth thật.
+Chính xác **65,0%** so với mốc đoán bừa 46,4% — nghe như dùng được.
+
+**Nhưng vô dụng.** Nhãn thật cho biên độ **25 điểm** thắng-thua giữa các vị trí (pos4 57,5%
+xuống pos5 32,5%); nhãn ước lượng làm biên độ đó co còn **2,2 điểm**, cả năm ô đều bám sát
+50,1% — đúng tỷ lệ thắng chung. Tức ô ước lượng gần như không mang thông tin về vị trí.
+
+Đã loại trừ cách giải thích "mẫu nhãn thật là ván gần đây": 530 ván nhãn thật trải từ 2019-12
+tới 2026-08, và giới hạn ô ước lượng vào cùng thời kỳ chỉ đổi khoảng cách từ 6,7 xuống 6,4.
+
+**Đừng dựng lại.** Ván chưa parse chỉ nói core hay hỗ trợ.

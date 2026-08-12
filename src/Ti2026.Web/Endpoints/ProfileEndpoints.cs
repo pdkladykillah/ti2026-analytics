@@ -153,46 +153,33 @@ public static class ProfileEndpoints
             // Một chỗ duy nhất gọi RoleResolver, rồi mọi phần bên dưới dùng lại kết quả đó. Gọi
             // rải rác thì sớm muộn sẽ có nơi tự chế một quy tắc riêng, và đó đúng là cái sai đã
             // phải sửa một lần (suy vai trò từ mức farm).
-            // TIỀN NGHIỆM LANE THEO HERO, học từ ván chuyên nghiệp đã có nhãn thật.
+            // ĐÃ THỬ SUY VỊ TRÍ CHO VÁN CHƯA PARSE BẰNG TIỀN NGHIỆM HERO — VÀ ĐÃ GỠ BỎ.
             //
-            // Nhờ nó, 9.037 ván chưa parse cũng được xếp vị trí thay vì chỉ core/hỗ trợ. Đo
-            // được 65,0% chính xác so với mốc đoán bừa 46,4% — có tín hiệu thật, nhưng sai số
-            // CÓ CẤU TRÚC (34% ván offlane đọc thành mid, và tỷ lệ sai phụ thuộc chính hero).
+            // Cách làm: học lane hay gặp của từng hero từ 3.297 ván chuyên nghiệp (học từ người
+            // KHÁC nên không mắc lại lỗi "học đây là ai" của bộ phân loại cũ), rồi ghép với hạng
+            // net worth thật. Đo được 65,0% chính xác so với mốc đoán bừa 46,4%, nghe như dùng
+            // được.
             //
-            // Người dùng đã biết con số đó và chọn gộp. Mọi ván đi đường này mang IsExact =
-            // false, và giao diện phải giữ chúng ở dòng riêng có nhãn "ước lượng" — trộn lặng
-            // lẽ vào ô nhãn thật sẽ làm mọi khác biệt đo được co lại còn khoảng một nửa.
+            // NHƯNG NHÌN VÀO KẾT QUẢ THÌ NÓ VÔ DỤNG. Nhãn thật cho biên độ 25 điểm thắng-thua
+            // giữa các vị trí (pos4 57,5% xuống pos5 32,5%); nhãn ước lượng làm biên độ đó co
+            // còn 2,2 điểm, và cả năm ô đều bám sát 50,1% — đúng tỷ lệ thắng chung. Nói cách
+            // khác ô ước lượng gần như không mang thông tin nào về vị trí, nó chỉ là một mẫu
+            // ngẫu nhiên đeo nhãn.
             //
-            // Học từ ván PRO chứ không từ ván của chính người dùng: bộ phân loại trước đã chết
-            // vì học "đây là ai" thay vì "ván này đi lane nào".
-            var priors = (await db.IdolMatches
-                    .Where(m => m.LaneRole >= 1 && m.LaneRole <= 3
-                                && (m.LobbyType == 1 || m.LobbyType == 2))
-                    .GroupBy(m => new { m.HeroId, m.LaneRole })
-                    .Select(g => new { g.Key.HeroId, Lane = g.Key.LaneRole, N = g.Count() })
-                    .ToListAsync())
-                .GroupBy(x => x.HeroId)
-                .ToDictionary(
-                    g => g.Key,
-                    g =>
-                    {
-                        var total = g.Sum(x => x.N);
-                        var top = g.OrderByDescending(x => x.N).First();
-                        return new RoleResolver.HeroLanePrior(
-                            top.Lane ?? 0, top.N / (double)total, total);
-                    });
-
+            // Đã loại trừ cách giải thích "mẫu nhãn thật là ván gần đây nên khác thời kỳ": 530
+            // ván nhãn thật trải từ 2019-12 tới 2026-08, và giới hạn ô ước lượng vào cùng thời
+            // kỳ chỉ đổi khoảng cách từ 6,7 xuống 6,4 điểm.
+            //
+            // Nên ván chưa parse quay lại chỉ nói CORE hay HỖ TRỢ — thứ suy được từ hạng net
+            // worth mà không phải đoán gì.
             var roleOf = rows.ToDictionary(
-                m => m.Id,
-                m => RoleResolver.Resolve(
-                    m.LaneRole, m.TeamFarmRank,
-                    priors.TryGetValue(m.HeroId, out var pr) ? pr : null));
+                m => m.Id, m => RoleResolver.Resolve(m.LaneRole, m.TeamFarmRank));
 
             var roleGames = rows
                 .Select(m => new RoleGame(m.StartTime, m.Won, m.LaneRole, m.TeamFarmRank, m.HeroId))
                 .ToList();
 
-            var roles = RoleBreakdown.Slices(roleGames, priors);
+            var roles = RoleBreakdown.Slices(roleGames);
 
             // Biểu đồ theo NĂM vẫn CHỈ dùng nhãn thật — xem ghi chú ở RoleBreakdown.Eras: nó
             // hỏi "trước kia đi mid, giờ đi lung tung phải không", và một biểu đồ đầy đặn dựng

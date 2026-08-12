@@ -1,10 +1,7 @@
 namespace Ti2026.Ingest.Analytics;
 
 /// <summary>Một ván, rút gọn còn những gì cần để xác định vai trò.</summary>
-/// <param name="HeroId">
-/// Chỉ cần khi bên gọi muốn suy lane từ tiền nghiệm hero. Mặc định 0 = không suy, để mọi chỗ
-/// gọi cũ không phải sửa.
-/// </param>
+/// <param name="HeroId">Giữ lại để các phần khác dùng; phần chia vai trò không đọc tới.</param>
 public readonly record struct RoleGame(
     DateTime StartTime, bool Won, int? LaneRole, int? TeamFarmRank, int HeroId = 0);
 
@@ -40,38 +37,20 @@ public static class RoleBreakdown
     /// <summary>Một năm cần ngần này ván có nhãn thì tỷ trọng lane của năm đó mới đáng đọc.</summary>
     public const int MinLabelledPerYear = 10;
 
-    /// <param name="priors">
-    /// Tiền nghiệm lane theo hero, học từ ván chuyên nghiệp. Truyền vào thì những ván CHƯA có
-    /// nhãn cũng được xếp vị trí — kèm IsExact = false. Không truyền thì giữ nguyên hành vi cũ:
-    /// ván chưa nhãn chỉ ra core/hỗ trợ.
-    ///
-    /// Đây là lựa chọn CỦA NGƯỜI DÙNG, không phải mặc định: độ chính xác đo được 65% và sai số
-    /// có cấu trúc, nên nó chỉ đáng bật khi người đọc đã biết và chấp nhận điều đó.
-    /// </param>
     public static List<RoleSlice> Slices(
-        IReadOnlyList<RoleGame> games,
-        IReadOnlyDictionary<int, RoleResolver.HeroLanePrior>? priors = null,
-        int minGames = MinGamesPerRole)
+        IReadOnlyList<RoleGame> games, int minGames = MinGamesPerRole)
     {
         var buckets = new Dictionary<string, (string Code, string Label, bool Exact, int Games, int Wins)>();
 
         foreach (var g in games)
         {
-            RoleResolver.HeroLanePrior? prior = priors is not null
-                && priors.TryGetValue(g.HeroId, out var found) ? found : null;
-
-            var v = RoleResolver.Resolve(g.LaneRole, g.TeamFarmRank, prior);
+            var v = RoleResolver.Resolve(g.LaneRole, g.TeamFarmRank);
             if (v.Code == "khong-biet") continue;
 
-            // KHOÁ Ô GỒM CẢ ĐỘ TIN CẬY, không chỉ mã vị trí.
-            //
-            // Đây là một lỗi thật đã lọt lên trang: cả nhãn thật lẫn nhãn ước lượng đều trả mã
-            // "pos2", nên chúng rơi chung một ô và cờ Exact bị ván cuối cùng ghi đè — 249 ván
-            // biết chắc biến mất vào trong 1.853 ván phỏng đoán, đúng kiểu trộn lặng lẽ mà cả
-            // thiết kế này sinh ra để chặn.
-            // Khoá gom nhóm nằm TRONG, không lộ ra Code. Bản đầu nối thẳng hậu tố vào Code và
-            // nó rò ra API: "core" thành "core~uoc-luong", phá cả bài kiểm lẫn mọi bên đọc mã
-            // vị trí. Khoá là chuyện nội bộ của phép gom, không phải một giá trị công khai.
+            // Khoá ô gồm cả độ tin cậy, và nằm TRONG chứ không lộ ra Code. Hai tầng hiện có
+            // (pos1..pos5 từ replay, core/support suy từ đội hình) vốn đã khác mã nên chốt này
+            // là phòng thủ — nhưng nó đã cứu một lần rồi: khi còn tầng "ước lượng" dùng CHUNG mã
+            // pos2, hai tầng rơi chung một ô và 249 ván biết chắc tan vào 1.853 ván phỏng đoán.
             var key = v.Code + "|" + v.IsExact;
 
             var cur = buckets.GetValueOrDefault(key);

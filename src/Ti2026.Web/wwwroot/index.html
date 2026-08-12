@@ -54,9 +54,23 @@
     </div>
   </header>
 
+  <!-- Công tắc hai chế độ. Không phải trang trí: mỗi chế độ là một mục đích khác nhau
+       (theo dõi giải / soi lối chơi của mình) nên có bảng màu riêng, và chỉ hiện đúng
+       nhóm tab của nó. Nhờ vậy người dùng không bao giờ phải quét qua 13 nhãn. -->
+  <div class="modeswitch" role="group" aria-label="Chế độ xem">
+    <button type="button" class="mode-btn" data-mode="ti" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 8a5 5 0 01-9 0z"></path><path d="M12 11v6M8.5 21h7M9 17h6"></path></svg>
+      Giải TI 2026
+    </button>
+    <button type="button" class="mode-btn" data-mode="me" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      Lối chơi của tôi
+    </button>
+    <span class="mode-thumb" aria-hidden="true"></span>
+  </div>
+
   <nav role="tablist" aria-label="Khu vực phân tích">
-    <div class="navgroup" role="presentation">
-      <span class="navgroup-label" aria-hidden="true">Giải TI 2026</span>
+    <div class="navgroup" role="presentation" data-mode="ti">
       <div class="navgroup-tabs" role="presentation">
         <button role="tab" type="button" data-view="overview" aria-selected="true" aria-controls="view-overview">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
@@ -100,8 +114,7 @@
     </button>
       </div>
     </div>
-    <div class="navgroup" role="presentation">
-      <span class="navgroup-label" aria-hidden="true">Lối chơi của tôi</span>
+    <div class="navgroup" role="presentation" data-mode="me" hidden>
       <div class="navgroup-tabs" role="presentation">
         <button role="tab" type="button" data-view="profile" aria-selected="false" aria-controls="view-profile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>

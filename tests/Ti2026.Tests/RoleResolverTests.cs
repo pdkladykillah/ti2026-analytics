@@ -198,4 +198,37 @@ public class RoleResolverTests
         RoleResolver.Resolve(null, 2, null).Code.Should().Be("core");
         RoleResolver.Resolve(null, 5, null).Code.Should().Be("support");
     }
+
+    /// <summary>
+    /// NHÃN THẬT VÀ NHÃN ƯỚC LƯỢNG PHẢI Ở HAI DÒNG RIÊNG.
+    ///
+    /// Đây là một lỗi đã lọt lên trang thật: cả hai đường đều trả mã "pos2", nên chúng rơi
+    /// chung một ô và cờ Exact bị ván cuối cùng ghi đè — 249 ván biết chắc biến mất vào 1.853
+    /// ván phỏng đoán. Người đọc mất hẳn khả năng phân biệt thứ đo được với thứ đoán được,
+    /// mà đó chính là điều kiện duy nhất để việc gộp nhãn chấp nhận được.
+    /// </summary>
+    [Fact]
+    public void Nhan_that_va_nhan_uoc_luong_khong_gop_chung_o()
+    {
+        var priors = new Dictionary<int, RoleResolver.HeroLanePrior> { [7] = new(2, 0.9, 60) };
+
+        var games = new List<RoleGame>();
+        for (var i = 0; i < 30; i++)                       // nhãn thật, đi mid
+            games.Add(new RoleGame(DateTime.UtcNow, true, 2, 2, 7));
+        for (var i = 0; i < 40; i++)                       // chưa nhãn, hero tiền nghiệm mid
+            games.Add(new RoleGame(DateTime.UtcNow, false, null, 2, 7));
+
+        var slices = RoleBreakdown.Slices(games, priors);
+
+        var real = slices.Single(s => s.Exact);
+        var guess = slices.Single(s => !s.Exact);
+
+        real.Games.Should().Be(30);
+        guess.Games.Should().Be(40);
+
+        // Và tỷ lệ thắng phải tách được: 100% ở nhãn thật, 0% ở ước lượng. Gộp chung thì cả
+        // hai thành 43% và không con số nào còn đúng.
+        real.Winrate.Should().Be(100);
+        guess.Winrate.Should().Be(0);
+    }
 }

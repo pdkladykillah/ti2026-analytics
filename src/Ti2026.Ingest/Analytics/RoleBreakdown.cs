@@ -53,7 +53,7 @@ public static class RoleBreakdown
         IReadOnlyDictionary<int, RoleResolver.HeroLanePrior>? priors = null,
         int minGames = MinGamesPerRole)
     {
-        var buckets = new Dictionary<string, (string Label, bool Exact, int Games, int Wins)>();
+        var buckets = new Dictionary<string, (string Code, string Label, bool Exact, int Games, int Wins)>();
 
         foreach (var g in games)
         {
@@ -63,14 +63,25 @@ public static class RoleBreakdown
             var v = RoleResolver.Resolve(g.LaneRole, g.TeamFarmRank, prior);
             if (v.Code == "khong-biet") continue;
 
-            var cur = buckets.GetValueOrDefault(v.Code);
-            buckets[v.Code] = (v.Label, v.IsExact, cur.Games + 1, cur.Wins + (g.Won ? 1 : 0));
+            // KHOÁ Ô GỒM CẢ ĐỘ TIN CẬY, không chỉ mã vị trí.
+            //
+            // Đây là một lỗi thật đã lọt lên trang: cả nhãn thật lẫn nhãn ước lượng đều trả mã
+            // "pos2", nên chúng rơi chung một ô và cờ Exact bị ván cuối cùng ghi đè — 249 ván
+            // biết chắc biến mất vào trong 1.853 ván phỏng đoán, đúng kiểu trộn lặng lẽ mà cả
+            // thiết kế này sinh ra để chặn.
+            // Khoá gom nhóm nằm TRONG, không lộ ra Code. Bản đầu nối thẳng hậu tố vào Code và
+            // nó rò ra API: "core" thành "core~uoc-luong", phá cả bài kiểm lẫn mọi bên đọc mã
+            // vị trí. Khoá là chuyện nội bộ của phép gom, không phải một giá trị công khai.
+            var key = v.Code + "|" + v.IsExact;
+
+            var cur = buckets.GetValueOrDefault(key);
+            buckets[key] = (v.Code, v.Label, v.IsExact, cur.Games + 1, cur.Wins + (g.Won ? 1 : 0));
         }
 
         return buckets
             .Where(b => b.Value.Games >= minGames)
             .Select(b => new RoleSlice(
-                b.Key, b.Value.Label, b.Value.Games, b.Value.Wins,
+                b.Value.Code, b.Value.Label, b.Value.Games, b.Value.Wins,
                 Math.Round(b.Value.Wins * 100.0 / b.Value.Games, 1), b.Value.Exact))
             .OrderByDescending(s => s.Exact).ThenByDescending(s => s.Games)
             .ToList();

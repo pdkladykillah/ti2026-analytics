@@ -4660,7 +4660,72 @@ function foldExplanations() {
 
     if (icon) el.appendChild(icon);
     el.appendChild(details);
+
+    // CHUYỂN THÀNH DẤU "i" NẰM NGAY CẠNH TIÊU ĐỀ, nếu có tiêu đề để bám vào.
+    //
+    // Vì sao đổi: kể cả khi đã thu thành dấu ? tròn, nó vẫn là một DÒNG RIÊNG chiếm
+    // một dòng chiều dọc dưới mỗi tiêu đề — nhân với 31 khối thì thành 31 dòng trống
+    // rải khắp trang, và ở mục có hai khối thì hai dấu ? xếp chồng nhau trông như lỗi.
+    // Dấu "i" dính vào cuối tiêu đề thì chiếm ĐÚNG KHÔNG chiều dọc.
+    //
+    // Không dùng hover đơn thuần: hover không tồn tại trên cảm ứng và không dùng được
+    // bằng bàn phím. Nút vẫn bấm được, vẫn nhận tiêu điểm; hover chỉ là lối tắt cho
+    // chuột. Xem .info trong app.css.
+    hoistToHeading(el, details, label);
   }
+}
+
+/**
+ * Nếu ngay trước đoạn giải thích có một tiêu đề, gắn nó vào đuôi tiêu đề đó dưới dạng
+ * dấu "i" thay vì để thành một dòng riêng.
+ *
+ * Trả về true nếu đã gắn được. Không gắn được (không có tiêu đề nào đứng trước) thì
+ * để nguyên dạng gấp cũ — vẫn đọc được, chỉ là chiếm một dòng.
+ */
+function hoistToHeading(el, details, label) {
+  // CHỈ khi đoạn này nằm trong <header> của chính thẻ đó.
+  //
+  // Bản đầu để `el.parentElement` làm phương án dự phòng, và nó sai ở khối .note cấp
+  // trang: cha của nó là cả <section>, nên querySelector sẽ bắt được tiêu đề của một
+  // THẺ KHÁC bên dưới và dán lời cảnh báo vào đúng chỗ không liên quan.
+  const head = el.closest('header');
+  if (!head || el.classList.contains('note')) return false;
+
+  const title = head.querySelector('h1, h2, h3');
+  if (!title || title.querySelector('.info')) return false;
+
+  const wrap = document.createElement('span');
+  wrap.className = 'info';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'info-btn';
+  btn.setAttribute('aria-expanded', 'false');
+  btn.setAttribute('aria-label', label === 'vì sao?' ? 'Vì sao?' : label);
+  btn.textContent = 'i';
+
+  const pop = document.createElement('span');
+  pop.className = 'info-pop';
+  pop.setAttribute('role', 'tooltip');
+
+  // Lấy phần thân của khối vừa gấp — chính là chữ giải thích, không kèm cái nút cũ.
+  const body = details.querySelector('.why-body');
+  while (body && body.firstChild) pop.appendChild(body.firstChild);
+
+  btn.onclick = () => {
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+  };
+  btn.onblur = () => btn.setAttribute('aria-expanded', 'false');
+
+  wrap.append(btn, pop);
+  title.appendChild(wrap);
+
+  // Đoạn .desc giờ rỗng — ẩn hẳn, nếu không nó vẫn chiếm margin và để lại đúng cái
+  // khoảng trống mà việc chuyển sang dấu "i" sinh ra để xoá.
+  details.remove();
+  el.hidden = true;
+  return true;
 }
 
 function watchForExplanations() {

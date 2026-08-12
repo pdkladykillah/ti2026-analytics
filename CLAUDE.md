@@ -176,9 +176,20 @@ danh sách này.
 
 ### Gấp chữ
 
-`foldExplanations()` trong `app.js` gấp mọi đoạn dài hơn 90 ký tự vào một nút dấu `?` tròn.
-Chạy bằng `MutationObserver` nên phủ cả chữ tĩnh lẫn chữ do JS sinh — **đừng gọi tay ở từng
-chỗ render**, chỗ thứ mười một sẽ quên.
+`foldExplanations()` trong `app.js` gấp mọi đoạn dài hơn 90 ký tự. Chạy bằng
+`MutationObserver` nên phủ cả chữ tĩnh lẫn chữ do JS sinh — **đừng gọi tay ở từng chỗ
+render**, chỗ thứ mười một sẽ quên.
+
+Đoạn nào nằm trong `<header>` của thẻ thì được `hoistToHeading()` biến thành **dấu "i" dính
+vào đuôi tiêu đề** — chiếm đúng không chiều dọc. Đoạn không có tiêu đề để bám (khối `.note`
+cấp trang) thì giữ dạng gấp.
+
+Đã thử và loại bốn dạng trước: viên thuốc vàng, viên thuốc nhạt, chữ gạch chân chấm, dấu `?`
+tròn. Tất cả đều sai cùng một kiểu — **chiếm một dòng riêng**, nhân 28 khối thành 28 dòng
+trống, và chỗ nào có hai khối thì hai dấu xếp chồng trông như lỗi.
+
+Hover chỉ là lối tắt cho chuột: nút phải bấm được và nhận được tiêu điểm, nếu không thì với
+màn hình cảm ứng và người dùng bàn phím nội dung coi như biến mất.
 
 Chốt chống gấp lồng nhau phải hỏi "có CON NÀO là phần đã gấp không", không hỏi "con ĐẦU TIÊN
 có phải không" — khối cảnh báo giữ icon ở đầu, và bản đầu đã tự gói 65 lớp lồng nhau.

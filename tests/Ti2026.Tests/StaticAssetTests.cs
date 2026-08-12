@@ -105,6 +105,43 @@ public class StaticAssetTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
     }
 
     /// <summary>
+    /// Mỗi tab phải nằm trong ĐÚNG MỘT nhóm chế độ, và mỗi khu vực phải có tab dẫn tới.
+    ///
+    /// Công tắc chế độ ẩn cả nhóm bằng thuộc tính `hidden`, nên một tab lọt ra NGOÀI mọi nhóm
+    /// sẽ hiện ở cả hai chế độ; còn một tab nằm trong hai nhóm thì bấm vào sẽ chọn nhầm bản sao.
+    /// Cả hai kiểu hỏng đều không ném lỗi — chỉ trông sai.
+    ///
+    /// Bài này KHÔNG khoá tab nào thuộc nhóm nào: đó là lựa chọn biên tập và còn đổi (Tier list
+    /// vừa chuyển từ nhóm giải sang nhóm người chơi, vì nó xếp hạng HERO theo vị trí chứ không
+    /// xếp hạng đội).
+    /// </summary>
+    [Fact]
+    public async Task Moi_tab_nam_trong_dung_mot_nhom_che_do()
+    {
+        var html = await factory.CreateClient().GetStringAsync("/index.html");
+
+        var nav = html[html.IndexOf("<nav role=\"tablist\"", StringComparison.Ordinal)..];
+        nav = nav[..nav.IndexOf("</nav>", StringComparison.Ordinal)];
+
+        var groups = Regex.Matches(nav, "data-mode=\"(\\w+)\"").Select(m => m.Groups[1].Value).ToList();
+        groups.Should().HaveCountGreaterThanOrEqualTo(2, "phải có ít nhất hai nhóm chế độ");
+        groups.Should().OnlyHaveUniqueItems("mỗi chế độ chỉ một nhóm");
+
+        var tabs = Regex.Matches(nav, "data-view=\"(\\w+)\"").Select(m => m.Groups[1].Value).ToList();
+        tabs.Should().OnlyHaveUniqueItems("một tab xuất hiện hai lần thì bấm vào sẽ chọn nhầm bản sao");
+
+        // Mỗi nút chế độ phải có một nhóm tương ứng, nếu không bấm vào sẽ ẩn sạch mọi tab.
+        foreach (var mode in Regex.Matches(html, "class=\"mode-btn\" data-mode=\"(\\w+)\"")
+                     .Select(m => m.Groups[1].Value))
+            groups.Should().Contain(mode, $"nút chế độ '{mode}' không có nhóm tab nào");
+
+        // Và mọi khu vực nội dung phải có đường vào.
+        foreach (var view in Regex.Matches(html, "class=\"view[^\"]*\" id=\"view-(\\w+)\"")
+                     .Select(m => m.Groups[1].Value))
+            tabs.Should().Contain(view, $"khu vực '{view}' không có tab nào dẫn tới");
+    }
+
+    /// <summary>
     /// Mọi khu vực dài phải chia mục con — KHÔNG được có khu vực nào chỉ có đúng 1 data-sec.
     ///
     /// setupSubTabs() chỉ sinh nút khi thấy từ 2 mục trở lên, nên một khu vực có đúng 1 mục sẽ

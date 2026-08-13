@@ -1064,6 +1064,8 @@ async function loadSchedule() {
   body.innerHTML = '<div class="skeleton sk-md"></div>';
   if (bracket) bracket.innerHTML = '<div class="skeleton sk-md"></div>';
 
+  loadDigest();
+
   try {
     const d = await getJson('api/schedule');
     renderSchedule(d);
@@ -1073,6 +1075,93 @@ async function loadSchedule() {
       <small>${esc(err.message)}</small></div>`;
     if (bracket) bracket.innerHTML = '';
   }
+}
+
+/* --------------------------- Điểm nhấn ngày --------------------------- */
+
+/** Icon theo loại điểm nhấn. Hình phân biệt được ngay cả khi màu bị mất. */
+const DIGEST_ICON = {
+  'nguoc-keo': '<path d="M12 19V5M5 12l7-7 7 7"></path>',
+  'cam-nhieu': '<circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path>',
+  'chon-nhieu': '<path d="M20 6L9 17l-5-5"></path>',
+  'cam-moi': '<path d="M12 5v14M5 12h14"></path>',
+  'het-cam': '<path d="M5 12h14"></path>',
+  'van-dai-nhat': '<circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path>',
+  'van-ngan-nhat': '<circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path>',
+  'tong-quan': '<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18"></path>',
+};
+
+async function loadDigest() {
+  const box = $('#digest-body');
+  if (!box) return;
+  box.innerHTML = '<div class="skeleton sk-sm"></div>';
+
+  try {
+    renderDigest(await getJson('api/digest'));
+  } catch (e) {
+    box.innerHTML = `<div class="empty">Không tải được: ${esc(String(e.message || e))}</div>`;
+  }
+}
+
+function renderDigest(d) {
+  const box = $('#digest-body');
+  if (!box) return;
+
+  if (!d.ready || !d.days.length) {
+    box.innerHTML = `<div class="empty">${esc(d.note || 'Chưa có ngày nào để đúc kết.')}</div>`;
+    return;
+  }
+
+  box.innerHTML = d.days.map((day, i) => {
+    const items = Array.isArray(day.highlights) ? day.highlights : [];
+    const head = items.find((h) => h.Kind === 'tong-quan' || h.kind === 'tong-quan');
+    const rest = items.filter((h) => h !== head);
+
+    // ĐỘ PHỦ NÓI THẲNG RA. Bảng đấu làm tươi mỗi 15 phút còn chi tiết ván theo vòng 6 giờ, nên
+    // hai con số này gần như luôn lệch — giấu đi thì người đọc tưởng đã tính trên tất cả.
+    const partial = day.matchesRead < day.matchesExpected;
+
+    return `<section class="dg-day${i === 0 ? ' dg-first' : ''}">
+      <header class="dg-head">
+        <div>
+          <div class="dg-date">${esc(dayLabel(day.day))}</div>
+          <div class="dg-meta">${esc(day.stage || 'Nhiều vòng')} ·
+            ${n0(day.seriesCompleted)}/${n0(day.seriesTotal)} loạt xong${
+              day.medianMinutes ? ` · trung vị ${n0(day.medianMinutes)} phút` : ''}</div>
+        </div>
+        <span class="dg-state ${day.closed ? 'done' : 'live'}">${
+          day.closed ? 'đã chốt' : 'đang đá'}</span>
+      </header>
+
+      ${partial ? `<div class="note note-sm"><div>Mới đọc được chi tiết
+        <b>${n0(day.matchesRead)}/${n0(day.matchesExpected)}</b> ván. Bảng đấu làm tươi mỗi 15
+        phút còn chi tiết ván theo vòng nạp 6 giờ, nên phần cấm/chọn còn thiếu.</div></div>` : ''}
+
+      ${rest.length ? `<ul class="dg-list">${rest.map(digestItem).join('')}</ul>`
+        : '<div class="empty">Chưa đủ dữ liệu để đúc kết ngày này.</div>'}
+    </section>`;
+  }).join('');
+}
+
+function digestItem(h) {
+  const kind = h.Kind || h.kind || '';
+  const tone = h.Tone || h.tone || 'flat';
+  const text = h.Text || h.text || '';
+  const icon = DIGEST_ICON[kind] || DIGEST_ICON['tong-quan'];
+
+  return `<li class="dg-item tone-${esc(tone)}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg>
+    <span>${esc(text)}</span>
+  </li>`;
+}
+
+/** Ngày lưu theo UTC, hiển thị theo giờ máy — cùng quy ước với phần lịch. */
+function dayLabel(iso) {
+  const [y, m, dd] = String(iso).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, dd)).toLocaleDateString('vi-VN', {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+  });
 }
 
 /**

@@ -1430,6 +1430,42 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 /* h4.sc-day chứ không phải .sc-day: nhãn ngày là nhãn, không phải tiêu đề mục, nên nó giữ
    nhịp riêng chật hơn. Mà `.card h4` cũng là hai bậc đặc hiệu, nên viết trần .sc-day thì
    thua và nhãn ngày bị nong ra theo tiêu đề mục. */
+/* ---- Điểm nhấn ngày ---- */
+
+.dg-day { padding: var(--s-4) 0; }
+.dg-day + .dg-day { border-top: 1px solid var(--border); }
+
+/* Ngày mới nhất nổi lên bằng NỀN, không bằng viền màu nhấn: viền mảnh màu nhấn ở chủ đề sáng
+   chỉ đạt 2,2:1 và gần như không thấy. */
+.dg-first {
+  background: var(--surface-2); border-radius: var(--r-lg);
+  padding: var(--s-4); margin-bottom: var(--s-3);
+}
+
+.dg-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--s-3); margin-bottom: var(--s-3);
+}
+.dg-date { font-family: var(--font-head); font-weight: 800; font-size: 17px; line-height: 1.25; }
+.dg-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+.dg-state {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+  padding: 4px 10px; border-radius: var(--r-pill); white-space: nowrap; flex: none;
+}
+.dg-state.live { background: var(--accent); color: var(--on-accent); }
+.dg-state.done { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+.dg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+
+.dg-item {
+  display: flex; align-items: flex-start; gap: var(--s-2);
+  font-size: 14.5px; line-height: 1.45; color: var(--ink-2);
+}
+.dg-item svg { width: 17px; height: 17px; flex: none; margin-top: 2px; color: var(--muted); }
+.dg-item.tone-good svg { color: var(--pos); }
+.dg-item.tone-bad svg { color: var(--neg); }
+
 /* ---- So hai đội theo từng vị trí ---- */
 
 .vs-head {

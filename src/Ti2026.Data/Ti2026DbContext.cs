@@ -34,6 +34,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<IdolPlayer> IdolPlayers => Set<IdolPlayer>();
     public DbSet<IdolMatch> IdolMatches => Set<IdolMatch>();
     public DbSet<StyleAnchor> StyleAnchors => Set<StyleAnchor>();
+    public DbSet<DailyDigest> DailyDigests => Set<DailyDigest>();
 
     /// <summary>
     /// Mọi DateTime ghi xuống đều chuyển sang UTC, mọi DateTime đọc lên đều được gắn
@@ -77,6 +78,11 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         // Khoá tự nhiên của một nút bảng đấu là (giải, node_id) — Valve đánh số nút lại từ đầu
         // cho mỗi giải. Unique để nạp lại nhiều lần chỉ cập nhật chứ không nhân bản bảng đấu.
         b.Entity<ScheduledSeries>().HasIndex(x => new { x.LeagueId, x.NodeId }).IsUnique();
+
+        // Khoá duy nhất (giải, ngày) là thứ BIẾN upsert thành đúng nghĩa upsert: không có nó
+        // thì mỗi lượt làm tươi 15 phút sẽ thêm một dòng mới cho cùng một ngày, và bảng lịch sử
+        // thành một cái log — sai lặng lẽ, vì mọi truy vấn "digest ngày X" vẫn trả về một dòng.
+        b.Entity<DailyDigest>().HasIndex(x => new { x.LeagueId, x.Day }).IsUnique();
 
         // KHAI KHOÁ NGOẠI TƯỜNG MINH. Quy ước của EF tìm cột tên "Team1Id" cho navigation
         // "Team1"; tên của ta là "TeamId1" nên nó KHÔNG khớp, và EF lặng lẽ tạo thêm một cột

@@ -107,6 +107,18 @@ public sealed class ScheduleRefreshService(
 
         var written = await ingester.IngestAsync(ct);
 
+        // Điểm nhấn ngày chạy NGAY SAU, cùng nhịp: nó cần đúng thứ vừa lấy về — trạng thái từng
+        // loạt — và thêm một bộ hẹn giờ nữa chỉ để làm cùng việc muộn hơn vài phút là thêm một
+        // thứ phải nhớ. Lỗi ở đây không được kéo theo phần làm tươi bảng đấu.
+        try
+        {
+            await scope.ServiceProvider.GetRequiredService<DailyDigestWriter>().WriteAsync(ct);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Tính điểm nhấn ngày lỗi — bảng đấu vẫn đã làm tươi xong");
+        }
+
         var season = await InSeasonAsync(db, ct);
         logger.LogInformation(
             "Làm tươi bảng đấu: {Count} nút, nhịp kế tiếp {Minutes} phút",

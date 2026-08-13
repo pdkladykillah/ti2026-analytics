@@ -93,7 +93,9 @@ public class DailyDigestWriter(Ti2026DbContext db, ILogger<DailyDigestWriter> lo
             row.SeriesTotal = series.Count;
             row.SeriesCompleted = completed;
             row.MatchesCounted = matches.Count;
-            row.MatchesExpected = series.Where(s => s.Completed).Sum(s => s.Wins1 + s.Wins2);
+            // Mọi loạt, không chỉ loạt đã xong — loạt đang đá dở vẫn có ván đã kết thúc. Xem
+            // ghi chú ở DayHighlights.Build: cộng riêng loạt đã xong cho ra "đọc được 9/7 ván".
+            row.MatchesExpected = series.Sum(s => s.Wins1 + s.Wins2);
             row.MedianDurationSeconds = DayHighlights.MedianDuration(matches);
             row.ComputedAt = DateTime.UtcNow;
             row.Payload = JsonSerializer.Serialize(highlights, Json);

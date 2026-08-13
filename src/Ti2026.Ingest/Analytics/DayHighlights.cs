@@ -63,7 +63,13 @@ public static class DayHighlights
         var list = new List<Highlight>();
 
         var done = series.Where(s => s.Completed).ToList();
-        var expected = done.Sum(s => s.Wins1 + s.Wins2);
+
+        // Đếm ván trên MỌI loạt, không chỉ loạt đã xong.
+        //
+        // Một loạt đang đá dở vẫn đã có ván kết thúc, và ta vẫn đọc được chi tiết của chúng.
+        // Cộng riêng loạt đã xong thì mẫu số nhỏ hơn tử số — thấy thật trên trang: "đọc được
+        // 9/7 ván", một câu tự bác bỏ chính nó.
+        var expected = series.Sum(s => s.Wins1 + s.Wins2);
 
         list.Add(new Highlight("tong-quan", "flat",
             $"{done.Count}/{series.Count} loạt đã xong · {expected} ván · đọc được chi tiết {matches.Count} ván",

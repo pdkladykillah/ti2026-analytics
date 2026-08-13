@@ -153,6 +153,33 @@ public class DayHighlightsTests
         h.First(x => x.Kind == "tong-quan").Text.Should().Contain("1/2 loạt");
     }
 
+    /// <summary>
+    /// SỐ VÁN ĐẾM TRÊN MỌI LOẠT, không chỉ loạt đã xong.
+    ///
+    /// Một loạt đang đá dở vẫn đã có ván kết thúc, và ta vẫn đọc được chi tiết của chúng. Cộng
+    /// riêng loạt đã xong thì mẫu số nhỏ hơn tử số — đã thấy thật trên trang: "đọc được 9/7 ván",
+    /// một câu tự bác bỏ chính nó.
+    /// </summary>
+    [Fact]
+    public void So_van_dem_tren_moi_loat_ke_ca_loat_dang_da_do()
+    {
+        var h = Build(
+            [
+                Series(1, "A", "B", 2, 0),                 // xong, 2 ván
+                Series(2, "C", "D", 1, 1, done: false),    // đang đá, đã 2 ván
+            ],
+            m: [
+                new DayMatch(100, 2400, "A", "B", true),
+                new DayMatch(101, 2400, "A", "B", true),
+                new DayMatch(102, 2400, "C", "D", true),
+                new DayMatch(103, 2400, "C", "D", false),
+            ]);
+
+        var text = h.First(x => x.Kind == "tong-quan").Text;
+        text.Should().Contain("4 ván", "hai loạt đã cho ra bốn ván, dù một loạt chưa xong");
+        text.Should().Contain("chi tiết 4 ván");
+    }
+
     /// <summary>Trung vị, không phải trung bình — một ván 90 phút kéo lệch hẳn số trung bình.</summary>
     [Fact]
     public void Thoi_luong_lay_trung_vi()

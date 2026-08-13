@@ -1430,6 +1430,93 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 /* h4.sc-day chứ không phải .sc-day: nhãn ngày là nhãn, không phải tiêu đề mục, nên nó giữ
    nhịp riêng chật hơn. Mà `.card h4` cũng là hai bậc đặc hiệu, nên viết trần .sc-day thì
    thua và nhãn ngày bị nong ra theo tiêu đề mục. */
+/* ---- So hai đội theo từng vị trí ---- */
+
+.vs-head {
+  display: flex; align-items: center; gap: var(--s-3);
+  flex-wrap: wrap; margin-top: var(--s-4);
+  padding-top: var(--s-4); border-top: 1px solid var(--border);
+}
+.vs-team { display: flex; align-items: center; gap: var(--s-2); font-size: 17px; flex: 1; min-width: 0; }
+.vs-team.right { justify-content: flex-end; }
+.vs-h2h { font-size: 14px; text-align: center; }
+.vs-h2h b { font-family: var(--font-num); font-size: 19px; }
+
+.vs-pos { padding-top: var(--s-5); }
+.vs-pos + .vs-pos { margin-top: var(--s-5); border-top: 1px solid var(--border); }
+
+.vs-pos-title {
+  font-size: 13px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); margin: 0 0 var(--s-3);
+}
+
+.vs-seats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); margin-bottom: var(--s-4); }
+.vs-seat { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+.vs-seat.right { flex-direction: row; justify-content: flex-end; text-align: right; }
+.vs-who { min-width: 0; }
+.vs-nick { font-family: var(--font-head); font-weight: 800; font-size: 18px; line-height: 1.2; }
+.vs-sub { font-size: 12px; color: var(--muted); }
+
+/* Thanh đối xứng: cột giữa giữ tên trục, hai bên là hai thanh mọc ngược chiều nhau.
+   Tên ở GIỮA chứ không ở đầu hàng — mắt cần một cái mốc để so hai thanh, và mốc đó phải
+   nằm giữa hai thứ đang so. */
+.vs-axis {
+  display: grid; grid-template-columns: 1fr minmax(120px, auto) 1fr;
+  align-items: center; gap: var(--s-2);
+  padding: 5px 0;
+}
+.vs-axis-name { font-size: 12.5px; color: var(--ink-2); text-align: center; line-height: 1.25; }
+.vs-tag {
+  display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 700;
+}
+
+.vs-bar { display: flex; align-items: center; justify-content: flex-end; gap: 7px; position: relative; }
+.vs-bar.right { justify-content: flex-start; flex-direction: row-reverse; }
+.vs-fill {
+  height: 12px; border-radius: var(--r-pill);
+  background: var(--border-strong); flex: none;
+}
+/* Bên nhỉnh hơn dùng màu nhấn LÀM NỀN (đúng luật vàng chỉ làm nền) và số in đậm — hai kênh,
+   không chỉ màu. Trục phong cách thì không bên nào được tô: vươn ra chỉ là khác. */
+.vs-fill.win { background: var(--accent); }
+.vs-num { font-family: var(--font-num); font-size: 13px; color: var(--muted); flex: none; }
+.vs-num.win { color: var(--ink); font-weight: 800; }
+
+.vs-axes { margin-bottom: var(--s-3); }
+
+.note-sm { font-size: 13px; padding: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
+
+/* ---- Hero chung / riêng ---- */
+
+.vs-hero-grid {
+  display: grid; gap: var(--s-4);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin-bottom: var(--s-3);
+}
+.vs-hero-head {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); margin: 0 0 var(--s-2); font-weight: 700;
+}
+.vs-heroes { display: flex; flex-wrap: wrap; gap: 5px; }
+.vs-empty { font-size: 13px; }
+
+.vs-lean { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.vs-lean li {
+  display: flex; align-items: center; gap: var(--s-2);
+  background: var(--surface-2); border-radius: var(--r-sm);
+  padding: 5px var(--s-3); font-size: 14px;
+}
+.vs-lean .num { margin-left: auto; font-weight: 800; }
+
+@media (max-width: 620px) {
+  .vs-seats { grid-template-columns: 1fr; }
+  .vs-seat.right { flex-direction: row-reverse; justify-content: flex-end; text-align: left; }
+  .vs-axis { grid-template-columns: 1fr; gap: 2px; }
+  .vs-axis-name { text-align: left; }
+  .vs-bar, .vs-bar.right { justify-content: flex-start; flex-direction: row-reverse; }
+}
+
 /* ---- Nhánh đấu ---- */
 
 .br-side + .br-side { margin-top: var(--s-6); }

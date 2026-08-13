@@ -333,10 +333,13 @@
 
     <!-- ===== Đối đầu ===== -->
     <section class="view" id="view-h2h" role="tabpanel" aria-labelledby="tab-h2h" hidden>
+      <!-- Thẻ này KHÔNG có data-sec nên luôn hiện ở mọi mục con: đang so hai đội nào là câu
+           phải theo suốt, không được nấp trong một mục. -->
       <div class="card">
         <header>
           <h2>So sánh hai đội</h2>
-          <p class="desc">Chọn hai đội để so từng chỉ số. Chấm tròn đánh dấu bên có lợi thế.</p>
+          <p class="desc">Chọn hai đội. Ba mục con bên dưới trả lời ba câu khác nhau: cả đội,
+            từng vị trí, và hero.</p>
         </header>
         <div class="controls">
           <label class="sr-only" for="h2h-a">Đội thứ nhất</label>
@@ -345,7 +348,36 @@
           <label class="sr-only" for="h2h-b">Đội thứ hai</label>
           <select id="h2h-b"></select>
         </div>
+        <div id="versus-head" aria-live="polite"></div>
+      </div>
+
+      <div class="card" data-sec="Chỉ số đội">
+        <header>
+          <h2>Mười chỉ số của cả đội</h2>
+          <p class="desc">Chấm tròn đánh dấu bên có lợi thế. Đây là mức đội, chưa tách theo người.</p>
+        </header>
         <div id="h2h-body"></div>
+      </div>
+
+      <div class="card" data-sec="Từng vị trí">
+        <header>
+          <h2>Ai đối đầu ai</h2>
+          <p class="desc">Vị trí <b>đo từ nhãn replay và hạng net worth trong đội</b>, không phải
+            vị trí ghi trong roster — hai thứ lệch nhau thật. Mọi con số là <b>tỉ số</b> so với
+            người bình thường ở ván chuyên nghiệp, vì hai đội đá khác giải và khác bản game thì
+            số thô không cùng thang.</p>
+        </header>
+        <div id="versus-positions" aria-live="polite"></div>
+      </div>
+
+      <div class="card" data-sec="Hero">
+        <header>
+          <h2>Hero chung và hero riêng</h2>
+          <p class="desc">Tách theo từng vị trí chứ không gộp cả đội. Ở mức đội thì phép so này
+            vô nghĩa — đo được hai đội chung tới 112 trong 127 hero của game, tức bảng nào cũng
+            chỉ nói &ldquo;cả hai chơi gần hết&rdquo;.</p>
+        </header>
+        <div id="versus-heroes" aria-live="polite"></div>
       </div>
     </section>
 

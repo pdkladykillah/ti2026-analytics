@@ -39,6 +39,25 @@ public static class IdolEndpoints
 
             var photos = ReadPhotos(paths.EditorialDirectory);
 
+            // ẢNH THI ĐẤU ĐÃ CÓ SẴN TRONG DỰ ÁN — chỉ là ở bảng khác.
+            //
+            // data/players.json mang ảnh dltv.org của cả 80 tuyển thủ 16 đội, đã tải về và cache
+            // thành /media/<hash>.jpg. Mà 11 trong 12 người ở tab này cũng thuộc 16 đội đó, nên
+            // nối theo account_id là có ngay ảnh thi đấu thật thay cho avatar Steam. Chỉ Topson
+            // thiếu, vì anh không dự TI dưới màu áo đội nào.
+            //
+            // Phải dùng bản CACHE chứ không phải PhotoUrl gốc: dltv.org chặn hotlink theo
+            // referrer, nên trả URL gốc ra giao diện là trả về một ô ảnh vỡ.
+            var accountIds = idols.Select(x => x.AccountId).ToList();
+
+            var rosterPhotos = await db.Players
+                .Where(p => p.OpenDotaAccountId != null
+                         && accountIds.Contains(p.OpenDotaAccountId.Value)
+                         && p.PhotoMediaAssetId != null)
+                .Join(db.MediaAssets, p => p.PhotoMediaAssetId, m => m.Id,
+                    (p, m) => new { AccountId = p.OpenDotaAccountId!.Value, m.LocalPath })
+                .ToDictionaryAsync(x => x.AccountId, x => $"media/{x.LocalPath}");
+
             var since = DateTime.UtcNow - Window;
 
             var matches = await db.IdolMatches
@@ -125,7 +144,9 @@ public static class IdolEndpoints
                     // OpenDota chỉ có avatar Steam; còn Liquipedia, STRATZ, Dotabuff đều ghi
                     // thẳng "User-agent: ClaudeBot → Disallow: /" trong robots.txt. Nên chỗ
                     // này là một lớp thủ công có chủ ý, không phải chưa làm xong.
+                    // Thứ tự: ảnh biên tập điền tay > ảnh thi đấu đã cache > avatar Steam.
                     avatar = photos.GetValueOrDefault(IdolPlayer.MakeNameKey(idol.Name))
+                             ?? rosterPhotos.GetValueOrDefault(idol.AccountId)
                              ?? idol.AvatarUrl,
                     declaredRole = idol.DeclaredRole,
                     track = track.Key,
@@ -350,8 +371,7 @@ public static class IdolEndpoints
         m.Kills, m.Deaths, m.Assists, m.LastHits, m.HeroDamage, m.TowerDamage, m.NetWorth,
         m.TeamNetWorth, m.LaneEfficiency, m.DurationSeconds, m.LaneRole);
 
-    private static StylePool ToPool(StyleAnchor a) => new(
-        a.AllKills, a.AllAssists, a.AllDeaths, a.AllNetWorth, a.AllHeroDamage,
-        a.AllLastHits, a.AllTowerDamage, a.AllLaneEfficiency, a.LaneEfficiencyCount,
-        a.PlayerCount, a.DurationSeconds);
+    // ToPool đã dời sang StyleSupport: api/versus cần đúng phép đổi này, và hai bản sao của một
+    // định nghĩa "mức thường" là hai trang sẽ lệch nhau mà không có gì báo.
+    private static StylePool ToPool(StyleAnchor a) => StyleSupport.ToPool(a);
 }

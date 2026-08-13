@@ -200,6 +200,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.MapDataEndpoints();
 app.MapH2hEndpoints();
+app.MapVersusEndpoints();
 app.MapTrendEndpoints();
 app.MapInsightEndpoints();
 app.MapScheduleEndpoints();

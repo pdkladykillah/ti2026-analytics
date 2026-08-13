@@ -684,10 +684,220 @@ function setupH2h() {
   a.value = data[0].slug;
   b.value = data[1].slug;
 
-  a.onchange = b.onchange = renderH2h;
+  a.onchange = b.onchange = () => { renderH2h(); loadVersus(); };
   enhanceSelect(a, 'Gõ để tìm đội…');
   enhanceSelect(b, 'Gõ để tìm đội…');
   renderH2h();
+  loadVersus();
+}
+
+/* ------------------- So hai đội theo từng vị trí ------------------- */
+
+/**
+ * Ảnh tuyển thủ. Cùng lối dựng phòng hờ như idolFace(): chữ cái nằm dưới, ảnh phủ lên.
+ * Không dùng onerror kèm style — xem ghi chú ở idolFace().
+ */
+function playerFace(p, size) {
+  const initial = esc((p.nick || '?').charAt(0));
+  return `<span class="face-img" style="width:${size}px;height:${size}px">
+    <span class="face-alt" aria-hidden="true">${initial}</span>
+    ${p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy">` : ''}
+  </span>`;
+}
+
+async function loadVersus() {
+  const head = $('#versus-head');
+  const posBox = $('#versus-positions');
+  const heroBox = $('#versus-heroes');
+  if (!head || !posBox || !heroBox) return;
+
+  const a = $('#h2h-a').value;
+  const b = $('#h2h-b').value;
+  if (!a || !b || a === b) {
+    head.innerHTML = '';
+    posBox.innerHTML = '<div class="empty">Chọn hai đội khác nhau.</div>';
+    heroBox.innerHTML = '';
+    return;
+  }
+
+  posBox.innerHTML = '<div class="skeleton sk-md"></div>';
+
+  try {
+    const d = await getJson(`api/versus?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+
+    if (!d.ready) {
+      head.innerHTML = '';
+      posBox.innerHTML = `<div class="empty">${esc(d.note || 'Chưa đủ dữ liệu.')}</div>`;
+      heroBox.innerHTML = '';
+      return;
+    }
+
+    head.innerHTML = versusHead(d);
+    posBox.innerHTML = versusPositions(d);
+    heroBox.innerHTML = versusHeroes(d);
+  } catch (e) {
+    posBox.innerHTML = `<div class="empty">Không tải được: ${esc(String(e.message || e))}</div>`;
+  }
+}
+
+function versusHead(d) {
+  const h = d.head2head;
+
+  // Chưa đủ mẫu thì nói SỐ VÁN THẬT chứ không giấu đi: "chưa gặp lần nào" và "mới gặp 2 lần"
+  // là hai sự thật khác nhau về hai đội, và cả hai đều đáng biết.
+  const note = h.enough
+    ? `<span class="vs-h2h"><b>${n0(h.winsA)}–${n0(h.winsB)}</b> qua ${n0(h.games)} ván đối đầu</span>`
+    : `<span class="vs-h2h mu">${h.games === 0
+        ? 'Hai đội chưa gặp nhau lần nào'
+        : `Mới gặp nhau ${n0(h.games)} lần — chưa đủ để đọc tỷ số`}</span>`;
+
+  return `<div class="vs-head">
+    <div class="vs-team">${teamLogo({ name: d.a.name, logo: d.a.logo }, 34)}<b>${esc(d.a.name)}</b></div>
+    ${note}
+    <div class="vs-team right"><b>${esc(d.b.name)}</b>${teamLogo({ name: d.b.name, logo: d.b.logo }, 34)}</div>
+  </div>`;
+}
+
+/** Một ô người trong hàng vị trí. Trống thì nói rõ là đội đó không có ai ở vị trí này. */
+function versusSeat(p, right) {
+  if (!p) return `<div class="vs-seat${right ? ' right' : ''}"><span class="mu">Không có ai
+    ở vị trí này trong cửa sổ đang xét</span></div>`;
+
+  return `<div class="vs-seat${right ? ' right' : ''}">
+    ${right ? '' : playerFace(p, 44)}
+    <div class="vs-who">
+      <div class="vs-nick">${esc(p.nick)}</div>
+      <div class="vs-sub">${n0(p.games)} ván · ${fmt(p.share, 0)}% số ván có nhãn</div>
+    </div>
+    ${right ? playerFace(p, 44) : ''}
+  </div>`;
+}
+
+/**
+ * Thanh đối xứng cho một trục.
+ *
+ * Cả hai bên chia chung MỘT thang, lấy theo giá trị lớn nhất của chính trục đó — chia thang
+ * riêng từng bên thì hai thanh dài bằng nhau lại đang nói hai con số khác nhau, đúng kiểu hình
+ * vẽ tự bác bỏ chính con số nó chở.
+ */
+function versusAxisRow(axis, va, vb) {
+  const max = Math.max(va || 0, vb || 0, 1) * 1.05;
+  const w = (v) => (v ? Math.max((v / max) * 100, 2) : 0);
+
+  // Trục "thấp mới tốt" thì bên nào thấp hơn mới là bên nhỉnh. Trục phong cách thì KHÔNG bên nào
+  // nhỉnh cả — vươn ra chỉ nghĩa là khác, và tô màu nó là khuyên người đọc đi sai hướng.
+  const style = axis.kind === 'phong-cach';
+  const aBetter = !style && va != null && vb != null
+    && (axis.lowerIsBetter ? va < vb : va > vb);
+  const bBetter = !style && va != null && vb != null
+    && (axis.lowerIsBetter ? vb < va : vb > va);
+
+  const cell = (v, better, right) => `<div class="vs-bar${right ? ' right' : ''}">
+    <span class="vs-num${better ? ' win' : ''}">${v == null ? '—' : fmt(v, 2) + '×'}</span>
+    <span class="vs-fill${better ? ' win' : ''}" style="width:${w(v)}%"></span>
+  </div>`;
+
+  return `<div class="vs-axis">
+    ${cell(va, aBetter, false)}
+    <div class="vs-axis-name">${esc(axis.label)}${style ? '<span class="vs-tag">phong cách</span>' : ''}</div>
+    ${cell(vb, bBetter, true)}
+  </div>`;
+}
+
+function versusPositions(d) {
+  const idx = (p, key) => {
+    const s = (p && p.signature || []).find((x) => x.key === key);
+    return s && s.index != null ? s.index : null;
+  };
+
+  const rawRow = (label, ka, kb, digits) => `<tr><td>${esc(label)}</td>
+    <td class="num">${ka == null ? '—' : fmt(ka, digits)}</td>
+    <td class="num">${kb == null ? '—' : fmt(kb, digits)}</td></tr>`;
+
+  return d.positions.map((pos) => {
+    const a = pos.a, b = pos.b;
+    if (!a && !b) return '';
+
+    const thin = (a && !a.enough) || (b && !b.enough);
+
+    const axes = d.axes.map((ax) => versusAxisRow(ax, idx(a, ax.key), idx(b, ax.key))).join('');
+
+    const ra = a ? a.raw : {}, rb = b ? b.raw : {};
+
+    return `<section class="vs-pos">
+      <h3 class="vs-pos-title">${esc(pos.label)}</h3>
+      <div class="vs-seats">
+        ${versusSeat(a, false)}
+        ${versusSeat(b, true)}
+      </div>
+      ${thin ? `<div class="note note-sm"><div>Dưới ${n0(d.minGamesForAxes)} ván ở vị trí này thì
+        không dựng trục — bảy con số dựng trên vài ván trông chắc chắn y hệt bảy con số dựng trên
+        ba trăm ván.</div></div>` : ''}
+      <div class="vs-axes">${axes}</div>
+      <details class="pf-more"><summary>Số thô, không chuẩn hoá</summary>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Chỉ số (trung vị)</th>
+            <th class="num">${esc(a ? a.nick : '—')}</th>
+            <th class="num">${esc(b ? b.nick : '—')}</th></tr></thead>
+          <tbody>
+            ${rawRow('GPM', ra.gpm, rb.gpm, 0)}
+            ${rawRow('XPM', ra.xpm, rb.xpm, 0)}
+            ${rawRow('Hạ gục', ra.kills, rb.kills, 1)}
+            ${rawRow('Số chết', ra.deaths, rb.deaths, 1)}
+            ${rawRow('Hỗ trợ', ra.assists, rb.assists, 1)}
+            ${rawRow('Lính ăn được', ra.lastHits, rb.lastHits, 0)}
+            ${rawRow('Hiệu suất lane (%)', ra.laneEfficiency, rb.laneEfficiency, 0)}
+          </tbody>
+        </table></div>
+        <p class="desc">Trung vị chứ không phải trung bình: một ván 90 phút kéo mọi số trung bình
+          theo nó. Và số thô ở đây <b>không so được trực tiếp</b> giữa hai đội đá khác giải —
+          đó chính là lý do phần trên dùng tỉ số.</p>
+      </details>
+    </section>`;
+  }).join('');
+}
+
+function versusHeroes(d) {
+  const strip = (list, empty) => list.length
+    ? `<div class="vs-heroes">${list.map((h) => `<span class="pool-hero"
+        title="${esc(h.name)} — ${n0(h.games)} ván">${heroImg(h.image, 46, 26)}
+        <span class="pool-n">${n0(h.games)}</span></span>`).join('')}</div>`
+    : `<div class="mu vs-empty">${esc(empty)}</div>`;
+
+  return d.positions.map((pos) => {
+    const h = pos.heroes;
+    if (!pos.a && !pos.b) return '';
+
+    const lean = [...h.leanA, ...h.leanB]
+      .sort((x, y) => Math.abs(y.gamesA - y.gamesB) - Math.abs(x.gamesA - x.gamesB))
+      .map((x) => `<li>
+        ${heroImg(x.image, 30, 17)}
+        <b>${esc(x.name)}</b>
+        <span class="num ${x.gamesA > x.gamesB ? 'cal-good' : 'cal-bad'}">${n0(x.gamesA)}–${n0(x.gamesB)}</span>
+      </li>`).join('');
+
+    return `<section class="vs-pos">
+      <h3 class="vs-pos-title">${esc(pos.label)}</h3>
+      <div class="vs-hero-grid">
+        <div>
+          <h4 class="vs-hero-head">Chỉ ${esc(pos.a ? pos.a.nick : 'bên trái')}</h4>
+          ${strip(h.onlyA, 'Không có hero nào bên kia chưa đụng tới')}
+        </div>
+        <div>
+          <h4 class="vs-hero-head">Cả hai cùng chơi</h4>
+          ${strip(h.both, 'Không có hero chung nào đạt ngưỡng')}
+        </div>
+        <div>
+          <h4 class="vs-hero-head">Chỉ ${esc(pos.b ? pos.b.nick : 'bên phải')}</h4>
+          ${strip(h.onlyB, 'Không có hero nào bên kia chưa đụng tới')}
+        </div>
+      </div>
+      ${lean ? `<h4 class="vs-hero-head">Cùng chơi nhưng lệch hẳn tần suất</h4>
+        <ul class="vs-lean">${lean}</ul>` : ''}
+    </section>`;
+  }).join('') + `<p class="desc">Một hero vào danh sách khi đạt <b>${n0(d.minHeroGames)} ván</b>
+    trở lên ở đúng vị trí đó. Ngưỡng thấp hơn thì mọi hero từng bị thử một lần đều được tính, và
+    ô &ldquo;cả hai cùng chơi&rdquo; phình ra tới mức không nói được gì.</p>`;
 }
 
 function renderH2h() {

@@ -26,7 +26,7 @@ public static class AnalyticsEndpoints
 
             // KHÔNG lọc `Elo != null` nữa.
             //
-            // Đội chưa đá đủ ván với đội hình TI2026 thì không có Elo — và nếu lọc bỏ ở đây thì
+            // Đội chưa đánh đủ ván với đội hình TI2026 thì không có Elo — và nếu lọc bỏ ở đây thì
             // đội đó biến mất khỏi bảng xếp hạng mà không một dòng nào nói vì sao. Người đọc chỉ
             // thấy bảng có 14 đội thay vì 16 và không có cách nào biết hai đội kia đi đâu.
             // Trả về hết, kèm eloGames, rồi để trang nói thẳng "chưa đủ ván".

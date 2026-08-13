@@ -273,7 +273,7 @@ public class VersusTests(Ti2026TestFactory factory) : IClassFixture<Ti2026TestFa
     ///
     /// RosterEntries chứa cả HLV, và điều đó không vô hại ở đây: Puppey của PARIVISION và Milan
     /// của Team Spirit đều từng là tuyển thủ thi đấu. Nếu dữ liệu có ván cũ của họ thì một trong
-    /// năm chỗ sẽ trao cho người không còn ra sân, và ô đó trông y hệt một ô hợp lệ.
+    /// năm chỗ sẽ trao cho người không còn ra trận, và ô đó trông y hệt một ô hợp lệ.
     /// </summary>
     [Fact]
     public async Task Huan_luyen_vien_khong_chiem_cho_cua_tuyen_thu()

@@ -6,7 +6,7 @@ namespace Ti2026.Data.Entities;
 /// VÌ SAO CẦN: Elo hiện tính trên MỌI trận với cùng hệ số K. Dữ liệu hôm nay toàn bộ là
 /// tier "professional" (DreamLeague, PGL Wallachia, BLAST SLAM, ESL One…) nên chưa có vấn
 /// đề. Nhưng OpenDota còn các hạng "amateur", "excluded", "null" — và khi vòng loại TI bắt
-/// đầu hoặc một đội đá giải hạng thấp, chúng sẽ lọt vào và kéo rating sai mà không có gì báo.
+/// đầu hoặc một đội đánh giải hạng thấp, chúng sẽ lọt vào và kéo rating sai mà không có gì báo.
 ///
 /// Bảng này để lọc trước khi tính, chứ không phải để hiển thị.
 /// </summary>

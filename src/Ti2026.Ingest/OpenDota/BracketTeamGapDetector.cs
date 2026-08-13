@@ -16,7 +16,7 @@ public readonly record struct BracketGap(
 /// ra — đó là cơ hội duy nhất phát hiện trước khi mất.
 ///
 /// Chuyện đã xảy ra thật, và bộ dò cũ KHÔNG bắt được: L1GA TEAM đăng ký TI2026 dưới bản ghi
-/// HULIGANI (10149530), một id thứ ba mà ta chưa biết. Họ chưa đá ván nào dưới id đó nên không
+/// HULIGANI (10149530), một id thứ ba mà ta chưa biết. Họ chưa đánh ván nào dưới id đó nên không
 /// có gì cho bộ dò cũ soi, và nếu không ai để ý thì toàn bộ giải đấu của L1GA sẽ biến mất khỏi
 /// hệ thống trong khi mọi vòng ingest vẫn báo "Succeeded".
 ///
@@ -31,7 +31,7 @@ public readonly record struct BracketGap(
 public class BracketTeamGapDetector(
     Ti2026DbContext db, OpenDotaClient openDota, ILogger<BracketTeamGapDetector> logger)
 {
-    /// <summary>Từ mức này đã đáng báo — 4/5 có thể là một người đá thay, vẫn là đội đó.</summary>
+    /// <summary>Từ mức này đã đáng báo — 4/5 có thể là một người đánh thay, vẫn là đội đó.</summary>
     public const int SuspectMatch = 4;
 
     public async Task<List<BracketGap>> FindAsync(CancellationToken ct)

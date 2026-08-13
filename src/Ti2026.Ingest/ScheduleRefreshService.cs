@@ -10,7 +10,7 @@ namespace Ti2026.Ingest;
 /// <summary>
 /// Làm tươi RIÊNG bảng đấu, nhanh hơn hẳn vòng ingest chính.
 ///
-/// VÌ SAO TÁCH RA. Bảng đấu là thứ duy nhất trên trang có giá trị theo PHÚT: trong lúc giải đá,
+/// VÌ SAO TÁCH RA. Bảng đấu là thứ duy nhất trên trang có giá trị theo PHÚT: trong lúc giải đánh,
 /// tỷ số và trạng thái "đang diễn ra" đổi liên tục, còn nhịp 6 giờ của vòng chính nghĩa là mở
 /// trang lúc 3 giờ chiều thấy tỷ số của 11 giờ trưa. Mọi nguồn khác thì 6 giờ là thừa sức —
 /// hero pool của một tuyển thủ không đổi trong nửa ngày.
@@ -108,7 +108,7 @@ public sealed class ScheduleRefreshService(
         var written = await ingester.IngestAsync(ct);
 
         // Điểm nhấn ngày chạy NGAY SAU, cùng nhịp: nó cần đúng thứ vừa lấy về — trạng thái từng
-        // loạt — và thêm một bộ hẹn giờ nữa chỉ để làm cùng việc muộn hơn vài phút là thêm một
+        // series — và thêm một bộ hẹn giờ nữa chỉ để làm cùng việc muộn hơn vài phút là thêm một
         // thứ phải nhớ. Lỗi ở đây không được kéo theo phần làm tươi bảng đấu.
         try
         {

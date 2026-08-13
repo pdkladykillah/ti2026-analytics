@@ -10,7 +10,7 @@ public readonly record struct UnknownSide(
     long MatchId, bool IsRadiant, int TeamId, string Slug, int RosterMatched, DateTime StartTime);
 
 /// <summary>
-/// Bắt trường hợp đội của ta ra sân dưới một team_id OpenDota mà hệ thống chưa biết.
+/// Bắt trường hợp đội của ta ra trận dưới một team_id OpenDota mà hệ thống chưa biết.
 ///
 /// VÌ SAO CẦN. TeamResolver chỉ phân giải đội có OpenDotaTeamId là null — đã gán một lần thì
 /// không bao giờ kiểm lại. Nên khi một roster đăng ký lại dưới bản ghi mới, ánh xạ cũ trỏ vào
@@ -31,7 +31,7 @@ public class StaleTeamIdDetector(Ti2026DbContext db, ILogger<StaleTeamIdDetector
     /// <summary>Đủ cả 5 người thì gần như chắc chắn là cùng một đội.</summary>
     public const int CertainMatch = 5;
 
-    /// <summary>Từ mức này đã đáng báo — 4/5 có thể là một người đá thay, vẫn là đội đó.</summary>
+    /// <summary>Từ mức này đã đáng báo — 4/5 có thể là một người đánh thay, vẫn là đội đó.</summary>
     public const int SuspectMatch = 4;
 
     // CỐ Ý không tự sửa ánh xạ. Bộ dò biết "đội nào" nhưng không biết "team_id nào", vì ta
@@ -51,7 +51,7 @@ public class StaleTeamIdDetector(Ti2026DbContext db, ILogger<StaleTeamIdDetector
     ///
     /// Mà một cảnh báo lúc nào cũng sáng thì chẳng khác gì tắt: người ta học cách bỏ qua nó, và
     /// đúng hôm nó báo chuyện thật thì không ai nhìn. 45 ngày đủ để một ánh xạ vừa chết lộ ra
-    /// (PariVision đá EWC cách đây 19 ngày, thừa sức bắt được) và đủ ngắn để chuyện đổi tổ chức
+    /// (PariVision đánh EWC cách đây 19 ngày, thừa sức bắt được) và đủ ngắn để chuyện đổi tổ chức
     /// của mùa trước tự rơi ra khỏi tầm nhìn.
     /// </summary>
     public const int LookbackDays = 45;

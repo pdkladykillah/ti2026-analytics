@@ -44,7 +44,7 @@ với ~9% ở tài khoản pub. Nghĩa là vị trí thật tính được cho g
 1. Giải hai đội theo slug. Đội hình lấy từ `RosterEntries` đang hiệu lực (`ValidTo` null).
 2. Cửa sổ 730 ngày, cùng cửa sổ với tab idol.
 3. Nạp `MatchPlayers` nối `Matches` cho **toàn bộ 10 người mỗi ván**, không chỉ người của ta —
-   cần đủ 10 để tính hạng net worth và tổng tài sản của phe.
+   cần đủ 10 để tính hạng net worth và tổng net worth của phe.
 4. **Vị trí = `RoleResolver.Resolve(LaneRole, teamFarmRank)`**, không phải `lane_role`.
    `teamFarmRank` = thứ hạng `NetWorth` trong cùng `(MatchId, phe)`.
 5. Mỗi người lấy vị trí **hay gặp nhất** trong các ván có kết luận chính xác, kèm tỉ lệ.
@@ -58,7 +58,7 @@ với ~9% ở tài khoản pub. Nghĩa là vị trí thật tính được cho g
 1. **`lane_role` là LANE, không phải vị trí.** pos1 và pos5 dùng chung nhãn `safe`. Đo được
    hậu quả: đếm theo lane cho PARIVISION ra 68 hero "safelane", con số đó trộn carry với hard
    support. Mọi phép nhóm phải đi qua `RoleResolver`.
-2. **Số thô không cùng thang.** Hai đội đá khác giải, khác bản game, khác đối thủ. Dùng lại
+2. **Số thô không cùng thang.** Hai đội đánh khác giải, khác bản game, khác đối thủ. Dùng lại
    `IdolStyle.Axes` + hồ neo `pro` để mọi con số là **tỉ số** so với người bình thường.
 3. **Chỉ so cùng vai trò.** pos1 với pos1, pos5 với pos5.
 
@@ -99,7 +99,7 @@ gặp nhau N lần, chưa đủ để đọc" thay vì hiện một con số d�
 
 ## Quyết định về cửa sổ thời gian
 
-Tính **mọi ván trong 730 ngày, kể cả ván người đó đá cho đội cũ**. Whitemon vừa rời Tundra
+Tính **mọi ván trong 730 ngày, kể cả ván người đó đánh cho đội cũ**. Whitemon vừa rời Tundra
 sang 1Win; lọc theo hợp đồng hiện tại sẽ cắt gần hết mẫu của anh. Nhãn ghi rõ số ván và khoảng
 thời gian, và đánh dấu người đã đổi đội trong cửa sổ (suy từ `RosterEntries.ValidTo`).
 
@@ -109,7 +109,7 @@ thời gian, và đánh dấu người đã đổi đội trong cửa sổ (suy 
   Giao diện phải hiện số ván và nói rõ thay vì vẽ một thanh trống.
 - **Đội mẫu mỏng.** Team Resilience 79 ván so với Team Liquid 574. Số ván hiện cạnh mỗi người
   để hai bên không trông ngang hàng.
-- **Một người đá nhiều vị trí.** Nisha 30% số ván ở vị trí khác. Ghép theo vị trí hay gặp nhất
+- **Một người đánh nhiều vị trí.** Nisha 30% số ván ở vị trí khác. Ghép theo vị trí hay gặp nhất
   và hiện tỉ lệ ngay đó.
 - **Vị trí trống một bên.** Nếu đội B không có ai mang vị trí đó thì hiện một bên, không bịa.
 

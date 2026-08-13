@@ -71,7 +71,7 @@ public class IdolIngester(
         (94054712, "Topson", "pos2",
             "Ba lần vô địch TI. Lối mid ứng biến, hero pool rộng bất thường.", 1),
         (898455820, "Malr1ne", "pos2",
-            "Mid của Team Falcons. Đổi chác rẻ nhất trong nhóm — xem trục giá mỗi pha hạ gục.", 2),
+            "Mid của Team Falcons. Đổi chác rẻ nhất trong nhóm — xem trục giá mỗi pha kill.", 2),
         (106573901, "No[o]ne-", "pos2",
             "Mid kỳ cựu, 88% số ván có nhãn là mid — chuyên biệt nhất nhóm mid.", 3),
         (480412663, "gpk-", "pos2",

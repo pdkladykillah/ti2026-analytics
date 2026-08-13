@@ -6,7 +6,7 @@ namespace Ti2026.Tests;
 /// <summary>
 /// Điểm nhấn ngày chỉ được nói những câu ĐÚNG BẤT KỂ CỠ MẪU.
 ///
-/// Một ngày Swiss có 8 loạt. Ở cỡ mẫu đó, câu suy luận là nhiễu được phát biểu như kết luận —
+/// Một ngày Swiss có 8 series. Ở cỡ mẫu đó, câu suy luận là nhiễu được phát biểu như kết luận —
 /// đúng loại lỗi mà dự án đã dựng cả MultipleTests để tránh. Các bài dưới đây khoá lại ranh
 /// giới giữa mô tả/đếm (được phép) và suy luận (không được phép).
 /// </summary>
@@ -150,14 +150,14 @@ public class DayHighlightsTests
 
         h.Should().Contain(x => x.Kind == "tong-quan");
         h.Should().Contain(x => x.Kind == "nguoc-keo");
-        h.First(x => x.Kind == "tong-quan").Text.Should().Contain("1/2 loạt");
+        h.First(x => x.Kind == "tong-quan").Text.Should().Contain("1/2 series");
     }
 
     /// <summary>
-    /// SỐ VÁN ĐẾM TRÊN MỌI LOẠT, không chỉ loạt đã xong.
+    /// SỐ VÁN ĐẾM TRÊN MỌI LOẠT, không chỉ series đã xong.
     ///
-    /// Một loạt đang đá dở vẫn đã có ván kết thúc, và ta vẫn đọc được chi tiết của chúng. Cộng
-    /// riêng loạt đã xong thì mẫu số nhỏ hơn tử số — đã thấy thật trên trang: "đọc được 9/7 ván",
+    /// Một series đang đánh dở vẫn đã có ván kết thúc, và ta vẫn đọc được chi tiết của chúng. Cộng
+    /// riêng series đã xong thì mẫu số nhỏ hơn tử số — đã thấy thật trên trang: "đọc được 9/7 ván",
     /// một câu tự bác bỏ chính nó.
     /// </summary>
     [Fact]
@@ -166,7 +166,7 @@ public class DayHighlightsTests
         var h = Build(
             [
                 Series(1, "A", "B", 2, 0),                 // xong, 2 ván
-                Series(2, "C", "D", 1, 1, done: false),    // đang đá, đã 2 ván
+                Series(2, "C", "D", 1, 1, done: false),    // đang đánh, đã 2 ván
             ],
             m: [
                 new DayMatch(100, 2400, "A", "B", true),
@@ -176,7 +176,7 @@ public class DayHighlightsTests
             ]);
 
         var text = h.First(x => x.Kind == "tong-quan").Text;
-        text.Should().Contain("4 ván", "hai loạt đã cho ra bốn ván, dù một loạt chưa xong");
+        text.Should().Contain("4 ván", "hai series đã cho ra bốn ván, dù một series chưa xong");
         text.Should().Contain("chi tiết 4 ván");
     }
 

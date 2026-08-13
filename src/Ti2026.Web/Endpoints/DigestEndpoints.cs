@@ -72,7 +72,7 @@ public static class DigestEndpoints
         catch
         {
             // Payload hỏng thì trả mảng rỗng chứ không để cả endpoint chết: phần còn lại của
-            // dòng — số loạt, độ phủ, thời lượng — vẫn dùng được.
+            // dòng — số series, độ phủ, thời lượng — vẫn dùng được.
             return JsonDocument.Parse("[]").RootElement.Clone();
         }
     }

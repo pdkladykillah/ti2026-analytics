@@ -58,7 +58,7 @@ public class LeagueBackfillTests : IDisposable
 
     private static DateTime Recent(int daysAgo) => DateTime.UtcNow.AddDays(-daysAgo);
 
-    /// <summary>Gieo một giải với <paramref name="teamCount"/> đội của ta đã ra sân ở đó.</summary>
+    /// <summary>Gieo một giải với <paramref name="teamCount"/> đội của ta đã ra trận ở đó.</summary>
     private static void SeedLeague(Ti2026DbContext db, long leagueId, string name, int teamCount)
     {
         var teams = new List<Team>();

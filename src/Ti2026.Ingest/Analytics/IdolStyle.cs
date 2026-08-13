@@ -23,9 +23,9 @@ public readonly record struct StylePool(
 /// Tên dùng khi vẽ biểu đồ chữ ký. Khác Label ở đúng những trục mà THẤP mới tốt.
 ///
 /// Vì sao cần một tên thứ hai. Biểu đồ nhiều góc luôn đọc là "vươn ra = nhiều hơn", và với trục
-/// "giá mỗi pha hạ gục" thì vươn ra nghĩa là chết đắt hơn, tức yếu hơn — hình sẽ nói ngược. Cách
+/// "giá mỗi pha kill" thì vươn ra nghĩa là chết đắt hơn, tức yếu hơn — hình sẽ nói ngược. Cách
 /// chữa là đảo giá trị lúc vẽ VÀ đổi tên theo chiều đã đảo, chứ không phải chỉ đảo số rồi giữ
-/// nguyên tên: "Giá mỗi pha hạ gục 1,4" đảo thành 0,71 mà vẫn mang tên cũ thì sai hẳn nghĩa.
+/// nguyên tên: "Giá mỗi pha kill 1,4" đảo thành 0,71 mà vẫn mang tên cũ thì sai hẳn nghĩa.
 /// Giữ cả hai tên ở đây để phần hiển thị không phải tự suy ra — suy ra ở hai nơi là lệch ở hai nơi.
 /// </param>
 public readonly record struct StyleAxis(
@@ -52,7 +52,7 @@ public readonly record struct StyleValue(
 ///
 /// BA TẦNG PHÒNG VỆ, theo thứ tự mạnh dần:
 ///
-/// 1. CHỌN TỈ SỐ TỰ TRIỆT TIÊU. Trục "giá mỗi pha hạ gục" là D/(K+A): tổng mạng chết trong một
+/// 1. CHỌN TỈ SỐ TỰ TRIỆT TIÊU. Trục "giá mỗi pha kill" là D/(K+A): tổng mạng chết trong một
 ///    ván luôn xấp xỉ tổng mạng giết, nên tử số và mẫu số phồng lên cùng nhau và phần lạm phát
 ///    tự trừ đi. Bằng chứng nó hiệu quả: nene ở mid đạt 0,235, NẰM TRONG dải của bốn tuyển thủ
 ///    (0,133–0,273). Một trục mà người chơi pub chạm được tới vùng pro là trục so sánh thật;
@@ -90,23 +90,23 @@ public static class IdolStyle
 
     public static readonly StyleAxis[] Axes =
     [
-        new("gia-mang", "Giá mỗi pha hạ gục", "Rủi ro", "chat-luong", true,
-            "Số mạng phải trả cho mỗi lần góp công hạ gục. Thấp là đổi chác lời.",
+        new("gia-mang", "Giá mỗi pha kill", "Rủi ro", "chat-luong", true,
+            "Số lần chết phải trả cho mỗi pha có công kill. Thấp là đổi chác lời.",
             "Đổi chác lời"),
         new("st-tren-vang", "Sát thương trên mỗi vàng", "Phong cách", "phong-cach", false,
-            "Cao là thiên về giao tranh, thấp là thiên về farm và công trình. Không có chiều nào tốt hơn.",
+            "Cao là thiên về giao tranh, thấp là thiên về farm và trụ. Không có chiều nào tốt hơn.",
             "Thiên giao tranh"),
-        new("ket-lieu", "Kết liễu so với dọn đường", "Phong cách", "phong-cach", false,
-            "Phần công hạ gục là cú kết liễu. Cao là người chốt hạ, thấp là người mở đường.",
+        new("ket-lieu", "Chốt kill so với mở đường", "Phong cách", "phong-cach", false,
+            "Trong các pha có công, bao nhiêu phần là cú chốt kill chứ không phải assist. Cao là người chốt hạ, thấp là người mở đường.",
             "Chốt hạ"),
         new("hieu-suat-lane", "Hiệu suất lane", "Nền tảng", "chat-luong", false,
             "Phần tài nguyên lane thực sự lấy được. Đo TRƯỚC khi ván ngã ngũ nên ít vòng nhân quả nhất.",
             "Hiệu suất lane"),
         new("toc-do-farm", "Tốc độ farm", "Nền tảng", "phong-cach", false,
-            "Lính ăn được mỗi phút. Cao hay thấp phụ thuộc vai trò, không phải trình độ.",
+            "Last hit mỗi phút. Cao hay thấp phụ thuộc vai trò, không phải trình độ.",
             "Tốc độ farm"),
-        new("suc-ep-cong-trinh", "Sức ép công trình", "Phong cách", "phong-cach", false,
-            "Sát thương lên công trình so với độ giàu. Cao là chơi theo bản đồ chứ không theo mạng.",
+        new("suc-ep-cong-trinh", "Sức ép trụ", "Phong cách", "phong-cach", false,
+            "Sát thương lên trụ so với độ giàu. Cao là chơi theo bản đồ chứ không theo mạng.",
             "Sức ép trụ"),
         new("phan-tai-nguyen", "Phần tài nguyên đội", "Phong cách", "phong-cach", false,
             "Phần net worth của đội mà người này chiếm. Ở cấp chuyên nghiệp gần như không phân biệt được ai.",

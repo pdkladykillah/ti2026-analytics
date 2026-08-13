@@ -36,7 +36,7 @@ public class IdolPlayer
     /// Tên phe ở ván GIẢI gần nhất của người này — không phải "đội hiện tại".
     ///
     /// Hai thứ đó khác nhau thật, và giao diện phải gọi đúng tên: Topson bán nghỉ nên ván giải gần
-    /// nhất của anh đá dưới tên một stack ("Retirement home"), trong khi danh sách tuyển thủ
+    /// nhất của anh đánh dưới tên một stack ("Retirement home"), trong khi danh sách tuyển thủ
     /// chuyên nghiệp của OpenDota vẫn ghi affiliation cũ. Muốn affiliation thì phải gọi proPlayers
     /// và tải về cả 5.127 người chỉ để lấy một chuỗi — mà đó vẫn là một đại lượng khác.
     ///

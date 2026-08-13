@@ -197,7 +197,7 @@ public static class ProfileEndpoints
 
             // Cùng phép tính, chạy trên từng tập con vai trò. Chỉ những vai trò có nhãn THẬT mới
             // được tách riêng: tách theo "core/hỗ trợ suy luận" sẽ cho ra hai cột trông rất chắc
-            // chắn nhưng thực ra chỉ chia theo thứ hạng tài sản.
+            // chắn nhưng thực ra chỉ chia theo hạng net worth.
             var byRole = roles
                 .Where(r => r.Exact)
                 .Select(r => new
@@ -225,8 +225,8 @@ public static class ProfileEndpoints
 
             // ---------- Cái chết có đổi được gì không ----------
             // Đo bằng kinh tế ĐỒNG ĐỘI trong chính ván đó, không mượn chỉ số hỗ trợ làm proxy:
-            // hỗ trợ chỉ ghi nhận việc có mặt lúc hạ gục, mà người đã chết thì không thể có mặt
-            // ở pha hạ gục sau đó.
+            // hỗ trợ chỉ ghi nhận việc có mặt lúc kill, mà người đã chết thì không thể có mặt
+            // ở pha kill sau đó.
             var deathEffect = DeathEffect.Read(rows
                 .Select(m => new DeathGame(
                     m.Won, m.PctDeaths, m.MatesPctGpm, m.TeamNetWorth, m.EnemyNetWorth, m.DurationSeconds))

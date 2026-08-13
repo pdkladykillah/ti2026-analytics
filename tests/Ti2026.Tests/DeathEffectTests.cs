@@ -7,7 +7,7 @@ namespace Ti2026.Tests;
 /// "Cái chết của tôi có đổi được gì không" — đo bằng kinh tế ĐỒNG ĐỘI.
 ///
 /// Bộ này thay cho cách cũ dùng chỉ số hỗ trợ làm proxy. Người dùng bác đúng: hỗ trợ chỉ ghi
-/// nhận việc CÓ MẶT lúc hạ gục, mà người đã chết thì không thể có mặt ở pha hạ gục sau đó — nên
+/// nhận việc CÓ MẶT lúc kill, mà người đã chết thì không thể có mặt ở pha kill sau đó — nên
 /// một cái chết mua thời gian cho đồng đội đi farm hoàn toàn không để lại dấu vết trong đó.
 /// </summary>
 public class DeathEffectTests

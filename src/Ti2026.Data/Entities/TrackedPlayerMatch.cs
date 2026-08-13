@@ -138,7 +138,7 @@ public class TrackedPlayerMatch
     //
     // VÌ SAO CẦN. Câu hỏi "cái chết của tôi có tạo ra khoảng trống cho đồng đội không" KHÔNG trả
     // lời được bằng chỉ số của riêng người chết. Đã thử dùng số hỗ trợ làm proxy và người dùng
-    // bác đúng: hỗ trợ chỉ ghi nhận việc CÓ MẶT lúc hạ gục, còn một cái chết mua thời gian cho
+    // bác đúng: hỗ trợ chỉ ghi nhận việc CÓ MẶT lúc kill, còn một cái chết mua thời gian cho
     // đồng đội đi farm hay đẩy trụ thì không để lại dấu vết nào trong đó.
     //
     // Thứ đo được điều đó là kinh tế của bốn người kia trong CHÍNH ván ấy. Nếu lối chơi hi sinh

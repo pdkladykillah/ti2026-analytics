@@ -42,7 +42,7 @@ public class PlayerInsightsTests
 
     /// <summary>
     /// Thắng 7/10 nghe rất ấn tượng, nhưng trong một pool hàng chục hero thì chuyện đó xảy ra
-    /// thường xuyên chỉ do may rủi. Không hiệu chỉnh thì trang khen nhầm hàng loạt hero.
+    /// thường xuyên chỉ do may rủi. Không hiệu chỉnh thì trang khen nhầm hàng series hero.
     /// </summary>
     [Fact]
     public void Thang_7_tren_10_van_KHONG_du_de_goi_la_hero_manh()

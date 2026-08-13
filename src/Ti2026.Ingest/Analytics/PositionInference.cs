@@ -1,13 +1,13 @@
 namespace Ti2026.Ingest.Analytics;
 
 /// <summary>
-/// Suy ra vị trí 1–5 từ lane và tài sản.
+/// Suy ra vị trí 1–5 từ lane và net worth.
 ///
 /// VÌ SAO PHẢI SUY: OpenDota chỉ cho lane_role (1 an toàn, 2 mid, 3 khó, 4 rừng) — tức là ba
 /// lane, không phải năm vị trí. Carry và hỗ trợ 5 đứng CÙNG một lane an toàn nên mang cùng một
 /// lane_role, và gộp chúng lại thì mọi thống kê theo vị trí đều vô nghĩa.
 ///
-/// CÁCH SUY: trong cùng một trận, cùng một đội, cùng một lane — ai nhiều tài sản hơn là core,
+/// CÁCH SUY: trong cùng một trận, cùng một đội, cùng một lane — ai nhiều net worth hơn là core,
 /// người còn lại là hỗ trợ. Đây là quy tắc quen thuộc và nó đúng vì định nghĩa của vai trò hỗ
 /// trợ chính là nhường tài nguyên.
 ///
@@ -63,7 +63,7 @@ public static class PositionInference
         _ => "",
     };
 
-    /// <summary>Xếp hạng tài sản trong nhóm rồi suy vị trí cho từng người.</summary>
+    /// <summary>Xếp hạng net worth trong nhóm rồi suy vị trí cho từng người.</summary>
     public static IEnumerable<(T Row, int Position)> InferGroup<T>(
         IEnumerable<T> sameLaneSameTeam, Func<T, int?> laneRole, Func<T, int?> netWorth)
     {

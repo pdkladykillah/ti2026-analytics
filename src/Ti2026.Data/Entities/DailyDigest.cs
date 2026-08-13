@@ -22,7 +22,7 @@ public class DailyDigest
     /// Ngày theo UTC, KHÔNG theo múi giờ người xem.
     ///
     /// Một bản ghi lịch sử phải có đúng một mốc. Nếu lấy theo giờ máy người đọc thì cùng một
-    /// loạt đấu sẽ rơi vào hai ngày khác nhau với hai người ở hai múi giờ, và bảng "so với ngày
+    /// series đấu sẽ rơi vào hai ngày khác nhau với hai người ở hai múi giờ, và bảng "so với ngày
     /// trước" sẽ so hai thứ khác nhau. Phần hiển thị vẫn đổi sang giờ máy như mọi chỗ khác.
     /// </summary>
     public DateOnly Day { get; set; }
@@ -37,11 +37,11 @@ public class DailyDigest
     public int MatchesCounted { get; set; }
 
     /// <summary>
-    /// Số ván SUY RA từ tỷ số các loạt trong bảng đấu Valve.
+    /// Số ván SUY RA từ tỷ số các series trong bảng đấu Valve.
     ///
     /// Hai con số này gần như luôn lệch nhau, và đó là thông tin chứ không phải lỗi: bảng đấu
     /// làm tươi mỗi 15 phút còn chi tiết ván đi theo vòng ingest 6 giờ. Đo lúc 04:5x ngày
-    /// 13/08: bảng đấu đã ghi 2/8 loạt xong nhưng mới 4 ván nằm trong Matches. Giao diện phải
+    /// 13/08: bảng đấu đã ghi 2/8 series xong nhưng mới 4 ván nằm trong Matches. Giao diện phải
     /// nói ra độ phủ thay vì để người đọc tưởng đã tính trên tất cả.
     /// </summary>
     public int MatchesExpected { get; set; }
@@ -49,7 +49,7 @@ public class DailyDigest
     public int? MedianDurationSeconds { get; set; }
 
     /// <summary>
-    /// Khác null nghĩa là ngày đã chốt: mọi loạt xếp trong ngày đều xong. Từ lúc đó KHÔNG tính
+    /// Khác null nghĩa là ngày đã chốt: mọi series xếp trong ngày đều xong. Từ lúc đó KHÔNG tính
     /// lại nữa — nếu tính lại thì một lần nạp bù dữ liệu cũ sẽ lặng lẽ viết lại lịch sử.
     /// </summary>
     public DateTime? ClosedAt { get; set; }

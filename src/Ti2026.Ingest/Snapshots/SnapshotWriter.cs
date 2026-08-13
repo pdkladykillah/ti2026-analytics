@@ -24,7 +24,7 @@ public class SnapshotWriter(Ti2026DbContext db)
     /// Dưới ngần này ván với đội hình hiện tại thì KHÔNG công bố Elo, trả null.
     ///
     /// Elo khởi điểm ở 1500 và cần một số ván nhất định mới tách khỏi mốc đó. Công bố rating
-    /// của một đội mới đá 8 ván là công bố con số mặc định khoác áo số đo — và tệ hơn nữa,
+    /// của một đội mới đánh 8 ván là công bố con số mặc định khoác áo số đo — và tệ hơn nữa,
     /// 1500 nằm giữa bảng nên đội đó trông như "trung bình" chứ không phải "chưa biết".
     /// Trả null rồi để trang nói thẳng "chưa đủ ván" là câu trả lời thật.
     /// </summary>
@@ -36,7 +36,7 @@ public class SnapshotWriter(Ti2026DbContext db)
         if (teams.Count == 0) return 0;
 
         // Số người của đội hình HIỆN TẠI có mặt trong từng ván. Cả form lẫn Elo đều lọc theo
-        // con số này, vì thành tích của đội hình cũ không nói gì về đội sắp ra sân ở TI2026 —
+        // con số này, vì thành tích của đội hình cũ không nói gì về đội sắp ra trận ở TI2026 —
         // 12/16 đội mãi tới năm 2026 mới lần đầu đủ mặt.
         var lineups = await LineupLookup.LoadAsync(db, ct: ct);
 
@@ -61,7 +61,7 @@ public class SnapshotWriter(Ti2026DbContext db)
 
             foreach (var team in teams)
             {
-                // Chỉ lấy ván mà CHÍNH ĐỘI NÀY ra sân đủ 5 người của đội hình hiện tại.
+                // Chỉ lấy ván mà CHÍNH ĐỘI NÀY ra trận đủ 5 người của đội hình hiện tại.
                 //
                 // Ở đây chỉ cần một bên, khác với Elo. Form là chỉ số MÔ TẢ chính đội đó chơi
                 // thế nào, nên đối thủ là đội hình nào không đổi việc đây đúng là đội hình hôm
@@ -151,7 +151,7 @@ public class SnapshotWriter(Ti2026DbContext db)
         //
         // Elo là số TƯƠNG ĐỐI: cập nhật rating của X bằng rating hiện tại của Y. Nếu Y lúc ấy
         // là một đội khác mang cùng tên thì phép tính lấy sức mạnh của đội Y hôm nay để chấm
-        // một trận mà đội Y hôm nay không hề đá — sai số bơm thẳng vào rating của X mà không
+        // một trận mà đội Y hôm nay không hề đánh — sai số bơm thẳng vào rating của X mà không
         // có gì báo. Đây là chỗ duy nhất trong hệ bắt buộc cả hai bên.
         var rated = rows
             .Where(r => lineups.Kept(r.Id, r.RadiantTeamId!.Value, true) >= 5

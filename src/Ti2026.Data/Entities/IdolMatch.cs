@@ -121,7 +121,7 @@ public class IdolMatch
     public int? GoldAdv20 { get; set; }
     public int? GoldAdv30 { get; set; }
 
-    /// <summary>Giây tới pha hạ gục đầu tiên của người này. null = cả ván không giết ai.</summary>
+    /// <summary>Giây tới pha kill đầu tiên của người này. null = cả ván không giết ai.</summary>
     public int? FirstKillSecond { get; set; }
 
     // ---------- Tổng của 5 người CÙNG PHE ----------

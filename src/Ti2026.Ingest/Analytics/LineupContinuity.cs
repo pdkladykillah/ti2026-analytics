@@ -1,7 +1,7 @@
 namespace Ti2026.Ingest.Analytics;
 
 /// <summary>Một ván đối đầu, kèm số người của ĐỘI HÌNH TI2026 thực sự có mặt ở mỗi bên.</summary>
-/// <param name="KeptA">Số người của đội A (slug đứng trước theo alphabet) đã ra sân ván đó.</param>
+/// <param name="KeptA">Số người của đội A (slug đứng trước theo alphabet) đã ra trận ván đó.</param>
 public readonly record struct H2hGame(
     string Date, string League, string? WinnerSlug, int KeptA, int KeptB);
 
@@ -15,7 +15,7 @@ public readonly record struct H2hVerdict(
 /// Lọc lịch sử đối đầu theo ĐỘI HÌNH, không theo thời gian.
 ///
 /// Vì sao cần. Một cặp đấu chỉ là "cùng một cặp đấu" khi cả mười người trên sân vẫn là mười
-/// người đó. Trong dữ liệu đang có, chỉ 1/16 đội từng ra sân với đúng đội hình TI2026 trước
+/// người đó. Trong dữ liệu đang có, chỉ 1/16 đội từng ra trận với đúng đội hình TI2026 trước
 /// tháng 10/2025, và 12/16 đội mãi tới năm 2026 mới lần đầu đủ mặt. Nên phần lớn "lịch sử đối
 /// đầu" là trận của những đội khác mang cùng tên: Falcons–Liquid có 71 ván, nhưng 51 ván trong
 /// đó Liquid chỉ còn 3/5 người của hôm nay.

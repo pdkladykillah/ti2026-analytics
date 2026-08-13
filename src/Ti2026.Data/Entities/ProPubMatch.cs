@@ -3,7 +3,7 @@ namespace Ti2026.Data.Entities;
 /// <summary>
 /// Một ván xếp hạng thường (pub) mà một tuyển thủ chuyên nghiệp vừa chơi.
 ///
-/// VÌ SAO ĐÁNG LƯU: trận chính thức là chỉ báo TRỄ — đội chỉ mang ra sân thứ họ đã tin. Còn
+/// VÌ SAO ĐÁNG LƯU: trận chính thức là chỉ báo TRỄ — đội chỉ mang ra trận thứ họ đã tin. Còn
 /// những gì pro luyện trong pub là chỉ báo SỚM, và mẫu lớn hơn nhiều lần vì họ chơi pub hằng
 /// ngày còn giải thì vài tuần một lần.
 ///

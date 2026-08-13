@@ -18,7 +18,7 @@ public static class StyleSupport
 {
     /// <summary>
     /// Hồ ván chuyên nghiệp. Chung cho cả tuyển thủ được theo dõi lẫn 16 đội dự giải: cả hai đều
-    /// đá ván chuyên nghiệp, nên mốc "người bình thường" của họ là cùng một thứ.
+    /// đánh ván chuyên nghiệp, nên mốc "người bình thường" của họ là cùng một thứ.
     /// </summary>
     public const string ProPool = "pro";
 

@@ -299,7 +299,7 @@ public class TrackedMatchDetailIngester(
     /// Kinh tế của cả hai phe, và mức farm của riêng 4 ĐỒNG ĐỘI.
     ///
     /// Đây là dữ liệu để trả lời "cái chết của tôi có tạo ra khoảng trống không" mà không phải
-    /// mượn chỉ số hỗ trợ làm proxy — hỗ trợ chỉ ghi nhận việc có mặt lúc hạ gục, còn một cái
+    /// mượn chỉ số hỗ trợ làm proxy — hỗ trợ chỉ ghi nhận việc có mặt lúc kill, còn một cái
     /// chết mua thời gian cho đồng đội đi farm thì không để lại dấu vết nào trong đó.
     ///
     /// Chỉ ghi khi ĐỦ 5 người mỗi phe. Thiếu người thì tổng kinh tế đổi nghĩa, và một tổng của

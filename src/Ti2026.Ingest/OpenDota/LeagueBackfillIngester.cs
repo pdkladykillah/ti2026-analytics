@@ -54,7 +54,7 @@ public class LeagueBackfillIngester(
             return 0;
         }
 
-        // Giải "cấp cao" đọc từ chính dữ liệu: đếm số đội của ta đã ra sân ở đó.
+        // Giải "cấp cao" đọc từ chính dữ liệu: đếm số đội của ta đã ra trận ở đó.
         //
         // Gom nhóm ở phía ứng dụng chứ không trong SQL: đếm số đội phân biệt qua HAI cột đòi
         // hỏi trải hai cột thành một tập, mà EF không dịch được biểu thức đó sang SQL. Một bản

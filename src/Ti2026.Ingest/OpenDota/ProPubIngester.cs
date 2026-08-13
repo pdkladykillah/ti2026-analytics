@@ -8,7 +8,7 @@ namespace Ti2026.Ingest.OpenDota;
 /// <summary>
 /// Nạp các ván xếp hạng thường mà tuyển thủ chuyên nghiệp vừa chơi.
 ///
-/// VÌ SAO ĐÁNG LÀM: trận chính thức là chỉ báo TRỄ — đội chỉ mang ra sân thứ họ đã tin. Thứ pro
+/// VÌ SAO ĐÁNG LÀM: trận chính thức là chỉ báo TRỄ — đội chỉ mang ra trận thứ họ đã tin. Thứ pro
 /// luyện trong pub là chỉ báo SỚM, và mẫu lớn hơn nhiều vì họ chơi pub hằng ngày còn giải thì
 /// vài tuần một lần.
 ///

@@ -126,7 +126,7 @@ public class TeamInsightsTests
         i.Text.Should().Contain("không giữ được lợi thế");
     }
 
-    // ---------- Hạ gục nhiều mà không thắng ----------
+    // ---------- Kill nhiều mà không thắng ----------
 
     [Fact]
     public void Hon_ve_mang_ma_thua_tran_thi_phai_noi_ra()

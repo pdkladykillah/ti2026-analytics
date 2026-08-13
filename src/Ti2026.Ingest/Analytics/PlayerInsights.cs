@@ -273,7 +273,7 @@ public static class PlayerInsights
                 found.Add(new PlayerInsight("core-ho-tro", "flat",
                     $"Trên toàn bộ lịch sử, {N(core.Games)} ván đi core (thắng {core.Winrate:0.0}%) "
                     + $"và {N(sup.Games)} ván đi hỗ trợ (thắng {sup.Winrate:0.0}%). Cách chia này "
-                    + "suy từ thứ hạng tài sản trong đội — chắc ở mức core/hỗ trợ, nhưng KHÔNG "
+                    + "suy từ hạng net worth trong đội — chắc ở mức core/hỗ trợ, nhưng KHÔNG "
                     + "tách được mid với offlane.",
                     72));
             }

@@ -7,7 +7,7 @@ namespace Ti2026.Tests;
 /// OpenDota chỉ cho ba lane, không cho năm vị trí. Carry và hỗ trợ 5 đứng CÙNG lane an toàn nên
 /// mang cùng lane_role — gộp chúng lại thì mọi thống kê theo vị trí đều vô nghĩa.
 ///
-/// Quy tắc suy: trong cùng trận, cùng đội, cùng lane, ai nhiều tài sản hơn là core.
+/// Quy tắc suy: trong cùng trận, cùng đội, cùng lane, ai nhiều net worth hơn là core.
 /// Đã kiểm chứng trên 368 bàn draft 7.41 và năm danh sách hero đọc ra đúng như người trong nghề
 /// sẽ viết — xem ghi chú ở PositionInference.
 /// </summary>
@@ -18,7 +18,7 @@ public class PositionInferenceTests
     {
         PositionInference.Infer(PositionInference.MidLane, 1).Should().Be(2);
         PositionInference.Infer(PositionInference.MidLane, 2).Should().Be(2,
-            "mid đi một mình nên thứ hạng tài sản không đổi được vị trí");
+            "mid đi một mình nên hạng net worth không đổi được vị trí");
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class PositionInferenceTests
     }
 
     /// <summary>
-    /// Thiếu tài sản thì xếp cuối chứ không được xếp đầu — nếu null bị coi là lớn nhất thì một
+    /// Thiếu net worth thì xếp cuối chứ không được xếp đầu — nếu null bị coi là lớn nhất thì một
     /// ván chưa parse sẽ biến người hỗ trợ thành carry.
     /// </summary>
     [Fact]

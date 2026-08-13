@@ -29,7 +29,7 @@ public class TiScheduleIngester(
     /// <summary>
     /// Lấy bảng đấu, THỬ LẠI khi Valve trả về thân rỗng.
     ///
-    /// ĐO ĐƯỢC, KHÔNG PHẢI PHÒNG XA. Trong lúc TI đang đá: gọi thẳng 8 lần cách nhau 15 giây thì
+    /// ĐO ĐƯỢC, KHÔNG PHẢI PHÒNG XA. Trong lúc TI đang đánh: gọi thẳng 8 lần cách nhau 15 giây thì
     /// 8/8 trả đủ 27 nút, nhưng app gọi 2 lần thì 1 lần nhận về thân `null`. Tức không phải Valve
     /// chặn nhịp — nếu chặn thì probe 15 giây/lần đã dính trước — mà là lỗi chớp nhoáng phía họ,
     /// nhiều khả năng vì backend đang tải nặng giữa giải.
@@ -142,7 +142,7 @@ public class TiScheduleIngester(
     ///
     /// TRƯỚC ĐÂY TRA LẠI MỖI VÒNG, và ở nhịp 6 giờ thì đúng là không đáng bàn: 315 KB nén nhân
     /// bốn lượt một ngày là khoảng 1,3 MB. Nhưng khi bảng đấu chuyển sang nhịp 15 phút để bám
-    /// theo giải đang đá thì cùng phép tính đó ra ~30 MB mỗi ngày, để lấy về một số nguyên gần
+    /// theo giải đang đánh thì cùng phép tính đó ra ~30 MB mỗi ngày, để lấy về một số nguyên gần
     /// như không bao giờ đổi — kỳ TI mới xuất hiện mỗi năm một lần.
     ///
     /// Nên nhớ lại, nhưng CÓ HẠN DÙNG. Nhớ vĩnh viễn thì sang TI2027 phải khởi động lại

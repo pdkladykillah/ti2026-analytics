@@ -842,15 +842,15 @@ function versusPositions(d) {
           <tbody>
             ${rawRow('GPM', ra.gpm, rb.gpm, 0)}
             ${rawRow('XPM', ra.xpm, rb.xpm, 0)}
-            ${rawRow('Hạ gục', ra.kills, rb.kills, 1)}
+            ${rawRow('Kill', ra.kills, rb.kills, 1)}
             ${rawRow('Số chết', ra.deaths, rb.deaths, 1)}
-            ${rawRow('Hỗ trợ', ra.assists, rb.assists, 1)}
-            ${rawRow('Lính ăn được', ra.lastHits, rb.lastHits, 0)}
+            ${rawRow('Assist', ra.assists, rb.assists, 1)}
+            ${rawRow('Last hit', ra.lastHits, rb.lastHits, 0)}
             ${rawRow('Hiệu suất lane (%)', ra.laneEfficiency, rb.laneEfficiency, 0)}
           </tbody>
         </table></div>
         <p class="desc">Trung vị chứ không phải trung bình: một ván 90 phút kéo mọi số trung bình
-          theo nó. Và số thô ở đây <b>không so được trực tiếp</b> giữa hai đội đá khác giải —
+          theo nó. Và số thô ở đây <b>không so được trực tiếp</b> giữa hai đội đánh khác giải —
           đó chính là lý do phần trên dùng tỉ số.</p>
       </details>
     </section>`;
@@ -993,8 +993,8 @@ function verdictH2h(series, A, B) {
   const lineup = (T) => {
     const l = series.lineup && series.lineup[T.slug];
     return l
-      ? `<div><b>${esc(T.name)}</b> đá cùng nhau từ <b>${esc(l.since)}</b> · ${l.games} ván</div>`
-      : `<div><b>${esc(T.name)}</b> chưa từng ra sân đủ 5 người của đội hình TI2026</div>`;
+      ? `<div><b>${esc(T.name)}</b> đánh cùng nhau từ <b>${esc(l.since)}</b> · ${l.games} ván</div>`
+      : `<div><b>${esc(T.name)}</b> chưa từng ra trận đủ 5 người của đội hình TI2026</div>`;
   };
 
   return `<div class="h2h-verdict ${cls}">
@@ -1126,11 +1126,11 @@ function renderDigest(d) {
         <div>
           <div class="dg-date">${esc(dayLabel(day.day))}</div>
           <div class="dg-meta">${esc(day.stage || 'Nhiều vòng')} ·
-            ${n0(day.seriesCompleted)}/${n0(day.seriesTotal)} loạt xong${
+            ${n0(day.seriesCompleted)}/${n0(day.seriesTotal)} series xong${
               day.medianMinutes ? ` · trung vị ${n0(day.medianMinutes)} phút` : ''}</div>
         </div>
         <span class="dg-state ${day.closed ? 'done' : 'live'}">${
-          day.closed ? 'đã chốt' : 'đang đá'}</span>
+          day.closed ? 'đã chốt' : 'đang đánh'}</span>
       </header>
 
       ${partial ? `<div class="note note-sm"><div>Mới đọc được chi tiết
@@ -1222,14 +1222,14 @@ function renderSchedule(d) {
       `<h4 class="sc-day">${esc(day)}</h4><div class="sc-list">${list.map(row).join('')}</div>`).join('');
 
     const rest = untimed.length
-      ? `<h4 class="sc-day">Chưa xếp giờ · ${n0(untimed.length)} loạt</h4>
+      ? `<h4 class="sc-day">Chưa xếp giờ · ${n0(untimed.length)} series</h4>
          <div class="sc-list">${untimed.map(row).join('')}</div>`
       : '';
 
     return `<section class="sc-stage">
       <header>
         <h3>${esc(st.name)}</h3>
-        <span class="sc-progress">${n0(st.done)}/${n0(st.total)} loạt đã xong</span>
+        <span class="sc-progress">${n0(st.done)}/${n0(st.total)} series đã xong</span>
       </header>
       ${days}${rest}
     </section>`;
@@ -1237,7 +1237,7 @@ function renderSchedule(d) {
 
   body.innerHTML = `
     <div class="sc-summary">
-      <span><b>${n0(d.totalSeries)}</b> loạt trong bảng đấu</span>
+      <span><b>${n0(d.totalSeries)}</b> series trong bảng đấu</span>
       <span><b>${n0(d.scheduledSeries)}</b> đã có giờ</span>
       <span><b>${n0(d.completedSeries)}</b> đã xong</span>
     </div>
@@ -1403,7 +1403,7 @@ function renderBracket(d) {
 
   if (!g) {
     box.innerHTML = `<div class="empty">Valve chưa công bố liên kết giữa các nút, nên chưa
-      dựng được nhánh. Lịch từng loạt vẫn xem được ở mục bên cạnh.</div>`;
+      dựng được nhánh. Lịch từng series vẫn xem được ở mục bên cạnh.</div>`;
     return;
   }
 
@@ -1567,7 +1567,7 @@ function roleBlock(d) {
         <td>${esc(r.label)}</td>
         <td class="num">${n0(r.games)}</td>
         <td class="num ${r.winrate >= 55 ? 'cal-good' : r.winrate <= 45 ? 'cal-bad' : ''}">${fmt(r.winrate, 1, '%')}</td>
-        <td class="mu">${r.exact ? 'nhãn replay' : 'suy từ thứ hạng tài sản'}</td>
+        <td class="mu">${r.exact ? 'nhãn replay' : 'suy từ hạng net worth'}</td>
       </tr>`).join('')}</tbody>
     </table></div>`;
 }
@@ -1584,8 +1584,8 @@ const DEATH_VERDICT = {
 /**
  * Trả lời "cái chết của tôi có tạo ra khoảng trống cho đồng đội không" bằng kinh tế đồng đội.
  *
- * Không dùng chỉ số hỗ trợ: nó chỉ ghi nhận việc CÓ MẶT lúc hạ gục, mà người đã chết thì không
- * thể có mặt ở pha hạ gục sau đó.
+ * Không dùng chỉ số assist: nó chỉ ghi nhận việc CÓ MẶT lúc kill, mà người đã chết thì không
+ * thể có mặt ở pha kill sau đó.
  */
 function deathBlock(d) {
   const de = d.deathEffect;
@@ -1594,8 +1594,8 @@ function deathBlock(d) {
   const [tone, verdict] = DEATH_VERDICT[de.verdict] || DEATH_VERDICT['khong-ro'];
 
   return `<h3>Cái chết của bạn có đổi được gì không</h3>
-    <p class="desc lead">Câu này KHÔNG trả lời được bằng chỉ số hỗ trợ —
-      hỗ trợ chỉ ghi nhận việc có mặt lúc hạ gục, mà người đã chết thì không thể có mặt ở pha hạ
+    <p class="desc lead">Câu này KHÔNG trả lời được bằng chỉ số assist —
+      assist chỉ ghi nhận việc có mặt lúc kill, mà người đã chết thì không thể có mặt ở pha hạ
       gục sau đó. Thứ đo được là <b>mức farm của 4 đồng đội trong chính ván đó</b>: nếu lối chơi
       hi sinh có hiệu quả thì ván bạn chết nhiều phải là ván đồng đội giàu hơn thường lệ.</p>
     <p class="desc lead">So trong <b>cùng một kết quả trận</b> và
@@ -2041,7 +2041,7 @@ function card(tone, kicker, big, title, note) {
  * Cố định để hình dạng so được giữa hai người: nếu thứ tự trục đổi theo dữ liệu thì hai đa giác
  * khác hình có thể chỉ vì trục xếp khác, chứ không phải vì người chơi khác nhau.
  *
- * Bỏ "chối lính" (gần trùng với ăn lính, hai trục cạnh nhau đo cùng một việc sẽ kéo dài hình về
+ * Bỏ "deny" (gần trùng với ăn lính, hai trục cạnh nhau đo cùng một việc sẽ kéo dài hình về
  * một phía một cách giả tạo) và "hồi máu" (chỉ có ở một phần nhỏ số ván, xem quy tắc raw = 0).
  */
 const RADAR_AXES = [
@@ -2050,7 +2050,7 @@ const RADAR_AXES = [
   ['xpm', 'Lên cấp'],
   ['dmg', 'Sát thương'],
   ['tower', 'Đẩy trụ'],
-  ['assists', 'Hỗ trợ'],
+  ['assists', 'Assist'],
   ['deaths', 'Giữ mạng'],
 ];
 
@@ -2985,7 +2985,7 @@ function renderRatings(rows) {
            <div class="elo-track"></div>
            <span class="rank-val num mu">${n0(r.eloGames ?? 0)} ván</span>
          </div>`).join('')}
-         <p class="desc">Đội hình TI2026 của các đội này chưa đá
+         <p class="desc">Đội hình TI2026 của các đội này chưa đánh
            đủ ván với một đội hình TI2026 khác. Elo khởi điểm ở 1500 nên nếu vẫn hiện số, họ sẽ
            nằm đúng giữa bảng và trông như đội trung bình — trong khi thật ra là <b>chưa
            biết</b>.</p>
@@ -2993,7 +2993,7 @@ function renderRatings(rows) {
     : '';
 
   $('#ratings-body').innerHTML = rankedHtml + unrankedHtml + `<p class="desc">
-      Chỉ tính ván mà <b>cả hai bên</b> đều ra sân đúng đội hình TI2026 — Elo là số so sánh giữa
+      Chỉ tính ván mà <b>cả hai bên</b> đều ra trận đúng đội hình TI2026 — Elo là số so sánh giữa
       hai đội, chấm đội hôm nay bằng một trận của đội hình cũ thì sai cả hai phía.
       Chênh 100 điểm Elo ≈ 64% cơ hội thắng; chênh 200 điểm ≈ 76%.
       Cột phải là winrate thô để bạn thấy hai thước đo lệch nhau ở đâu.</p>`;
@@ -3028,7 +3028,7 @@ function renderPredict(p) {
 
   const head = pa === null
     ? `<div class="empty"><b>${noElo.map((t) => esc(t.name)).join(' và ')}</b>
-         chưa đá đủ ván với đội hình TI2026${noElo.some((t) => t.eloGames != null)
+         chưa đánh đủ ván với đội hình TI2026${noElo.some((t) => t.eloGames != null)
            ? ` (${noElo.map((t) => `${esc(t.name)}: ${t.eloGames ?? 0} ván`).join(', ')})`
            : ''} nên chưa có Elo — đưa ra tỷ lệ thắng lúc này là bịa một con số.
          Phần đối đầu và kèo tài/xỉu bên dưới vẫn dùng được.</div>`
@@ -3509,7 +3509,7 @@ function setupTierList() {
 
   // Nút vị trí: "Tất cả" cộng 5 vị trí. Tên lấy từ hằng số phía server qua lần tải đầu.
   const positions = [
-    [null, 'Tất cả'], [1, 'Carry'], [2, 'Mid'], [3, 'Offlane'], [4, 'Hỗ trợ 4'], [5, 'Hỗ trợ 5'],
+    [null, 'Tất cả'], [1, 'Carry'], [2, 'Mid'], [3, 'Offlane'], [4, 'Support 4'], [5, 'Support 5'],
   ];
 
   pos.innerHTML = positions.map(([p, label], i) =>
@@ -3925,7 +3925,7 @@ const ROLE_VN = {
 /**
  * Giá trị đem VẼ, khác giá trị đem ĐỌC ở đúng những trục mà thấp mới tốt.
  *
- * Biểu đồ nhiều góc luôn được đọc là "vươn ra = nhiều hơn = mạnh hơn". Trục "giá mỗi pha hạ gục"
+ * Biểu đồ nhiều góc luôn được đọc là "vươn ra = nhiều hơn = mạnh hơn". Trục "giá mỗi pha kill"
  * thì ngược: vươn ra nghĩa là chết đắt hơn. Nên phải đảo giá trị lúc vẽ, VÀ dùng plotLabel do
  * máy chủ gửi kèm — đảo số mà giữ nguyên tên thì hình đúng nhưng chữ sai.
  */
@@ -4098,7 +4098,7 @@ function idolCards(d) {
     const thin = x.window.games < 25;
 
     // Tên đội gọi ĐÚNG thứ đang đo: "đội ở ván giải gần nhất", không phải "đội hiện tại".
-    // Hai thứ đó khác nhau thật — Topson bán nghỉ nên ván giải gần nhất của anh đá dưới tên một
+    // Hai thứ đó khác nhau thật — Topson bán nghỉ nên ván giải gần nhất của anh đánh dưới tên một
     // stack. Nên nhãn đầy đủ nằm trong dấu "i", còn dòng ngắn chỉ hiện chuỗi tên.
     const meta = [
       x.team ? esc(x.team) : null,

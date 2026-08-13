@@ -11,7 +11,7 @@ namespace Ti2026.Web.Endpoints;
 /// phải dữ liệu nhập tay. Valve công bố sẵn khung bảng đấu — Swiss, Elimination Round,
 /// Playoff — kèm giờ và tỷ số từng nút, và cập nhật trong lúc giải diễn ra.
 ///
-/// Đã cân nhắc hai nguồn khác và loại: OpenDota chỉ có trận ĐÃ đá, không có endpoint nào cho
+/// Đã cân nhắc hai nguồn khác và loại: OpenDota chỉ có trận ĐÃ đánh, không có endpoint nào cho
 /// trận sắp diễn ra; Liquipedia có lịch nhưng robots.txt của họ ghi thẳng
 /// "Disallow: /dota2/api.php" dưới User-agent: * nên không được phép lấy tự động.
 /// </summary>
@@ -76,7 +76,7 @@ public static class ScheduleEndpoints
                         //
                         // Không có bốn trường này thì không dựng được nhánh đấu: hình dạng của
                         // một bảng loại kép nằm ở chỗ ai đi tiếp và ai rơi xuống nhánh thua,
-                        // mà đó chính là winTo/loseTo. Và phải giữ cả sau khi trận đã đá xong,
+                        // mà đó chính là winTo/loseTo. Và phải giữ cả sau khi trận đã đánh xong,
                         // vì cây vẫn phải vẽ được khi mọi ô đã điền đội.
                         in1 = s.IncomingNodeId1,
                         in2 = s.IncomingNodeId2,

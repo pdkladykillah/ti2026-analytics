@@ -269,7 +269,7 @@ public class IngestPipelineTests : IDisposable
     /// Gieo 5 người vào đội hình ĐANG hiệu lực của một đội.
     ///
     /// Bắt buộc từ khi form và Elo lọc theo đội hình: ván không có dòng MatchPlayer nào thì hệ
-    /// coi là KHÔNG BIẾT ai ra sân, và không biết thì không dùng để kết luận. Thiếu bước này,
+    /// coi là KHÔNG BIẾT ai ra trận, và không biết thì không dùng để kết luận. Thiếu bước này,
     /// mọi ván gieo trong test đều bị loại và snapshot ra rỗng.
     /// </summary>
     private static async Task<List<int>> SeedRosterAsync(Ti2026DbContext db, Team team)

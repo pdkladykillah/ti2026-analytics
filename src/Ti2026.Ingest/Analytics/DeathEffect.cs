@@ -25,9 +25,9 @@ public readonly record struct DeathEffectReading(
 /// CÁI CHẾT CÓ ĐỔI ĐƯỢC GÌ KHÔNG — đo bằng kinh tế của ĐỒNG ĐỘI, không mượn chỉ số hỗ trợ.
 ///
 /// VÌ SAO KHÔNG DÙNG SỐ HỖ TRỢ. Bản trước dùng nó làm proxy và người dùng bác đúng: hỗ trợ chỉ
-/// ghi nhận việc CÓ MẶT trong bán kính lúc hạ gục. Một cái chết mua thời gian cho đồng đội đi
+/// ghi nhận việc CÓ MẶT trong bán kính lúc kill. Một cái chết mua thời gian cho đồng đội đi
 /// farm hay đẩy trụ thì hoàn toàn không để lại dấu vết nào trong đó — thậm chí ngược lại, người
-/// đã chết thì không thể có mặt ở pha hạ gục sau đó.
+/// đã chết thì không thể có mặt ở pha kill sau đó.
 ///
 /// Thứ đo được đúng điều cần biết là mức farm của bốn người kia TRONG CHÍNH VÁN ẤY. Nếu lối chơi
 /// hi sinh có hiệu quả thì những ván ta chết nhiều phải là những ván đồng đội giàu hơn thường lệ.

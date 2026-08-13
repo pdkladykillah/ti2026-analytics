@@ -124,7 +124,7 @@ public static class TierListEndpoints
                         : (double?)null,
                 });
 
-            // ---------- Vị trí: suy từ lane + tài sản ----------
+            // ---------- Vị trí: suy từ lane + net worth ----------
             var players = await db.MatchPlayers
                 .Where(mp => matchIds.Contains(mp.MatchId) && mp.LaneRole != null)
                 .Select(mp => new

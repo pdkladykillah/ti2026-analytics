@@ -8,7 +8,7 @@ using Ti2026.Ingest.OpenDota;
 namespace Ti2026.Tests;
 
 /// <summary>
-/// Bắt đội của ta ra sân dưới một team_id OpenDota chưa khai.
+/// Bắt đội của ta ra trận dưới một team_id OpenDota chưa khai.
 ///
 /// Đây là loại hỏng KHÔNG làm gì đổ vỡ: TeamResolver chỉ phân giải đội có OpenDotaTeamId là
 /// null, nên đã gán một lần thì không bao giờ kiểm lại; khi một roster đăng ký lại dưới bản ghi
@@ -108,7 +108,7 @@ public class StaleTeamIdTests : IDisposable
     }
 
     /// <summary>
-    /// Một người lạ trong đội hình vẫn phải báo: thay một người thường là đá thay, và bỏ qua
+    /// Một người lạ trong đội hình vẫn phải báo: thay một người thường là đánh thay, và bỏ qua
     /// những ca đó thì đúng ván đáng ngờ nhất lại lọt lưới.
     /// </summary>
     [Fact]

@@ -47,7 +47,7 @@ public static class TeamInsights
     /// <summary>Dưới ngần này ván thì không kết luận gì ngoài chính lời cảnh báo mẫu nhỏ.</summary>
     public const int MinMaps = 8;
 
-    /// <summary>Đội hình dưới ngần này ván đá chung thì còn quá mới để tin các con số.</summary>
+    /// <summary>Đội hình dưới ngần này ván đánh chung thì còn quá mới để tin các con số.</summary>
     public const int YoungLineupGames = 25;
 
     /// <summary>Chuỗi từ ngần này ván trở lên mới đáng gọi là chuỗi.</summary>
@@ -86,7 +86,7 @@ public static class TeamInsights
         var since = t.LineupSince is null ? "" : $" (từ {t.LineupSince})";
 
         found.Add(new Insight("mau-nho", "warn",
-            $"Đội hình TI2026 mới đá chung {t.LineupGames} ván{since}. Mọi con số bên dưới đều "
+            $"Đội hình TI2026 mới đánh chung {t.LineupGames} ván{since}. Mọi con số bên dưới đều "
             + "dựa trên chừng đó ván, nên đọc như một dấu hiệu sớm chứ không phải kết luận.",
             1000));
     }
@@ -117,7 +117,7 @@ public static class TeamInsights
         if (peers.Count < 4) return;
 
         Check("winrate", "tỷ lệ thắng", x => x.Winrate, higherIsBetter: true, "{0:0}%", 4);
-        Check("killdiff", "chênh lệch hạ gục mỗi ván", x => x.KillDiff, true, "{0:+0.0;-0.0}", 1.5);
+        Check("killdiff", "chênh lệch kill mỗi ván", x => x.KillDiff, true, "{0:+0.0;-0.0}", 1.5);
 
         void Check(string kind, string label, Func<TeamFacts, double> pick,
                    bool higherIsBetter, string format, double minGap)
@@ -171,7 +171,7 @@ public static class TeamInsights
     }
 
     /// <summary>
-    /// Hạ gục nhiều mà không thắng, hoặc thắng mà không cần hạ gục nhiều. Đây là nhận định mà
+    /// Kill nhiều mà không thắng, hoặc thắng mà không cần kill nhiều. Đây là nhận định mà
     /// nhìn hai con số rời rạc trên bảng sẽ không bao giờ thấy.
     /// </summary>
     private static void AddKillsVersusWins(TeamFacts t, List<Insight> found)
@@ -186,7 +186,7 @@ public static class TeamInsights
         else if (t.KillDiff <= 0 && t.Winrate >= 55)
         {
             found.Add(new Insight("kill-vs-win", "good",
-                $"Thắng không cần hơn về mạng: chênh lệch hạ gục {t.KillDiff:+0.0} mỗi ván mà vẫn "
+                $"Thắng không cần hơn về mạng: chênh lệch kill {t.KillDiff:+0.0} mỗi ván mà vẫn "
                 + $"thắng {t.Winrate:0}%. Thường là lối chơi bám mục tiêu thay vì giao tranh.", 62));
         }
     }

@@ -4,7 +4,7 @@ namespace Ti2026.Data.Entities;
 /// Thành tích của một tuyển thủ trong một ván, lấy từ match detail của OpenDota.
 ///
 /// Đây là thứ mở khoá 5 chỉ số mà endpoint teams/{id}/matches không cung cấp, và là nền
-/// cho phân tích cá nhân: hạ gục, hỗ trợ, nhịp độ 10 phút đầu.
+/// cho phân tích cá nhân: kill, hỗ trợ, nhịp độ 10 phút đầu.
 /// </summary>
 public class MatchPlayer
 {

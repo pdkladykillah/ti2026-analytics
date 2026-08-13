@@ -70,7 +70,7 @@ public static class FantasyFields
     public static int? MadstoneBundles(IReadOnlyDictionary<string, int>? itemUses) =>
         itemUses is null ? null : Get(itemUses, "madstone_bundle");
 
-    /// <summary>Tormentor. Tên nội bộ là <c>npc_dota_miniboss</c>, lấy theo người kết liễu.</summary>
+    /// <summary>Tormentor. Tên nội bộ là <c>npc_dota_miniboss</c>, lấy theo người chốt kill.</summary>
     public static int? TormentorKills(IReadOnlyDictionary<string, int>? killed) =>
         killed is null ? null : Get(killed, "npc_dota_miniboss");
 
@@ -97,7 +97,7 @@ public static class FantasyFields
     /// chiều, trường tổng hợp cao hơn, phần lớn là kiểu "roshan_kills=1 nhưng killed=0".
     ///
     /// Đây không phải chuyện nhỏ: Roshan là 1172 điểm, nên mỗi con Roshan ma cộng thẳng 1172
-    /// điểm vào một ván cho người không hề kết liễu nó.
+    /// điểm vào một ván cho người không hề chốt kill nó.
     /// </summary>
     public static int? RoshanKills(IReadOnlyDictionary<string, int>? killed) =>
         killed is null ? null : Get(killed, "npc_dota_roshan");

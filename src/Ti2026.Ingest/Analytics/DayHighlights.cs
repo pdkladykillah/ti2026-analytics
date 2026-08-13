@@ -1,6 +1,6 @@
 namespace Ti2026.Ingest.Analytics;
 
-/// <summary>Một loạt đấu trong ngày, rút gọn còn thứ cần để đúc kết.</summary>
+/// <summary>Một series đấu trong ngày, rút gọn còn thứ cần để đúc kết.</summary>
 public readonly record struct DaySeries(
     int NodeId, string? Name, string? Group,
     string? Team1, string? Team2, string? Slug1, string? Slug2,
@@ -22,14 +22,14 @@ public readonly record struct Highlight(string Kind, string Tone, string Text, o
 /// <summary>
 /// Đúc kết một ngày thi đấu thành vài câu ĐỌC ĐƯỢC, từ luật đo được chứ không từ văn mẫu.
 ///
-/// RANH GIỚI QUYẾT ĐỊNH MỤC NÀY DÙNG ĐƯỢC HAY KHÔNG. Một ngày Swiss có 8 loạt. Với cỡ mẫu đó,
+/// RANH GIỚI QUYẾT ĐỊNH MỤC NÀY DÙNG ĐƯỢC HAY KHÔNG. Một ngày Swiss có 8 series. Với cỡ mẫu đó,
 /// mọi câu mang tính SUY LUẬN — "đội X đang lên phong độ", "meta nghiêng về hero Y" — đều là
 /// nhiễu được phát biểu như kết luận, đúng loại lỗi mà dự án đã dựng cả MultipleTests để tránh
 /// và người dùng đã bác đúng một lần.
 ///
 /// Nên ở đây chỉ có hai loại câu, và cả hai đều đúng bất kể cỡ mẫu:
 ///   MÔ TẢ  — "LGD thắng Falcons 2–1"
-///   ĐẾM    — "Muerta bị cấm 7/8 loạt"
+///   ĐẾM    — "Muerta bị cấm 7/8 series"
 ///
 /// Loại thứ ba, SO SÁNH GIỮA CÁC NGÀY, mạnh dần theo thời gian và chỉ xuất hiện khi đã có
 /// digest của ngày trước. Đó cũng chính là lý do việc lưu lại có giá trị thật.
@@ -64,15 +64,15 @@ public static class DayHighlights
 
         var done = series.Where(s => s.Completed).ToList();
 
-        // Đếm ván trên MỌI loạt, không chỉ loạt đã xong.
+        // Đếm ván trên MỌI series, không chỉ series đã xong.
         //
-        // Một loạt đang đá dở vẫn đã có ván kết thúc, và ta vẫn đọc được chi tiết của chúng.
-        // Cộng riêng loạt đã xong thì mẫu số nhỏ hơn tử số — thấy thật trên trang: "đọc được
+        // Một series đang đánh dở vẫn đã có ván kết thúc, và ta vẫn đọc được chi tiết của chúng.
+        // Cộng riêng series đã xong thì mẫu số nhỏ hơn tử số — thấy thật trên trang: "đọc được
         // 9/7 ván", một câu tự bác bỏ chính nó.
         var expected = series.Sum(s => s.Wins1 + s.Wins2);
 
         list.Add(new Highlight("tong-quan", "flat",
-            $"{done.Count}/{series.Count} loạt đã xong · {expected} ván · đọc được chi tiết {matches.Count} ván",
+            $"{done.Count}/{series.Count} series đã xong · {expected} ván · đọc được chi tiết {matches.Count} ván",
             new
             {
                 seriesDone = done.Count,

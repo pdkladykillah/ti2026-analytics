@@ -163,17 +163,17 @@ public class IngestPipeline(
             SanityKind.None, ct);
 
         // Đặt CUỐI, sau khi đã nạp xong: nó soi chính dữ liệu vừa nạp để tìm đội của ta đang
-        // ra sân dưới một team_id chưa khai. Đây là loại hỏng không làm gì đổ vỡ — ingest vẫn
+        // ra trận dưới một team_id chưa khai. Đây là loại hỏng không làm gì đổ vỡ — ingest vẫn
         // báo Succeeded trong lúc mất trắng ván của một đội — nên phải có ai đó đi tìm nó.
         await orchestrator.RunSourceAsync(
             "stale-team-id",
             async c => (await staleTeamIds.FindAsync(DateTime.UtcNow, c)).Count,
             SanityKind.None, ct);
 
-        // Dò id lạ NGAY TRONG BẢNG ĐẤU. Bộ dò ở trên chỉ soi ván đã đá nên chỉ báo sau khi
+        // Dò id lạ NGAY TRONG BẢNG ĐẤU. Bộ dò ở trên chỉ soi ván đã đánh nên chỉ báo sau khi
         // đã mất dữ liệu; bảng đấu nêu tên đủ 16 đội TRƯỚC trận đầu tiên, và đó là cơ hội duy
         // nhất phát hiện trước khi mất. L1GA TEAM đăng ký TI2026 dưới bản ghi HULIGANI mà bộ
-        // dò cũ không thể thấy, vì họ chưa đá ván nào dưới id đó.
+        // dò cũ không thể thấy, vì họ chưa đánh ván nào dưới id đó.
         await orchestrator.RunSourceAsync(
             "bracket-team-gap",
             async c => (await bracketGaps.FindAsync(c)).Count,

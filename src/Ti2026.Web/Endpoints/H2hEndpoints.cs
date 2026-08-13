@@ -39,12 +39,12 @@ public static class H2hEndpoints
 
             var lineups = await LineupLookup.LoadAsync(db);
 
-            // Từ ngày nào mỗi đội mới ra sân với đủ 5 người của TI2026, và đá cùng nhau bao nhiêu
+            // Từ ngày nào mỗi đội mới ra trận với đủ 5 người của TI2026, và đánh cùng nhau bao nhiêu
             // ván. Đây là con số nói thẳng vì sao lịch sử lại ngắn đến thế: 12/16 đội mãi tới
             // năm 2026 mới lần đầu đủ mặt.
             //
             // Đếm trên MỌI ván của đội, kể cả ván gặp đối thủ ngoài 16 đội. Câu hiển thị là "đội
-            // hình này đá cùng nhau bao nhiêu ván", nên phải đếm đúng mọi ván họ đá cùng nhau —
+            // hình này đánh cùng nhau bao nhiêu ván", nên phải đếm đúng mọi ván họ đánh cùng nhau —
             // giới hạn ở ván có đủ hai đội thì Liquid hiện ra 165 trong khi con số thật là 195.
             var allTeamMatches = await db.Matches
                 .Where(m => m.RadiantTeamId != null || m.DireTeamId != null)
@@ -127,7 +127,7 @@ public static class H2hEndpoints
                     // Nhận định của hệ thống trên tập ván ĐÁNG DÙNG, kèm lý do loại phần còn lại
                     verdict,
 
-                    // Đội hình hiện tại của từng bên đã đá cùng nhau từ bao giờ
+                    // Đội hình hiện tại của từng bên đã đánh cùng nhau từ bao giờ
                     lineup = new Dictionary<string, object?>
                     {
                         [slugA] = Together(together, slugA),

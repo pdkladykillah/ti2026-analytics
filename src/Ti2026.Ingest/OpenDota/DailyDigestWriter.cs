@@ -11,7 +11,7 @@ namespace Ti2026.Ingest.OpenDota;
 /// Tính và lưu điểm nhấn của từng ngày thi đấu.
 ///
 /// CHẠY CHUNG NHỊP VỚI BỘ LÀM TƯƠI BẢNG ĐẤU, không có lịch riêng: nó cần đúng thứ bộ kia vừa
-/// lấy về — trạng thái từng loạt — và thêm một bộ hẹn giờ nữa chỉ để làm cùng một việc muộn hơn
+/// lấy về — trạng thái từng series — và thêm một bộ hẹn giờ nữa chỉ để làm cùng một việc muộn hơn
 /// vài phút là thêm một thứ phải nhớ.
 ///
 /// KHÔNG BAO GIỜ TÍNH LẠI NGÀY ĐÃ CHỐT. Một lần nạp bù dữ liệu cũ sẽ lặng lẽ viết lại lịch sử —
@@ -46,10 +46,10 @@ public class DailyDigestWriter(Ti2026DbContext db, ILogger<DailyDigestWriter> lo
 
         var leagueId = rows[0].LeagueId;
 
-        // NGÀY LẤY THEO GIỜ ĐÁ THẬT khi đã đá, chỉ dùng giờ xếp lịch khi chưa.
+        // NGÀY LẤY THEO GIỜ ĐÁ THẬT khi đã đánh, chỉ dùng giờ xếp lịch khi chưa.
         //
         // Không phải chi tiết vụn: hôm nay các trận trượt một tiếng so với giờ Valve công bố, và
-        // một loạt xếp 23:30 mà đá lúc 00:20 thuộc về ngày HÔM SAU. Lấy theo giờ xếp lịch thì
+        // một series xếp 23:30 mà đánh lúc 00:20 thuộc về ngày HÔM SAU. Lấy theo giờ xếp lịch thì
         // digest của hai ngày cùng sai, mà không có gì báo.
         var byDay = rows
             .Select(s => new { S = s, At = s.ActualAt ?? s.ScheduledAt })
@@ -93,8 +93,8 @@ public class DailyDigestWriter(Ti2026DbContext db, ILogger<DailyDigestWriter> lo
             row.SeriesTotal = series.Count;
             row.SeriesCompleted = completed;
             row.MatchesCounted = matches.Count;
-            // Mọi loạt, không chỉ loạt đã xong — loạt đang đá dở vẫn có ván đã kết thúc. Xem
-            // ghi chú ở DayHighlights.Build: cộng riêng loạt đã xong cho ra "đọc được 9/7 ván".
+            // Mọi series, không chỉ series đã xong — series đang đánh dở vẫn có ván đã kết thúc. Xem
+            // ghi chú ở DayHighlights.Build: cộng riêng series đã xong cho ra "đọc được 9/7 ván".
             row.MatchesExpected = series.Sum(s => s.Wins1 + s.Wins2);
             row.MedianDurationSeconds = DayHighlights.MedianDuration(matches);
             row.ComputedAt = DateTime.UtcNow;
@@ -124,7 +124,7 @@ public class DailyDigestWriter(Ti2026DbContext db, ILogger<DailyDigestWriter> lo
     /// Winrate mới nhất trong cửa sổ 180 ngày, theo đội.
     ///
     /// Lọc theo <c>Maps</c> chứ không theo <c>Winrate != null</c>: cột đó không nhận null, nên
-    /// một đội chưa đá ván nào vẫn có winrate 0,0 — và 0,0 đọc vào phép so "ngược kèo" sẽ biến
+    /// một đội chưa đánh ván nào vẫn có winrate 0,0 — và 0,0 đọc vào phép so "ngược kèo" sẽ biến
     /// mọi trận của đội đó thành bất ngờ lớn nhất trong ngày.
     /// </summary>
     private async Task<Dictionary<int, double>> WinratesAsync(CancellationToken ct)

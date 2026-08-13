@@ -91,7 +91,7 @@ public static class VersusEndpoints
             // NẠP CẢ 10 NGƯỜI MỖI VÁN, không chỉ người của hai đội này.
             //
             // Bắt buộc, vì hai đại lượng dưới đây chỉ có nghĩa khi biết cả phe: thứ hạng net worth
-            // trong đội (thứ quyết định vị trí) và tổng tài sản của phe (mẫu số của trục phân tài
+            // trong đội (thứ quyết định vị trí) và tổng net worth của phe (mẫu số của trục phân tài
             // nguyên). Lọc sẵn về người của ta thì hạng tính trên một tập thiếu người và sẽ lệch
             // đúng những ván có đồng đội không thuộc roster đang hiệu lực.
             var matchIds = await db.MatchPlayers
@@ -254,7 +254,7 @@ public static class VersusEndpoints
         var taken = new HashSet<int>();
 
         // Nhận chỗ theo thứ tự số ván giảm dần: cặp (người, vị trí) chắc chắn nhất được chọn trước,
-        // nên một người đá 250 ván mid không bị đẩy sang chỗ khác bởi người đá 30 ván mid.
+        // nên một người đánh 250 ván mid không bị đẩy sang chỗ khác bởi người đánh 30 ván mid.
         foreach (var r in ranked.OrderByDescending(x => x.Games))
         {
             if (taken.Contains(r.PlayerId) || seats.ContainsKey(r.Position)) continue;

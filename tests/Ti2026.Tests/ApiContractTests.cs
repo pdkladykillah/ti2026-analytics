@@ -229,7 +229,7 @@ public class ApiContractTests(Ti2026TestFactory factory) : IClassFixture<Ti2026T
                 slugs.Should().Contain(row[7].GetString()!);
 
                 foreach (var i in new[] { 5, 6 })
-                    row[i].GetInt32().Should().BeInRange(0, 5, "một đội chỉ có 5 người ra sân");
+                    row[i].GetInt32().Should().BeInRange(0, 5, "một đội chỉ có 5 người ra trận");
             }
 
             var verdict = pair.Value.GetProperty("verdict");

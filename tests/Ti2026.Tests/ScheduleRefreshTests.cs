@@ -86,7 +86,7 @@ public class ScheduleRefreshTests : IDisposable
     /// LƯỢT THỨ HAI KHÔNG ĐƯỢC TẢI LẠI DANH MỤC GIẢI.
     ///
     /// Danh mục là 1,9 MB thô (315 KB nén) và gần 10.000 mục, tải về chỉ để lọc ra một số nguyên.
-    /// Ở nhịp 6 giờ cũ thì không đáng bàn; ở nhịp 15 phút để bám theo giải đang đá thì cùng phép
+    /// Ở nhịp 6 giờ cũ thì không đáng bàn; ở nhịp 15 phút để bám theo giải đang đánh thì cùng phép
     /// tính đó ra khoảng 30 MB mỗi ngày. Bài này khoá lại phần tiết kiệm đó — nếu ai bỏ bộ nhớ
     /// đệm đi, mọi thứ vẫn CHẠY ĐÚNG và không có gì báo, chỉ tốn băng thông gấp mấy chục lần.
     /// </summary>
@@ -108,7 +108,7 @@ public class ScheduleRefreshTests : IDisposable
     /// <summary>
     /// THÂN RỖNG PHẢI THỬ LẠI, KHÔNG BỎ LƯỢT.
     ///
-    /// Đo trên dữ liệu thật giữa lúc TI đang đá: gọi thẳng 8 lần cách nhau 15 giây thì 8/8 trả đủ
+    /// Đo trên dữ liệu thật giữa lúc TI đang đánh: gọi thẳng 8 lần cách nhau 15 giây thì 8/8 trả đủ
     /// 27 nút, nhưng app gọi 2 lần thì 1 lần nhận về thân `null` — tức không phải Valve chặn nhịp
     /// mà là lỗi chớp nhoáng phía họ. Với nhịp làm tươi 15 phút, bỏ lượt nghĩa là bảng đấu đứng
     /// yên 15 phút giữa lúc đang có trận.

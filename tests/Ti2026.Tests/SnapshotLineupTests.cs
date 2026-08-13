@@ -136,7 +136,7 @@ public class SnapshotLineupTests : IDisposable
 
     /// <summary>
     /// Elo đòi hỏi CẢ HAI bên. Đây là chỗ khác biệt so với form, và cũng là chỗ dễ làm sai
-    /// nhất: lấy một bên là đủ thì rating của X bị chấm bằng sức mạnh của một đội Y không hề đá.
+    /// nhất: lấy một bên là đủ thì rating của X bị chấm bằng sức mạnh của một đội Y không hề đánh.
     /// </summary>
     [Fact]
     public async Task Elo_chi_tinh_van_ma_CA_HAI_ben_deu_du_doi_hinh()
@@ -192,10 +192,10 @@ public class SnapshotLineupTests : IDisposable
     }
 
     /// <summary>
-    /// Ván CHƯA nạp match detail thì không có dòng MatchPlayer nào, tức là KHÔNG BIẾT ai ra sân —
+    /// Ván CHƯA nạp match detail thì không có dòng MatchPlayer nào, tức là KHÔNG BIẾT ai ra trận —
     /// và không biết thì không dùng để kết luận.
     ///
-    /// Đây là lựa chọn có chủ ý, không phải tác dụng phụ. Cái giá phải trả: một ván vừa đá xong
+    /// Đây là lựa chọn có chủ ý, không phải tác dụng phụ. Cái giá phải trả: một ván vừa đánh xong
     /// chưa được tính vào form cho tới khi detail về. Chấp nhận được vì detail nạp trong cùng
     /// một vòng pipeline, và nếu tồn đọng thì api/ingest/status có pendingDetails để thấy.
     /// Chiều ngược lại — đoán bừa là đội hình hiện tại — mới là thứ làm hỏng số liệu ngầm.
@@ -228,7 +228,7 @@ public class SnapshotLineupTests : IDisposable
         var snaps = await RunAsync(db);
 
         snaps["alpha"].Maps.Should().Be(3, "ván chưa có detail không được tính");
-        snaps["alpha"].Winrate.Should().Be(100, "trận thua kia chưa biết ai đá nên chưa tính");
+        snaps["alpha"].Winrate.Should().Be(100, "trận thua kia chưa biết ai đánh nên chưa tính");
     }
 
     /// <summary>

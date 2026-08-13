@@ -35,7 +35,7 @@ public sealed class LineupLookup
         Ti2026DbContext db, IReadOnlyCollection<long>? matchIds = null,
         CancellationToken ct = default)
     {
-        // Bỏ HLV: HLV không ra sân nên không bao giờ xuất hiện trong MatchPlayers, tính vào mẫu
+        // Bỏ HLV: HLV không ra trận nên không bao giờ xuất hiện trong MatchPlayers, tính vào mẫu
         // số thì mọi đội mãi mãi chỉ đạt 5/6.
         var roster = (await db.RosterEntries
                 .Where(r => r.ValidTo == null && r.Role != "COACH")
@@ -48,7 +48,7 @@ public sealed class LineupLookup
         // thuộc đội hình nào đang theo dõi.
         //
         // KHÔNG giới hạn ở ván có đủ hai đội. Bản trước có giới hạn đó, và hệ quả là câu "đội
-        // hình này đá cùng nhau N ván" đếm hụt: Liquid hiện ra 165 trong khi năm người đó đã đá
+        // hình này đánh cùng nhau N ván" đếm hụt: Liquid hiện ra 165 trong khi năm người đó đã đánh
         // cùng nhau 195 ván — 30 ván kia gặp đối thủ ngoài 16 đội nên không lọt vào bộ lọc.
         // Mọi phép tính mức ĐỘI vẫn tự lọc "đủ hai đội" ở chỗ của nó, nên nới ở đây không làm
         // ván một chiều lọt vào Elo hay đối đầu.
@@ -66,9 +66,9 @@ public sealed class LineupLookup
     }
 
     /// <summary>
-    /// Số người của đội hình hiện tại mà <paramref name="teamId"/> cho ra sân ở ván này.
+    /// Số người của đội hình hiện tại mà <paramref name="teamId"/> cho ra trận ở ván này.
     /// Ván chưa có match detail thì không có hàng nào, trả 0 — và 0 bị loại khỏi mọi nhận định,
-    /// đúng ý: không biết ai ra sân thì không dùng ván đó để kết luận.
+    /// đúng ý: không biết ai ra trận thì không dùng ván đó để kết luận.
     /// </summary>
     public int Kept(long matchId, int teamId, bool radiantSide) =>
         !_byMatch.TryGetValue(matchId, out var rows) || !_roster.TryGetValue(teamId, out var five)

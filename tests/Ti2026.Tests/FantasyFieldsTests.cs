@@ -96,7 +96,7 @@ public class FantasyFieldsTests
     ///   8784047386 — objectives 4 · killed 4 · roshan_kills 5
     ///
     /// Và 19/30 ván nạp gần nhất có hai nguồn lệch, tất cả cùng một chiều. Roshan là 1172
-    /// điểm nên mỗi con Roshan ma cộng thẳng 1172 điểm cho người không hề kết liễu nó.
+    /// điểm nên mỗi con Roshan ma cộng thẳng 1172 điểm cho người không hề chốt kill nó.
     /// </summary>
     [Fact]
     public void Roshan_dem_tu_killed_chu_khong_phai_truong_tong_hop()

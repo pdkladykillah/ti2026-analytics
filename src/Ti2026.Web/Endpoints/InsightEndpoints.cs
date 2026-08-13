@@ -135,7 +135,7 @@ public static class InsightEndpoints
                 updatedAt = DateTime.UtcNow,
                 capturedOn = latest,
 
-                method = "Chỉ tính ván mà đội ra sân đúng đội hình TI2026 — cùng luật với Elo và "
+                method = "Chỉ tính ván mà đội ra trận đúng đội hình TI2026 — cùng luật với Elo và "
                        + "phong độ. Mỗi nhận định chỉ hiện khi vượt được ngưỡng nhiễu của chính "
                        + "nó, nên đội không có nhận định nào nghĩa là không có gì tách được khỏi "
                        + "may rủi, chứ không phải thiếu dữ liệu.",

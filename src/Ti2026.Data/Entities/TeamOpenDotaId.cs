@@ -7,7 +7,7 @@ namespace Ti2026.Data.Entities;
 /// là một bản ghi; khi một roster đổi tổ chức hoặc đăng ký lại, OpenDota sinh bản ghi MỚI và
 /// bản ghi cũ ngừng nhận ván. Chuyện này xảy ra thật với 4/16 đội TI2026:
 ///
-///   PariVision  9572001 chết 25/06  ->  9824702 "PVISION"     (đá và VÔ ĐỊCH EWC 2026)
+///   PariVision  9572001 chết 25/06  ->  9824702 "PVISION"     (đánh và VÔ ĐỊCH EWC 2026)
 ///   L1GA        9303383 chết 09/05  ->  10182299 "L1 TEAM"
 ///   1win        vẫn sống 10182357   +   10150413 "Iron Wing"  (tên cũ của cùng roster)
 ///   LGD         vẫn sống 10150538   +   10144195 "ex-HEROIC"

@@ -39,7 +39,7 @@ public class IdolStyleTests
     [Fact]
     public void Cung_mot_loi_choi_o_hai_hang_dau_phai_ra_cung_chi_so()
     {
-        // Hồ "chuyên nghiệp": người bình thường trả 45/150 = 0,30 mạng cho mỗi pha hạ gục.
+        // Hồ "chuyên nghiệp": người bình thường trả 45/150 = 0,30 mạng cho mỗi pha kill.
         var proNorm = IdolStyle.Normalizer(Pool(60, kills: 50, assists: 100, deaths: 45));
 
         // Hồ "pub": người bình thường trả 88/200 = 0,44 — nhiều mạng hơn hẳn, đúng như đo được.
@@ -96,7 +96,7 @@ public class IdolStyleTests
         var mine = IdolStyle.Signature(Kda(40, 5, 6, 20), norm);
         var theirs = IdolStyle.Signature(Kda(40, 6, 5, 19), norm);
 
-        // Ván chỉ có K/D/A nên chỉ dựng được hai trục: giá mạng và kết liễu.
+        // Ván chỉ có K/D/A nên chỉ dựng được hai trục: giá mạng và chốt kill.
         mine.Should().HaveCount(2);
         IdolStyle.Compare(1, "mid", mine, theirs).Should().BeNull();
     }
@@ -239,7 +239,7 @@ public class IdolStyleTests
     /// <summary>
     /// Trục nào THẤP mới tốt thì phải mang một tên khác khi lên biểu đồ.
     ///
-    /// Biểu đồ nhiều góc luôn đọc là "vươn ra = nhiều hơn". Vẽ "giá mỗi pha hạ gục" nguyên chiều
+    /// Biểu đồ nhiều góc luôn đọc là "vươn ra = nhiều hơn". Vẽ "giá mỗi pha kill" nguyên chiều
     /// thì hình vươn ra ở đúng chỗ người đó đang yếu — và người xem sẽ đọc ngược hoàn toàn. Cách
     /// chữa là đảo giá trị VÀ đổi tên theo chiều đã đảo; bài kiểm này chặn việc chỉ làm một nửa.
     /// </summary>

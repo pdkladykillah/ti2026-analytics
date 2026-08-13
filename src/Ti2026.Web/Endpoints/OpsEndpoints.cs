@@ -110,7 +110,7 @@ public static class OpsEndpoints
             var total = await db.Matches.CountAsync(
                 m => (m.RadiantTeamId != null && m.DireTeamId != null) || m.StartTime >= cutoff);
 
-            // Đội đang ra sân dưới một team_id OpenDota chưa khai.
+            // Đội đang ra trận dưới một team_id OpenDota chưa khai.
             //
             // Phải hiện ở đây chứ không chỉ trong log. Đây là loại hỏng KHÔNG làm gì đổ vỡ:
             // ingest vẫn báo "Succeeded" trong lúc mất trắng ván của một đội. PariVision mất
@@ -148,7 +148,7 @@ public static class OpsEndpoints
                         games = g.Count(),
                         certain = g.Count(x => x.RosterMatched >= StaleTeamIdDetector.CertainMatch),
                         latest = g.Max(x => x.StartTime).ToString("yyyy-MM-dd"),
-                        note = "Đội này ra sân ở một bên không nhận diện được — nhiều khả năng "
+                        note = "Đội này ra trận ở một bên không nhận diện được — nhiều khả năng "
                              + "đang thi đấu dưới một team_id OpenDota chưa khai trong teams.json.",
                     })
                     .OrderByDescending(x => x.games)

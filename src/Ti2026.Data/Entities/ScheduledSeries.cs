@@ -30,7 +30,7 @@ public class ScheduledSeries
     /// <summary>Giờ dự kiến, UTC. null = Valve chưa xếp lịch cho nút này.</summary>
     public DateTime? ScheduledAt { get; set; }
 
-    /// <summary>Giờ bắt đầu THẬT, UTC. null = chưa đá.</summary>
+    /// <summary>Giờ bắt đầu THẬT, UTC. null = chưa đánh.</summary>
     public DateTime? ActualAt { get; set; }
 
     // ---- team_id của Valve, giữ nguyên kể cả khi chưa khớp được về đội của ta ----

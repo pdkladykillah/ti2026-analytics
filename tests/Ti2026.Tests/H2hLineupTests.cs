@@ -29,7 +29,7 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
     private const int ScoreOfA = 41;
     private const int ScoreOfB = 17;
 
-    /// <param name="keptRad">Bao nhiêu người của đội hình HIỆN TẠI bên Radiant cho ra sân.</param>
+    /// <param name="keptRad">Bao nhiêu người của đội hình HIỆN TẠI bên Radiant cho ra trận.</param>
     private static void AddMatch(
         Ti2026DbContext db, Team rad, Team dire, DateTime when, bool radiantWin,
         IReadOnlyList<int> radRoster, IReadOnlyList<int> direRoster, int keptRad, int keptDire,
@@ -136,9 +136,9 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
             keptOfB.Should().BeOneOf(5, 2);
         }
 
-        // Ván gặp đối thủ NGOÀI 16 đội cũng phải được tính vào "đá cùng nhau bao nhiêu ván":
+        // Ván gặp đối thủ NGOÀI 16 đội cũng phải được tính vào "đánh cùng nhau bao nhiêu ván":
         // câu đó nói về đội hình, không nói về đối thủ. Bỏ sót thì Liquid hiện 165 trong khi
-        // năm người đó đã đá cùng nhau 195 ván.
+        // năm người đó đã đánh cùng nhau 195 ván.
         var oneSided = _nextId++;
         db.Matches.Add(new Match
         {
@@ -158,10 +158,10 @@ public class H2hLineupTests(Ti2026TestFactory factory) : IClassFixture<Ti2026Tes
         pair2.GetProperty("games").GetInt32()
             .Should().Be(5, "ván một chiều KHÔNG được lọt vào lịch sử đối đầu");
         pair2.GetProperty("lineup").GetProperty(a.Slug).GetProperty("games").GetInt32()
-            .Should().Be(6, "nhưng nó VẪN là một ván đội hình đó đá cùng nhau");
+            .Should().Be(6, "nhưng nó VẪN là một ván đội hình đó đánh cùng nhau");
 
         pair.GetProperty("lineup").GetProperty(a.Slug).GetProperty("games").GetInt32()
-            .Should().Be(5, "a ra sân đủ 5 người ở cả 5 ván");
+            .Should().Be(5, "a ra trận đủ 5 người ở cả 5 ván");
         pair.GetProperty("lineup").GetProperty(b.Slug).GetProperty("games").GetInt32()
             .Should().Be(2, "b chỉ đủ 5 người ở 2 ván");
 

@@ -12,7 +12,7 @@
   "_congThuc": "Điểm mỗi chỉ số = base + (giá trị thô / per) × points. base khác 0 chỉ ở 'deaths', vì luật là 1950 − 195 × số lần chết — hàm bậc nhất CÓ hằng số, không phải phép nhân đơn thuần.",
 
   "stats": {
-    "kills":      { "label": "Hạ gục",             "color": "red",   "field": "Kills",                  "per": 1, "points": 107,  "base": 0 },
+    "kills":      { "label": "Kill",             "color": "red",   "field": "Kills",                  "per": 1, "points": 107,  "base": 0 },
     "deaths":     { "label": "Tử trận",            "color": "red",   "field": "Deaths",                 "per": 1, "points": -195, "base": 1950 },
     "creeps":     { "label": "Lính (LH + deny)",   "color": "red",   "field": "Creeps",                 "per": 1, "points": 3,    "base": 0 },
     "gpm":        { "label": "GPM",                "color": "red",   "field": "GoldPerMin",             "per": 1, "points": 2,    "base": 0 },
@@ -41,7 +41,7 @@
       "smokes": "item_uses.smoke_of_deceit — khớp chính xác",
       "watchers": "ability_uses.ability_lamp_use — cột đèn chính là watcher; nằm ở ability_uses chứ không phải item_uses",
       "lotuses": "item_uses.famango + 3×great_famango + 6×greater_famango. Quy về hoa sen GỐC theo luật ghép (3 gốc → 1 Great, 2 Great → 1 Greater), vì đếm mỗi món bằng 1 thì người gom 6 bông bị tính bằng người nhặt 1 bông",
-      "tormentor": "killed.npc_dota_miniboss — đếm theo người kết liễu, từng người một"
+      "tormentor": "killed.npc_dota_miniboss — đếm theo người chốt kill, từng người một"
     },
     "ganDung": {
       "madstones": "item_uses.madstone_bundle chỉ là SỐ TÚI đã dùng. Phần lớn madstone đến từ dọn trại (2 cho người dọn + 1 cho đồng đội; trại cổ là 3 và 2) và OpenDota không lộ tổng đó. Đây là số sàn, gần như chắc chắn THẤP HƠN thực tế."

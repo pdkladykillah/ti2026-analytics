@@ -20,6 +20,42 @@ public class TiScheduleIngester(
     /// <summary>Bậc giải mà Valve chỉ dùng cho The International.</summary>
     public const int InternationalTier = 5;
 
+    /// <summary>Số lần thử lấy bảng đấu trước khi bỏ lượt. Xem <see cref="LoadWithRetryAsync"/>.</summary>
+    public const int LoadTries = 3;
+
+    /// <summary>Nghỉ giữa hai lần thử. Ngắn thôi — đây là lỗi chớp nhoáng, không phải quá tải.</summary>
+    public static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Lấy bảng đấu, THỬ LẠI khi Valve trả về thân rỗng.
+    ///
+    /// ĐO ĐƯỢC, KHÔNG PHẢI PHÒNG XA. Trong lúc TI đang đá: gọi thẳng 8 lần cách nhau 15 giây thì
+    /// 8/8 trả đủ 27 nút, nhưng app gọi 2 lần thì 1 lần nhận về thân `null`. Tức không phải Valve
+    /// chặn nhịp — nếu chặn thì probe 15 giây/lần đã dính trước — mà là lỗi chớp nhoáng phía họ,
+    /// nhiều khả năng vì backend đang tải nặng giữa giải.
+    ///
+    /// Vì sao đáng thử lại thay vì bỏ lượt: nhịp làm tươi là 15 phút, nên một lượt hụt nghĩa là
+    /// bảng đấu đứng yên 15 phút giữa lúc đang có trận. Một lời gọi thêm tới Valve gần như không
+    /// tốn gì và KHÔNG đụng hạn mức OpenDota.
+    ///
+    /// Chỉ thử lại ca THÂN RỖNG. Lỗi mạng và HTTP hỏng thì ném ra ngoài như cũ — bên gọi đã có
+    /// try/catch riêng, và nuốt chúng ở đây sẽ giấu mất một nguồn hỏng khác hẳn.
+    /// </summary>
+    private async Task<Dota2LeagueData?> LoadWithRetryAsync(long leagueId, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            var data = await client.GetLeagueDataAsync(leagueId, ct);
+            if (data is not null || attempt >= LoadTries) return data;
+
+            logger.LogInformation(
+                "Bảng đấu trả về rỗng (lần {Attempt}/{Tries}), thử lại sau {Seconds}s",
+                attempt, LoadTries, RetryDelay.TotalSeconds);
+
+            await Task.Delay(RetryDelay, ct);
+        }
+    }
+
     public async Task<int> IngestAsync(CancellationToken ct)
     {
         var leagueId = await ResolveLeagueIdAsync(ct);
@@ -29,10 +65,11 @@ public class TiScheduleIngester(
             return 0;
         }
 
-        var data = await client.GetLeagueDataAsync(leagueId.Value, ct);
+        var data = await LoadWithRetryAsync(leagueId.Value, ct);
         if (data is null)
         {
-            logger.LogWarning("GetLeagueData cho giải {League} trả về rỗng", leagueId);
+            logger.LogWarning("GetLeagueData cho giải {League} trả về rỗng sau {Tries} lần thử",
+                leagueId, LoadTries);
             return 0;
         }
 

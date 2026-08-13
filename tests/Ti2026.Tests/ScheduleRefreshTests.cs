@@ -33,6 +33,9 @@ public class ScheduleRefreshTests : IDisposable
         public int ListCalls => Volatile.Read(ref _listCalls);
         public int DataCalls => Volatile.Read(ref _dataCalls);
 
+        /// <summary>Bao nhiêu lời gọi bảng đấu ĐẦU TIÊN trả về thân rỗng, mô phỏng lỗi của Valve.</summary>
+        public int EmptyFirst { get; init; }
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage r, CancellationToken ct)
         {
@@ -53,13 +56,17 @@ public class ScheduleRefreshTests : IDisposable
             }
             else
             {
-                Interlocked.Increment(ref _dataCalls);
-                json = """
-                    {"info":{"name":"The International 2026"},
-                     "node_groups":[{"name":"Swiss","nodes":[
-                       {"node_id":1,"name":"Match 1.A","team_id_1":0,"team_id_2":0}
-                     ]}]}
-                    """;
+                var n = Interlocked.Increment(ref _dataCalls);
+
+                // Valve thỉnh thoảng trả về đúng chữ `null` — đo được trên dữ liệu thật giữa giải.
+                json = n <= EmptyFirst
+                    ? "null"
+                    : """
+                      {"info":{"name":"The International 2026"},
+                       "node_groups":[{"name":"Swiss","nodes":[
+                         {"node_id":1,"name":"Match 1.A","team_id_1":0,"team_id_2":0}
+                       ]}]}
+                      """;
             }
 
             return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
@@ -96,6 +103,46 @@ public class ScheduleRefreshTests : IDisposable
 
         handler.ListCalls.Should().Be(1, "id giải đã nhớ rồi thì không tra lại danh mục nữa");
         handler.DataCalls.Should().Be(3, "nhưng bảng đấu thì lượt nào cũng phải lấy mới");
+    }
+
+    /// <summary>
+    /// THÂN RỖNG PHẢI THỬ LẠI, KHÔNG BỎ LƯỢT.
+    ///
+    /// Đo trên dữ liệu thật giữa lúc TI đang đá: gọi thẳng 8 lần cách nhau 15 giây thì 8/8 trả đủ
+    /// 27 nút, nhưng app gọi 2 lần thì 1 lần nhận về thân `null` — tức không phải Valve chặn nhịp
+    /// mà là lỗi chớp nhoáng phía họ. Với nhịp làm tươi 15 phút, bỏ lượt nghĩa là bảng đấu đứng
+    /// yên 15 phút giữa lúc đang có trận.
+    /// </summary>
+    [Fact]
+    public async Task Than_rong_thi_thu_lai_chu_khong_bo_luot()
+    {
+        await using var db = NewDb();
+        var handler = new WebHandler { EmptyFirst = 2 };
+
+        var written = await Make(db, handler, new LeagueIdCache())
+            .IngestAsync(CancellationToken.None);
+
+        written.Should().Be(1, "lần thử thứ ba có dữ liệu thì phải ghi được nút");
+        handler.DataCalls.Should().Be(3, "hai lần rỗng rồi mới tới lần có dữ liệu");
+        (await db.ScheduledSeries.CountAsync()).Should().Be(1);
+    }
+
+    /// <summary>
+    /// Nhưng KHÔNG thử mãi. Nếu Valve hỏng thật thì bỏ lượt và để lượt sau lo — giữ nguyên bảng
+    /// đấu cũ còn hơn treo một vòng ingest đang giữ cổng ghi SQLite.
+    /// </summary>
+    [Fact]
+    public async Task Rong_lien_tuc_thi_bo_luot_va_giu_nguyen_bang_cu()
+    {
+        await using var db = NewDb();
+        var handler = new WebHandler { EmptyFirst = 99 };
+
+        var written = await Make(db, handler, new LeagueIdCache())
+            .IngestAsync(CancellationToken.None);
+
+        written.Should().Be(0);
+        handler.DataCalls.Should().Be(TiScheduleIngester.LoadTries, "thử đúng số lần đã khai, không hơn");
+        (await db.ScheduledSeries.CountAsync()).Should().Be(0);
     }
 
     /// <summary>

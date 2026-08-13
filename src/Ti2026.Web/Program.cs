@@ -110,8 +110,17 @@ builder.Services.AddSingleton(new IngestSchedule(
 
 // Bật scheduler chỉ khi có cấu hình rõ ràng. Test dùng WebApplicationFactory sẽ không chạy
 // ingest ngoài ý muốn, và người vận hành có thể tắt hẳn để chỉ chạy tay qua api/ingest/run.
+builder.Services.AddSingleton<LeagueIdCache>();
+
 if (options.IngestEnabled)
+{
     builder.Services.AddHostedService<IngestBackgroundService>();
+
+    // Bảng đấu có nhịp RIÊNG, nhanh hơn hẳn vòng chính. Nó là thứ duy nhất trên trang có giá
+    // trị theo phút, và nó lấy từ API của Valve chứ không phải OpenDota nên không đụng hạn mức.
+    // Vẫn đi qua chung IngestGate — xem ghi chú ở ScheduleRefreshService.
+    builder.Services.AddHostedService<ScheduleRefreshService>();
+}
 
 var app = builder.Build();
 

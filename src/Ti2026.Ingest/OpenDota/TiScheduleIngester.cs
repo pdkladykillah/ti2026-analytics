@@ -14,7 +14,8 @@ namespace Ti2026.Ingest.OpenDota;
 /// thì sang TI2027 sẽ có người phải nhớ đi sửa, mà không có gì nhắc.
 /// </summary>
 public class TiScheduleIngester(
-    Ti2026DbContext db, Dota2WebClient client, ILogger<TiScheduleIngester> logger)
+    Ti2026DbContext db, Dota2WebClient client, LeagueIdCache leagueCache,
+    ILogger<TiScheduleIngester> logger)
 {
     /// <summary>Bậc giải mà Valve chỉ dùng cho The International.</summary>
     public const int InternationalTier = 5;
@@ -100,15 +101,21 @@ public class TiScheduleIngester(
     }
 
     /// <summary>
-    /// Id kỳ TI mới nhất, tra lại từ danh mục ở MỖI vòng.
+    /// Id kỳ TI mới nhất.
     ///
-    /// Đã cân nhắc lưu lại id để khỏi tải danh mục: đo thật thì nó chỉ 315 KB nén gzip, tức
-    /// khoảng 1,3 MB mỗi ngày ở nhịp 6 giờ — không đáng để đánh đổi lấy một mẩu trạng thái phải
-    /// tự nhớ làm mới. Tra lại mỗi vòng cũng là thứ tự động đúng khi TI2027 xuất hiện, mà không
-    /// cần ai nhớ đi sửa gì.
+    /// TRƯỚC ĐÂY TRA LẠI MỖI VÒNG, và ở nhịp 6 giờ thì đúng là không đáng bàn: 315 KB nén nhân
+    /// bốn lượt một ngày là khoảng 1,3 MB. Nhưng khi bảng đấu chuyển sang nhịp 15 phút để bám
+    /// theo giải đang đá thì cùng phép tính đó ra ~30 MB mỗi ngày, để lấy về một số nguyên gần
+    /// như không bao giờ đổi — kỳ TI mới xuất hiện mỗi năm một lần.
+    ///
+    /// Nên nhớ lại, nhưng CÓ HẠN DÙNG. Nhớ vĩnh viễn thì sang TI2027 phải khởi động lại
+    /// container mới thấy giải mới, và đó đúng là loại việc không ai nhớ làm.
     /// </summary>
     private async Task<long?> ResolveLeagueIdAsync(CancellationToken ct)
     {
+        var now = DateTime.UtcNow;
+        if (leagueCache.TryGet(now, out var cached)) return cached;
+
         var all = await client.GetLeagueInfoListAsync(ct);
 
         // Kỳ TI mới nhất theo mốc bắt đầu. Trong lúc TI đang diễn ra thì đó là giải đang chạy;
@@ -119,8 +126,11 @@ public class TiScheduleIngester(
             .FirstOrDefault();
 
         if (ti is not null)
+        {
             logger.LogInformation("Giải The International đang theo dõi: {Name} ({Id})",
                 ti.Name, ti.LeagueId);
+            leagueCache.Set(ti.LeagueId, now);
+        }
 
         return ti?.LeagueId;
     }

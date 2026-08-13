@@ -167,6 +167,44 @@ public class ScheduleRefreshTests : IDisposable
     }
 
     /// <summary>
+    /// NHỊP SUY TỪ DỮ LIỆU, và api/schedule phải hỏi ĐÚNG hàm này.
+    ///
+    /// Đây là lý do <c>CurrentIntervalAsync</c> phải public: trang nói với người đọc "làm tươi
+    /// mỗi 15 phút", và nếu con số đó được viết lại ở endpoint thì sẽ có lúc trang hứa 15 phút
+    /// trong khi bộ nền chạy 6 giờ — loại sai không có cách nào phát hiện ngoài việc ngồi đếm
+    /// bằng đồng hồ.
+    /// </summary>
+    [Fact]
+    public async Task Nhip_suy_tu_du_lieu_dung_mot_cho()
+    {
+        await using var db = NewDb();
+
+        // Chưa có series nào: ngoài mùa.
+        (await ScheduleRefreshService.CurrentIntervalAsync(db))
+            .Should().Be(ScheduleRefreshService.OffSeason);
+
+        // Một series đang diễn ra: trong mùa, bất kể giờ xếp lịch là khi nào.
+        db.ScheduledSeries.Add(new Ti2026.Data.Entities.ScheduledSeries
+        {
+            LeagueId = 19719, NodeId = 1, HasStarted = true, IsCompleted = false,
+            ScheduledAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        await db.SaveChangesAsync();
+
+        (await ScheduleRefreshService.CurrentIntervalAsync(db))
+            .Should().Be(ScheduleRefreshService.InSeason,
+                "một trận đang đánh là định nghĩa rõ nhất của 'đang mùa'");
+
+        // Xong hết, và giờ xếp lịch đã xa: quay về nhịp ngoài mùa.
+        var row = await db.ScheduledSeries.FirstAsync();
+        row.HasStarted = false;
+        await db.SaveChangesAsync();
+
+        (await ScheduleRefreshService.CurrentIntervalAsync(db))
+            .Should().Be(ScheduleRefreshService.OffSeason);
+    }
+
+    /// <summary>
     /// Nhịp nhanh phải NHANH HƠN THẬT SỰ so với vòng ingest chính, nếu không cả việc tách ra là
     /// vô nghĩa. Và nhịp ngoài mùa không được tắt hẳn: khung bảng đấu kỳ sau xuất hiện trước
     /// ngày khai mạc khá lâu.

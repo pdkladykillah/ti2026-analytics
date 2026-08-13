@@ -133,8 +133,12 @@ public sealed class ScheduleRefreshService(
     /// Một công tắc tay sẽ đúng vào ngày cài đặt rồi sai mãi mãi sau đó — không ai nhớ tắt nó
     /// sau khi giải kết thúc, và sang kỳ sau lại không ai nhớ bật. Điều kiện ở đây tự đúng: có
     /// trận nào đang diễn ra, hoặc có trận nào được xếp giờ trong vòng một ngày quanh bây giờ.
+    ///
+    /// PUBLIC vì api/schedule cũng cần biết để nói cho người đọc "làm tươi mỗi 15 phút". Hai bản
+    /// cài của cùng một định nghĩa là hai con số sẽ lệch nhau mà không có gì báo: trang hứa 15
+    /// phút trong khi bộ nền đang chạy 6 giờ, và không có cách nào phát hiện ngoài việc ngồi đếm.
     /// </summary>
-    private static async Task<bool> InSeasonAsync(Ti2026DbContext db, CancellationToken ct)
+    public static async Task<bool> InSeasonAsync(Ti2026DbContext db, CancellationToken ct = default)
     {
         if (await db.ScheduledSeries.AnyAsync(s => s.HasStarted && !s.IsCompleted, ct))
             return true;
@@ -146,6 +150,11 @@ public sealed class ScheduleRefreshService(
         return await db.ScheduledSeries.AnyAsync(
             s => s.ScheduledAt != null && s.ScheduledAt >= from && s.ScheduledAt <= to, ct);
     }
+
+    /// <summary>Nhịp đang áp dụng, suy từ cùng một luật với vòng lặp ở trên.</summary>
+    public static async Task<TimeSpan> CurrentIntervalAsync(
+        Ti2026DbContext db, CancellationToken ct = default) =>
+        await InSeasonAsync(db, ct) ? InSeason : OffSeason;
 }
 
 /// <summary>

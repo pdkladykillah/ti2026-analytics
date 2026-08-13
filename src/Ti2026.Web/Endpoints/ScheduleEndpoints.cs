@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Ti2026.Data;
+using Ti2026.Ingest;
 using Ti2026.Ingest.OpenDota;
 
 namespace Ti2026.Web.Endpoints;
@@ -101,6 +102,11 @@ public static class ScheduleEndpoints
                 scheduledSeries = rows.Count(r => r.ScheduledAt != null),
                 completedSeries = rows.Count(r => r.IsCompleted),
 
+                // NHỊP LÀM TƯƠI, suy từ ĐÚNG luật mà bộ nền đang dùng — không viết lại con số ở
+                // đây. Trang hứa "15 phút" trong khi bộ nền chạy 6 giờ là loại sai không có cách
+                // nào phát hiện ngoài việc ngồi đếm bằng đồng hồ.
+                refresh = await RefreshInfoAsync(db, rows.Max(r => r.SyncedAt)),
+
                 // Nói rõ khi Valve mới chỉ dựng khung mà chưa xếp giờ. Không có câu này thì một
                 // bảng đấu 27 nút trống trơn trông y hệt một lỗi tải dữ liệu.
                 note = rows.All(r => r.ScheduledAt == null)
@@ -119,7 +125,29 @@ public static class ScheduleEndpoints
     }
 
     private const string Source =
-        "Bảng đấu và lịch lấy từ API chính chủ của Valve (dota2.com), tự cập nhật mỗi vòng ingest.";
+        "Bảng đấu và lịch lấy từ API chính chủ của Valve (dota2.com). Bảng đấu có nhịp làm tươi "
+        + "riêng, nhanh hơn hẳn vòng ingest chính.";
+
+    /// <summary>
+    /// Thông tin về lượt làm tươi: lần cuối, nhịp đang dùng, và mốc DỰ KIẾN cho lượt sau.
+    ///
+    /// `nextEstimate` gọi đúng tên là DỰ KIẾN chứ không phải mốc chắc chắn: bộ nền dùng TryEnter
+    /// nên nó bỏ lượt khi vòng ingest chính đang giữ cổng ghi SQLite, và Valve thỉnh thoảng trả
+    /// thân rỗng khiến lượt đó không đổi được gì. Hứa một mốc chính xác rồi trượt vài phút sẽ
+    /// khiến người đọc mất tin vào cả những con số đúng.
+    /// </summary>
+    private static async Task<object> RefreshInfoAsync(Ti2026DbContext db, DateTime syncedAt)
+    {
+        var interval = await ScheduleRefreshService.CurrentIntervalAsync(db);
+
+        return new
+        {
+            everyMinutes = (int)interval.TotalMinutes,
+            inSeason = interval == ScheduleRefreshService.InSeason,
+            lastAt = syncedAt,
+            nextEstimate = syncedAt + interval,
+        };
+    }
 
     private static string Status(bool completed, bool started, DateTime? scheduled, DateTime now) =>
         completed ? "da-xong"

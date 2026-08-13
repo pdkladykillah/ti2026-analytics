@@ -1177,6 +1177,41 @@ function scheduleSide(team, fromNode, right) {
   return `<div class="sc-side${right ? ' right' : ''}">${inner}</div>`;
 }
 
+/**
+ * Dải "đồng bộ lần cuối" cho tab lịch.
+ *
+ * VÌ SAO ĐÁNG CÓ RIÊNG Ở ĐÂY, dù tab Tổng quan đã có thẻ trạng thái ingest: hai thứ đó là hai
+ * nhịp khác nhau. Vòng ingest chính chạy mỗi 6 giờ; bảng đấu có bộ làm tươi riêng chạy mỗi 15
+ * phút trong mùa giải. Đọc con số 6 giờ ở tab Tổng quan rồi suy ra tỷ số trên tab này cũng cũ 6
+ * giờ là suy đúng logic nhưng sai sự thật.
+ *
+ * Nhịp KHÔNG viết cứng ở đây — nó do api/schedule trả về, mà endpoint đó lại hỏi đúng lớp đang
+ * chạy bộ nền. Ba chỗ cùng nói một con số thì chỉ một chỗ được quyết định nó.
+ */
+function syncStrip(d) {
+  const r = d.refresh;
+  if (!r) return '';
+
+  const now = new Date();
+  const ago = relTime(r.lastAt, now);
+  const next = relTime(r.nextEstimate, now);
+
+  // Quá hai nhịp mà chưa đổi gì là dấu hiệu bộ làm tươi đang hụt — nói ra thay vì để một con số
+  // cũ trông y hệt một con số mới.
+  const stale = (now - new Date(r.lastAt)) / 60000 > r.everyMinutes * 2;
+
+  return `<div class="sc-sync${stale ? ' stale' : ''}">
+    <span class="sc-sync-dot" aria-hidden="true"></span>
+    <span>Đồng bộ lần cuối <b>${esc(ago || '—')}</b>
+      <span class="mu">(${esc(fmtClock(r.lastAt))})</span></span>
+    <span class="mu">·</span>
+    <span class="mu">làm tươi mỗi <b>${n0(r.everyMinutes)}</b> phút${
+      r.inSeason ? '' : ' (ngoài mùa giải)'}</span>
+    ${next ? `<span class="mu">·</span><span class="mu">lượt sau khoảng ${esc(next)}</span>` : ''}
+    ${stale ? '<span class="sc-sync-warn">chậm hơn thường lệ</span>' : ''}
+  </div>`;
+}
+
 function renderSchedule(d) {
   const body = $('#schedule-body');
   if (!body) return;
@@ -1236,6 +1271,7 @@ function renderSchedule(d) {
   };
 
   body.innerHTML = `
+    ${syncStrip(d)}
     <div class="sc-summary">
       <span><b>${n0(d.totalSeries)}</b> series trong bảng đấu</span>
       <span><b>${n0(d.scheduledSeries)}</b> đã có giờ</span>
@@ -1413,6 +1449,7 @@ function renderBracket(d) {
   const stages = [...new Set(outside.map((s) => s.stage))];
 
   box.innerHTML = `
+    ${syncStrip(d)}
     ${bracketSide('Nhánh thắng', 'thua một lần là rơi xuống nhánh thua', g.up, g.feeds)}
     ${bracketSide('Nhánh thua', 'thua lần nữa là dừng giải', g.low, g.feeds)}
     ${g.final ? `<section class="br-side">

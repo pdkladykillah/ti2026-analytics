@@ -1479,7 +1479,7 @@ async function setupProfile() {
       // một chuỗi không dấu giữa một trang tiếng Việt có dấu.
       sel.innerHTML = (d.people || []).map((p) =>
         `<option value="${esc(String(p.accountId))}">${esc(p.name)}</option>`).join('');
-      sel.onchange = () => loadProfile(sel.value);
+      sel.onchange = () => { loadProfile(sel.value); resetHistory(sel.value); };
       enhanceSelect(sel, 'Gõ để tìm người…');
       profileReady = true;
     } catch (err) {
@@ -1490,6 +1490,214 @@ async function setupProfile() {
   }
 
   loadProfile(sel.value);
+  resetHistory(sel.value);
+}
+
+/* --------------------------- Lịch sử đấu --------------------------- */
+
+/**
+ * Trạng thái bộ lọc, giữ NGOÀI hàm vẽ.
+ *
+ * Nếu để trong thì mỗi lần vẽ lại là mất bộ lọc người dùng vừa chọn — mà vẽ lại xảy ra ở mọi
+ * lần bấm "xem thêm", tức đúng lúc họ đang đọc dở một danh sách đã lọc.
+ */
+const history = { player: null, hero: null, position: null, page: 0, rows: [], filters: null };
+
+function resetHistory(player) {
+  history.player = player || null;
+  history.hero = null;
+  history.position = null;
+  history.page = 0;
+  history.rows = [];
+  history.filters = null;
+  loadHistory();
+}
+
+async function loadHistory(append = false) {
+  const box = $('#profile-history');
+  if (!box) return;
+  if (!append) box.innerHTML = '<div class="skeleton sk-md"></div>';
+
+  const q = new URLSearchParams();
+  if (history.player) q.set('player', history.player);
+  if (history.hero) q.set('hero', history.hero);
+  if (history.position) q.set('position', history.position);
+  if (history.page) q.set('page', history.page);
+
+  try {
+    const d = await getJson('api/profile/matches?' + q);
+
+    if (!d.ready) {
+      box.innerHTML = `<div class="empty">${esc(d.note || 'Chưa có dữ liệu.')}</div>`;
+      return;
+    }
+
+    history.rows = append ? history.rows.concat(d.matches) : d.matches;
+    history.filters = history.filters || d.filters;
+    renderHistory(d);
+  } catch (e) {
+    box.innerHTML = `<div class="empty">Không tải được: ${esc(String(e.message || e))}</div>`;
+  }
+}
+
+function renderHistory(d) {
+  const box = $('#profile-history');
+  const f = history.filters || { heroes: [], positions: [] };
+
+  // Bộ lọc hero chỉ lấy 24 hero nhiều ván nhất: danh sách đầy đủ là hơn trăm nút, mà đuôi của
+  // nó toàn hero một hai ván — tức phần chiếm chỗ nhiều nhất lại là phần ít ai tìm.
+  const heroBtns = f.heroes.slice(0, 24).map((h) => `<button type="button" class="hf"
+      data-hero="${h.heroId}" aria-pressed="${String(history.hero === h.heroId)}"
+      title="${esc(h.name)} — ${n0(h.games)} ván">
+    ${heroImg(h.image, 38, 21)}<span class="hf-n">${n0(h.games)}</span></button>`).join('');
+
+  const posBtns = f.positions.map((p) => `<button type="button" class="chip pf-pos"
+      data-pos="${esc(p.code)}" aria-pressed="${String(history.position === p.code)}">
+    ${esc(p.label)} <small>${n0(p.games)}</small></button>`).join('');
+
+  const active = history.hero || history.position;
+
+  box.innerHTML = `
+    <div class="hist-filters">
+      <div class="hist-row">
+        <span class="hist-lbl">Vị trí</span>
+        <div class="chips">${posBtns || '<span class="mu">chưa có ván nào còn nhãn</span>'}</div>
+      </div>
+      <div class="hist-row">
+        <span class="hist-lbl">Hero</span>
+        <div class="hf-grid">${heroBtns}</div>
+      </div>
+      ${active ? `<button type="button" class="btn-ghost" id="hist-clear">Bỏ lọc</button>` : ''}
+    </div>
+
+    <div class="hist-count">${
+      active ? `<b>${n0(d.matched)}</b> ván khớp bộ lọc, trên tổng <b>${n0(d.total)}</b>`
+             : `<b>${n0(d.total)}</b> ván đã lưu`}</div>
+
+    <div class="hist-list">${history.rows.map(historyRow).join('')}</div>
+
+    ${d.hasMore ? '<button type="button" class="btn-ghost hist-more" id="hist-more">Xem thêm</button>' : ''}`;
+
+  wireHistory();
+}
+
+function historyRow(m) {
+  const mins = Math.round(m.durationSeconds / 60);
+  const kda = `${n0(m.kills)}/${n0(m.deaths)}/${n0(m.assists)}`;
+
+  // Vị trí kèm NGUỒN. "pos2 từ nhãn replay" và "core suy từ hạng net worth" là hai mức chắc
+  // chắn khác hẳn nhau; hiện chung một kiểu là xoá mất phần người đọc cần để biết tin tới đâu.
+  const pos = m.position
+    ? `<span class="hist-pos">${esc(m.positionLabel)}</span>`
+    : m.replayExpired
+      ? '<span class="hist-pos mu" title="Replay của Valve hết hạn sau ~60 ngày">replay đã hết hạn</span>'
+      : `<span class="hist-pos mu">${esc(m.positionLabel)}</span>`;
+
+  return `<article class="hist-item ${m.won ? 'won' : 'lost'}">
+    <button type="button" class="hist-head" aria-expanded="false" data-match="${m.matchId}">
+      ${heroImg(m.heroImage, 46, 26)}
+      <div class="hist-id">
+        <div class="hist-hero">${esc(m.heroName)}</div>
+        <div class="hist-when">${esc(matchWhen(m.startTime))}</div>
+      </div>
+      <span class="hist-res">${m.won ? 'Thắng' : 'Thua'}</span>
+      <span class="hist-kda num">${kda}</span>
+      <span class="hist-dur num">${n0(mins)}′</span>
+      ${pos}
+      <svg class="hist-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+    </button>
+    <div class="hist-detail" hidden>${historyDetail(m)}</div>
+  </article>`;
+}
+
+function historyDetail(m) {
+  const d = m.detail, p = m.pct;
+
+  // Phân vị đi KÈM số thô, không thay thế. Một mình "top 18%" không nói được 18% của cái gì,
+  // và chính con số thô mới là thứ so được với trí nhớ của người chơi.
+  const cell = (label, raw, pct, lowerBetter) => {
+    if (raw === null || raw === undefined) return '';
+    const good = pct == null ? null : (lowerBetter ? pct <= 35 : pct >= 65);
+    const bad = pct == null ? null : (lowerBetter ? pct >= 65 : pct <= 35);
+
+    return `<div class="hd-cell">
+      <div class="hd-lbl">${esc(label)}</div>
+      <div class="hd-raw num">${n0(raw)}</div>
+      ${pct == null ? '<div class="hd-pct mu">—</div>'
+        : `<div class="hd-pct num ${good ? 'cal-good' : bad ? 'cal-bad' : ''}">top ${n0(100 - pct)}%</div>`}
+    </div>`;
+  };
+
+  return `<div class="hd-grid">
+    ${cell('GPM', d.gpm, p.gpm)}
+    ${cell('XPM', d.xpm, p.xpm)}
+    ${cell('Last hit', d.lastHits, p.lastHits)}
+    ${cell('Kill', m.kills, p.kills)}
+    ${cell('Số lần chết', m.deaths, p.deaths, true)}
+    ${cell('ST lên hero', d.heroDamage, p.heroDamage)}
+    ${cell('ST lên trụ', d.towerDamage, p.towerDamage)}
+    ${cell('Net worth', d.netWorth, null)}
+  </div>
+  <div class="hd-extra">
+    ${d.laneEfficiency != null ? `<span>Hiệu suất lane <b>${n0(d.laneEfficiency)}%</b></span>` : ''}
+    ${d.goldAdv10 != null ? `<span>Chênh vàng 10′ <b class="${d.goldAdv10 >= 0 ? 'cal-good' : 'cal-bad'}">${signed(d.goldAdv10)}</b></span>` : ''}
+    ${d.teamFarmRank != null ? `<span>Hạng net worth trong đội <b>${n0(d.teamFarmRank)}</b></span>` : ''}
+    <a class="hd-link" href="https://www.opendota.com/matches/${m.matchId}"
+       target="_blank" rel="noopener">Mở trên OpenDota</a>
+  </div>`;
+}
+
+/** Giờ MÁY NGƯỜI XEM. Mốc UTC thô làm người ở +7 đọc lùi một ngày với mọi ván đánh buổi tối. */
+function matchWhen(iso) {
+  const t = new Date(iso);
+  return t.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+    + ' · ' + t.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function wireHistory() {
+  const box = $('#profile-history');
+  if (!box) return;
+
+  box.onclick = (e) => {
+    const head = e.target.closest('.hist-head');
+    if (head) {
+      const open = head.getAttribute('aria-expanded') === 'true';
+      head.setAttribute('aria-expanded', String(!open));
+      head.parentElement.querySelector('.hist-detail').hidden = open;
+      return;
+    }
+
+    const hero = e.target.closest('.hf');
+    if (hero) {
+      const id = Number(hero.dataset.hero);
+      history.hero = history.hero === id ? null : id;
+      history.page = 0;
+      loadHistory();
+      return;
+    }
+
+    const pos = e.target.closest('.pf-pos');
+    if (pos) {
+      history.position = history.position === pos.dataset.pos ? null : pos.dataset.pos;
+      history.page = 0;
+      loadHistory();
+      return;
+    }
+
+    if (e.target.closest('#hist-clear')) {
+      history.hero = null;
+      history.position = null;
+      history.page = 0;
+      loadHistory();
+      return;
+    }
+
+    if (e.target.closest('#hist-more')) {
+      history.page += 1;
+      loadHistory(true);
+    }
+  };
 }
 
 /**

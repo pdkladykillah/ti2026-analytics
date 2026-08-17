@@ -23,6 +23,15 @@ public class DailyDigestWriter(Ti2026DbContext db, ILogger<DailyDigestWriter> lo
     public const int WinrateWindowDays = 180;
 
     /// <summary>
+    /// Chờ tối đa ngần này sau series cuối rồi chốt ngày dù còn thiếu ván.
+    ///
+    /// 24 giờ là BỐN LẦN nhịp vòng ingest (6 giờ), nên một ngày đủ dữ liệu luôn kịp chốt đúng.
+    /// Cần cửa gia hạn vì OpenDota thỉnh thoảng không bao giờ công bố một ván nào đó — không có
+    /// nó thì ngày đó treo mở vĩnh viễn và bị tính lại mỗi 15 phút cho tới hết đời.
+    /// </summary>
+    public static readonly TimeSpan CoverageGrace = TimeSpan.FromHours(24);
+
+    /// <summary>
     /// camelCase để payload giống mọi endpoint khác của trang — giao diện không phải nhớ rằng
     /// riêng chỗ này khoá viết hoa. Và đọc thì không phân biệt hoa thường, để bản ghi cũ viết
     /// bằng quy ước trước vẫn đọc được thay vì lặng lẽ ra danh sách rỗng.
@@ -82,7 +91,23 @@ public class DailyDigestWriter(Ti2026DbContext db, ILogger<DailyDigestWriter> lo
             var highlights = DayHighlights.Build(series, matches, drafts, heroNames, yesterday);
 
             var completed = series.Count(s => s.Completed);
-            var closed = completed == series.Count && series.Count > 0;
+            var expectedMaps = series.Sum(s => s.Wins1 + s.Wins2);
+
+            // CHỐT NGÀY PHẢI ĐỢI CẢ HAI NGUỒN, KHÔNG CHỈ NGUỒN NHANH.
+            //
+            // Lỗi đã xảy ra thật và người dùng phát hiện sau bốn ngày: ngày 13/08 bị đóng băng ở
+            // "đọc được 18/29 ván" trong khi bảng Matches thật ra có đủ cả 29. Nguyên nhân là bản
+            // trước chốt ngay khi Valve báo mọi series đã xong — mà Valve làm tươi mỗi 15 phút còn
+            // chi tiết ván đi theo vòng ingest 6 giờ. Ngày bị khoá lại trước khi phần ván kịp về,
+            // và vì ngày đã chốt thì không tính lại nữa nên con số sai đó thành vĩnh viễn.
+            //
+            // Cửa gia hạn để một ván MẤT HẲN không giữ ngày mở mãi mãi: OpenDota thỉnh thoảng
+            // không bao giờ công bố một ván nào đó, và chờ nó là chờ một thứ không tới.
+            var covered = matches.Count >= expectedMaps;
+            var lastAt = series.Where(s => s.At is not null).Max(s => s.At);
+            var overdue = lastAt is DateTime t && DateTime.UtcNow - t > CoverageGrace;
+
+            var closed = series.Count > 0 && completed == series.Count && (covered || overdue);
 
             row ??= new DailyDigest { LeagueId = leagueId, Day = day };
             if (row.Id == 0) db.DailyDigests.Add(row);
@@ -95,7 +120,7 @@ public class DailyDigestWriter(Ti2026DbContext db, ILogger<DailyDigestWriter> lo
             row.MatchesCounted = matches.Count;
             // Mọi series, không chỉ series đã xong — series đang đánh dở vẫn có ván đã kết thúc. Xem
             // ghi chú ở DayHighlights.Build: cộng riêng series đã xong cho ra "đọc được 9/7 ván".
-            row.MatchesExpected = series.Sum(s => s.Wins1 + s.Wins2);
+            row.MatchesExpected = expectedMaps;
             row.MedianDurationSeconds = DayHighlights.MedianDuration(matches);
             row.ComputedAt = DateTime.UtcNow;
             row.Payload = JsonSerializer.Serialize(highlights, Json);

@@ -1510,10 +1510,20 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
    cặp màu đã được ThemeContrastTests khoá — kể cả --pos và --neg. */
 .hist-list { border-top: 1px solid var(--border); }
 
-.hist-item { border-bottom: 1px solid var(--border); border-left: 4px solid transparent; }
+.hist-item {
+  border-bottom: 1px solid var(--border);
+  border-left: 5px solid transparent;
+  transition: background .12s var(--ease), border-left-color .12s var(--ease);
+}
 .hist-item.won { border-left-color: var(--pos); }
 .hist-item.lost { border-left-color: var(--neg); }
-.hist-item:hover { background: var(--surface-2); }
+
+/* HOVER PHẢI THẤY LÀ BẤM ĐƯỢC, không chỉ đổi nền một chút.
+   Ba thứ đổi cùng lúc: nền đậm lên, vệt màu bên trái dày ra, và mũi nhọn chuyển sang màu nhấn.
+   Nền một mình chỉ chênh 1,1 lần nên trên màn hình sáng gần như không thấy. */
+.hist-item:hover { background: var(--surface-2); border-left-width: 8px; }
+.hist-item:hover .hist-caret { color: var(--accent-ink); }
+.hist-item:focus-within { background: var(--surface-2); }
 
 /* Lưới cột cố định để số thẳng hàng. Bảng số mà mỗi hàng lệch một chút thì mắt phải đọc lại
    từng dòng thay vì quét dọc một cột. */
@@ -1533,9 +1543,16 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 }
 .hist-when { font-size: 12px; color: var(--muted); font-family: var(--font-num); }
 
-.hist-res { font-weight: 800; }
-.hist-item.won .hist-res { color: var(--pos); }
-.hist-item.lost .hist-res { color: var(--neg); }
+/* KẾT QUẢ LÀ MỘT VIÊN MÀU ĐẶC, không phải chữ đổi màu.
+   Chữ màu trên nền trắng là một nét mảnh — quét cả danh sách thì không đọc ra được tỉ lệ
+   thắng/thua. Một mảng nền đặc thì thấy ngay từ xa. Và cặp (--pos, --pos-soft) cùng
+   (--neg, --neg-soft) đều đã được ThemeContrastTests khoá ở mức AA. */
+.hist-res {
+  font-weight: 800; font-size: 12.5px; text-align: center;
+  padding: 3px 0; border-radius: var(--r-sm);
+}
+.hist-item.won .hist-res { background: var(--pos-soft); color: var(--pos); }
+.hist-item.lost .hist-res { background: var(--neg-soft); color: var(--neg); }
 
 .hist-kda, .hist-dur { font-family: var(--font-num); }
 .hist-dur { color: var(--muted); text-align: right; }
@@ -1569,6 +1586,74 @@ footer { color: var(--muted); font-size: 12px; margin-top: var(--s-6); text-alig
 .hd-link { margin-left: auto; }
 
 .hist-more { margin-top: var(--s-4); }
+
+/* ---- Bảng điểm mười người ---- */
+
+.hb-slot { margin-top: var(--s-3); }
+
+.hb { display: grid; gap: var(--s-3); }
+@media (min-width: 900px) {
+  .hb { grid-template-columns: 1fr 1fr; }
+}
+
+.hb-side { background: var(--surface); border-radius: var(--r-md); overflow: hidden; }
+
+/* Đầu mỗi phe là một dải MÀU ĐẶC. Đây là chỗ màu được phép mạnh: nó phân tách hai phe, và
+   người đọc cần biết ngay phe nào thắng trước khi đọc bất kỳ con số nào. */
+.hb-head {
+  display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+  padding: 6px var(--s-3); font-size: 12.5px;
+}
+.hb-head.won { background: var(--pos-soft); color: var(--pos); }
+.hb-head.lost { background: var(--neg-soft); color: var(--neg); }
+.hb-head b { font-size: 13.5px; }
+.hb-head .mu { margin-left: auto; }
+
+.hb-rows { display: grid; }
+
+.hb-row {
+  display: grid; align-items: center; gap: var(--s-2);
+  grid-template-columns: 40px minmax(0, 1fr) 72px 52px 62px 44px auto;
+  padding: 4px var(--s-3); font-size: 13px;
+  border-top: 1px solid var(--border);
+}
+.hb-row:first-child { border-top: 0; }
+.hb-row img { border-radius: 3px; }
+
+/* Dòng của chính người đang xem: nền màu nhấn nhạt + chữ bạn. Trong mười dòng gần giống nhau
+   thì đây là thứ mắt phải tìm thấy đầu tiên. */
+.hb-row.mine { background: var(--accent-soft); }
+
+.hb-who { min-width: 0; }
+.hb-name {
+  font-weight: 700; color: var(--ink); line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hb-you {
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+  background: var(--accent); color: var(--on-accent);
+  padding: 1px 5px; border-radius: var(--r-pill); vertical-align: 1px;
+}
+.hb-hero { font-size: 11.5px; line-height: 1.2; }
+
+.hb-nw { font-weight: 800; }
+.hb-dn { color: var(--muted); }
+
+.hb-items { display: flex; gap: 2px; }
+.hb-item { line-height: 0; flex: none; }
+.hb-item img { border-radius: 2px; width: 28px; height: 21px; }
+.hb-item.empty {
+  width: 28px; height: 21px; border-radius: 2px;
+  background: var(--surface-2); border: 1px dashed var(--border);
+}
+
+@media (max-width: 620px) {
+  .hb-row { grid-template-columns: 40px minmax(0, 1fr) 72px 52px; row-gap: 2px; }
+  .hb-lh, .hb-gpm { display: none; }
+  .hb-items { grid-column: 2 / -1; }
+}
+
+
 
 @media (max-width: 760px) {
   .hist-head {

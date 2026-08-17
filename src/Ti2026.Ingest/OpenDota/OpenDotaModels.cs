@@ -189,6 +189,10 @@ public class OpenDotaProfile
 /// </summary>
 public class OpenDotaItem
 {
+    /// <summary>id SỐ của vật phẩm. Đây là thứ nối được item_0..item_5 trong bảng điểm với
+    /// danh mục vốn khoá theo TÊN — thiếu nó thì sáu ô đồ không tra ra được gì.</summary>
+    [JsonPropertyName("id")] public int? Id { get; set; }
+
     [JsonPropertyName("dname")] public string? DisplayName { get; set; }
     [JsonPropertyName("cost")] public int? Cost { get; set; }
     [JsonPropertyName("qual")] public string? Quality { get; set; }

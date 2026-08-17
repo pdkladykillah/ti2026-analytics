@@ -299,6 +299,7 @@ public class OpenDotaIngester(
             row.Name = value.DisplayName;
             row.Cost = value.Cost;
             row.Quality = value.Quality;
+            row.OpenDotaItemId = value.Id;
         }
 
         await db.SaveChangesAsync(ct);

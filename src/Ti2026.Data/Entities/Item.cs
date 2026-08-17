@@ -16,6 +16,12 @@ public class Item
     /// <summary>dname của OpenDota — "Ring of Basilius", "Aghanim's Scepter".</summary>
     public string? Name { get; set; }
 
+    /// <summary>
+    /// id SỐ của OpenDota. Danh mục vật phẩm khoá theo TÊN ("blink"), còn bảng điểm một ván trả
+    /// về item_0..item_5 là SỐ — không có cột này thì hai đầu không nối được với nhau.
+    /// </summary>
+    public int? OpenDotaItemId { get; set; }
+
     /// <summary>Tổng giá. null với vài mục không mua được trực tiếp.</summary>
     public int? Cost { get; set; }
 

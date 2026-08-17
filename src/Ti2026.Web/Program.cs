@@ -217,6 +217,7 @@ app.MapScheduleEndpoints();
 app.MapDigestEndpoints();
 app.MapProfileEndpoints();
 app.MapMatchHistoryEndpoints();
+app.MapMatchBoardEndpoints();
 app.MapAnalyticsEndpoints();
 app.MapLearnEndpoints();
 app.MapIdolEndpoints();

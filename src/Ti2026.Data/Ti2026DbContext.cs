@@ -35,6 +35,7 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
     public DbSet<IdolMatch> IdolMatches => Set<IdolMatch>();
     public DbSet<StyleAnchor> StyleAnchors => Set<StyleAnchor>();
     public DbSet<DailyDigest> DailyDigests => Set<DailyDigest>();
+    public DbSet<TrackedMatchBoard> TrackedMatchBoards => Set<TrackedMatchBoard>();
 
     /// <summary>
     /// Mọi DateTime ghi xuống đều chuyển sang UTC, mọi DateTime đọc lên đều được gắn
@@ -83,6 +84,10 @@ public class Ti2026DbContext(DbContextOptions<Ti2026DbContext> options) : DbCont
         // thì mỗi lượt làm tươi 15 phút sẽ thêm một dòng mới cho cùng một ngày, và bảng lịch sử
         // thành một cái log — sai lặng lẽ, vì mọi truy vấn "digest ngày X" vẫn trả về một dòng.
         b.Entity<DailyDigest>().HasIndex(x => new { x.LeagueId, x.Day }).IsUnique();
+
+        // (ván, ghế) là khoá tự nhiên của một bảng điểm. Không có nó thì mở lại cùng một ván hai
+        // lần sẽ ghi thêm mười dòng nữa, và bảng điểm hiện ra hai mươi người.
+        b.Entity<TrackedMatchBoard>().HasIndex(x => new { x.MatchId, x.PlayerSlot }).IsUnique();
 
         // KHAI KHOÁ NGOẠI TƯỜNG MINH. Quy ước của EF tìm cột tên "Team1Id" cho navigation
         // "Team1"; tên của ta là "TeamId1" nên nó KHÔNG khớp, và EF lặng lẽ tạo thêm một cột

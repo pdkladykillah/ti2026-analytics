@@ -1657,8 +1657,71 @@ function historyRow(m) {
       <svg class="hist-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
     </button>
-    <div class="hist-detail" hidden>${historyDetail(m)}</div>
+    <div class="hist-detail" hidden data-loaded="0">${historyDetail(m)}</div>
   </article>`;
+}
+
+/**
+ * Bảng điểm mười người, nạp KHI BẤM MỞ.
+ *
+ * Không nạp sẵn: cả 9.900 ván của hai tài khoản là 9.900 lời gọi OpenDota — năm ngày hạn mức
+ * miễn phí — cho một thứ mà phần lớn không ai mở ra xem. Nạp khi bấm thì chi phí bằng đúng số
+ * ván thật sự được xem, và lần mở thứ hai là miễn phí vì máy chủ đã lưu lại.
+ */
+async function loadBoard(matchId, host) {
+  if (host.dataset.loaded === '1') return;
+  host.dataset.loaded = '1';
+
+  const slot = host.querySelector('.hb-slot');
+  if (!slot) return;
+  slot.innerHTML = '<div class="skeleton sk-sm"></div>';
+
+  try {
+    const d = await getJson('api/profile/board?match=' + encodeURIComponent(matchId));
+    slot.innerHTML = d.ready ? boardHtml(d) : `<div class="mu">${esc(d.note || '')}</div>`;
+  } catch (e) {
+    host.dataset.loaded = '0';   // cho phép thử lại
+    slot.innerHTML = `<div class="mu">Không tải được bảng điểm: ${esc(String(e.message || e))}</div>`;
+  }
+}
+
+function boardHtml(d) {
+  const side = (s) => `<div class="hb-side">
+    <div class="hb-head ${s.won ? 'won' : 'lost'}">
+      <b>${esc(s.label)}</b>
+      <span>${s.won ? 'Thắng' : 'Thua'}</span>
+      <span class="num">${n0(s.kills)} kill</span>
+      <span class="num mu">${fmt(s.netWorth / 1000, 1)}k net worth</span>
+    </div>
+    <div class="hb-rows">${s.players.map((p) => boardRow(p, d.meAccountId)).join('')}</div>
+  </div>`;
+
+  return `<div class="hb">${d.sides.map(side).join('')}</div>
+    <p class="desc">${d.cached
+      ? 'Bảng điểm đã lưu sẵn, không gọi lại nguồn.'
+      : 'Vừa nạp từ OpenDota và lưu lại — lần mở sau không tốn lời gọi nào.'}</p>`;
+}
+
+function boardRow(p, me) {
+  const mine = me != null && p.accountId === me;
+
+  const items = p.items.map((it) => it
+    ? `<span class="hb-item" title="${esc(it.name)}">${itemImg(it.image)}</span>`
+    : '<span class="hb-item empty"></span>').join('');
+
+  return `<div class="hb-row${mine ? ' mine' : ''}">
+    ${heroImg(p.heroImage, 40, 23)}
+    <div class="hb-who">
+      <div class="hb-name">${esc(p.name)}${mine ? ' <span class="hb-you">bạn</span>' : ''}</div>
+      <div class="hb-hero mu">${esc(p.heroName)}${p.level ? ` · cấp ${n0(p.level)}` : ''}</div>
+    </div>
+    <span class="hb-kda num">${n0(p.kills)}/${n0(p.deaths)}/${n0(p.assists)}</span>
+    <span class="hb-nw num">${p.netWorth == null ? '—' : fmt(p.netWorth / 1000, 1) + 'k'}</span>
+    <span class="hb-lh num mu">${p.lastHits == null ? '—' : n0(p.lastHits)}<span class="hb-dn">/${
+      p.denies == null ? '—' : n0(p.denies)}</span></span>
+    <span class="hb-gpm num mu">${n0(p.gpm)}</span>
+    <div class="hb-items">${items}</div>
+  </div>`;
 }
 
 function historyDetail(m) {
@@ -1695,7 +1758,8 @@ function historyDetail(m) {
     ${d.teamFarmRank != null ? `<span>Hạng net worth trong đội <b>${n0(d.teamFarmRank)}</b></span>` : ''}
     <a class="hd-link" href="https://www.opendota.com/matches/${m.matchId}"
        target="_blank" rel="noopener">Mở trên OpenDota</a>
-  </div>`;
+  </div>
+  <div class="hb-slot"></div>`;
 }
 
 /** Giờ MÁY NGƯỜI XEM. Mốc UTC thô làm người ở +7 đọc lùi một ngày với mọi ván đánh buổi tối. */
@@ -1714,7 +1778,12 @@ function wireHistory() {
     if (head) {
       const open = head.getAttribute('aria-expanded') === 'true';
       head.setAttribute('aria-expanded', String(!open));
-      head.parentElement.querySelector('.hist-detail').hidden = open;
+
+      const panel = head.parentElement.querySelector('.hist-detail');
+      panel.hidden = open;
+
+      // Nạp bảng điểm khi MỞ, không nạp khi đóng lại — và chỉ một lần cho mỗi ván.
+      if (!open) loadBoard(head.dataset.match, panel);
       return;
     }
 

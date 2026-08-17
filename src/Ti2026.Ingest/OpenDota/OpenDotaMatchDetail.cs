@@ -258,6 +258,21 @@ public class OpenDotaMatchPlayer
     [JsonPropertyName("rune_pickups")] public int? RunePickups { get; set; }
     [JsonPropertyName("buyback_count")] public int? Buybacks { get; set; }
     [JsonPropertyName("stuns")] public double? StunSeconds { get; set; }
+
+    /// <summary>
+    /// Sáu ô đồ CUỐI VÁN. Khác purchase_log ở chỗ quyết định: purchase_log là mọi thứ từng mua
+    /// kể cả tiêu hao và đồ đã bán, còn sáu ô này là thứ thật sự nằm trong túi lúc ván kết thúc.
+    /// Bảng điểm cần cái sau; phân tích mốc lên đồ cần cái trước.
+    ///
+    /// 0 nghĩa là Ô TRỐNG, không phải "đồ có id 0". Phải quy về null ở chỗ đọc, nếu không giao
+    /// diện sẽ đi tra một vật phẩm không tồn tại và hiện ra sáu ô ảnh vỡ.
+    /// </summary>
+    [JsonPropertyName("item_0")] public int? Item0 { get; set; }
+    [JsonPropertyName("item_1")] public int? Item1 { get; set; }
+    [JsonPropertyName("item_2")] public int? Item2 { get; set; }
+    [JsonPropertyName("item_3")] public int? Item3 { get; set; }
+    [JsonPropertyName("item_4")] public int? Item4 { get; set; }
+    [JsonPropertyName("item_5")] public int? Item5 { get; set; }
     [JsonPropertyName("teamfight_participation")] public double? TeamfightParticipation { get; set; }
     [JsonPropertyName("tower_kills")] public int? TowerKills { get; set; }
     [JsonPropertyName("roshan_kills")] public int? RoshanKills { get; set; }

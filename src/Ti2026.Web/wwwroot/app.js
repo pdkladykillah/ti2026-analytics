@@ -1501,7 +1501,11 @@ async function setupProfile() {
  * Nếu để trong thì mỗi lần vẽ lại là mất bộ lọc người dùng vừa chọn — mà vẽ lại xảy ra ở mọi
  * lần bấm "xem thêm", tức đúng lúc họ đang đọc dở một danh sách đã lọc.
  */
-const history = { player: null, hero: null, position: null, page: 0, rows: [], filters: null };
+const history = {
+  player: null, hero: null, position: null, page: 0,
+  rows: [], filters: null, showAllHeroes: false,
+  total: 0, matched: 0, hasMore: false,
+};
 
 function resetHistory(player) {
   history.player = player || null;
@@ -1510,6 +1514,7 @@ function resetHistory(player) {
   history.page = 0;
   history.rows = [];
   history.filters = null;
+  history.showAllHeroes = false;
   loadHistory();
 }
 
@@ -1534,49 +1539,94 @@ async function loadHistory(append = false) {
 
     history.rows = append ? history.rows.concat(d.matches) : d.matches;
     history.filters = history.filters || d.filters;
+
+    // Giữ lại ba con số tổng: mở/thu dải hero là thao tác thuần giao diện, không gọi lại mạng,
+    // nên lúc vẽ lại nó vẫn phải nói đúng "bao nhiêu ván khớp".
+    history.total = d.total;
+    history.matched = d.matched;
+    history.hasMore = d.hasMore;
+
     renderHistory(d);
   } catch (e) {
     box.innerHTML = `<div class="empty">Không tải được: ${esc(String(e.message || e))}</div>`;
   }
 }
 
+/** Bao nhiêu hero bày sẵn có kèm TÊN. Phần còn lại nấp sau nút mở rộng. */
+const HERO_FILTER_SHOWN = 8;
+
 function renderHistory(d) {
   const box = $('#profile-history');
   const f = history.filters || { heroes: [], positions: [] };
 
-  // Bộ lọc hero chỉ lấy 24 hero nhiều ván nhất: danh sách đầy đủ là hơn trăm nút, mà đuôi của
-  // nó toàn hero một hai ván — tức phần chiếm chỗ nhiều nhất lại là phần ít ai tìm.
-  const heroBtns = f.heroes.slice(0, 24).map((h) => `<button type="button" class="hf"
-      data-hero="${h.heroId}" aria-pressed="${String(history.hero === h.heroId)}"
-      title="${esc(h.name)} — ${n0(h.games)} ván">
-    ${heroImg(h.image, 38, 21)}<span class="hf-n">${n0(h.games)}</span></button>`).join('');
+  // TÊN HERO PHẢI ĐỌC ĐƯỢC, không chỉ là ảnh.
+  //
+  // Bản trước bày 24 ô ảnh 38px kèm một con số — nhìn ra một dãy hình chữ nhật tối giống hệt
+  // nhau, đọc như mã vạch chứ không như bộ lọc. Người ta nhận ra hero bằng hình THẬT, nhưng chỉ
+  // khi hình đủ lớn; ở 38×21 thì Void Spirit và Puck là hai vệt tím như nhau.
+  //
+  // Nên: tám hero hay chơi nhất bày sẵn kèm tên, phần đuôi (thường là hero một hai ván) nấp sau
+  // một nút — đó cũng đúng thứ tự người ta thật sự đi tìm.
+  const chip = (h) => `<button type="button" class="hchip"
+      data-hero="${h.heroId}" aria-pressed="${String(history.hero === h.heroId)}">
+    ${heroImg(h.image, 42, 24)}
+    <span class="hchip-name">${esc(h.name)}</span>
+    <span class="hchip-n num">${n0(h.games)}</span></button>`;
 
-  const posBtns = f.positions.map((p) => `<button type="button" class="chip pf-pos"
+  const shown = f.heroes.slice(0, HERO_FILTER_SHOWN);
+  const rest = f.heroes.slice(HERO_FILTER_SHOWN);
+
+  // Hero đang chọn mà nằm ngoài tám ô đầu thì phải kéo lên, nếu không bộ lọc đang bật mà không
+  // thấy nút nào sáng — người dùng sẽ tưởng nó hỏng.
+  const picked = history.hero && !shown.some((h) => h.heroId === history.hero)
+    ? f.heroes.find((h) => h.heroId === history.hero)
+    : null;
+
+  const posBtns = f.positions.map((p) => `<button type="button" class="pchip"
       data-pos="${esc(p.code)}" aria-pressed="${String(history.position === p.code)}">
-    ${esc(p.label)} <small>${n0(p.games)}</small></button>`).join('');
+    ${esc(p.label)}<span class="num">${n0(p.games)}</span></button>`).join('');
 
   const active = history.hero || history.position;
 
   box.innerHTML = `
-    <div class="hist-filters">
+    <div class="hist-bar">
       <div class="hist-row">
         <span class="hist-lbl">Vị trí</span>
-        <div class="chips">${posBtns || '<span class="mu">chưa có ván nào còn nhãn</span>'}</div>
+        <div class="hist-opts">${posBtns
+          || '<span class="mu">chưa có ván nào còn nhãn replay</span>'}</div>
       </div>
+
       <div class="hist-row">
         <span class="hist-lbl">Hero</span>
-        <div class="hf-grid">${heroBtns}</div>
+        <div class="hist-opts">
+          ${picked ? chip(picked) : ''}
+          ${shown.map(chip).join('')}
+          ${rest.length ? `<button type="button" class="hchip more" id="hero-more"
+            aria-expanded="${String(history.showAllHeroes === true)}">
+            ${history.showAllHeroes ? 'Thu gọn' : `+ ${n0(rest.length)} hero khác`}</button>` : ''}
+        </div>
       </div>
-      ${active ? `<button type="button" class="btn-ghost" id="hist-clear">Bỏ lọc</button>` : ''}
-    </div>
 
-    <div class="hist-count">${
-      active ? `<b>${n0(d.matched)}</b> ván khớp bộ lọc, trên tổng <b>${n0(d.total)}</b>`
-             : `<b>${n0(d.total)}</b> ván đã lưu`}</div>
+      ${history.showAllHeroes && rest.length ? `<div class="hist-row">
+        <span class="hist-lbl"></span>
+        <div class="hgrid">${rest.map((h) => `<button type="button" class="hcell"
+            data-hero="${h.heroId}" aria-pressed="${String(history.hero === h.heroId)}"
+            title="${esc(h.name)} — ${n0(h.games)} ván">
+          ${heroImg(h.image, 52, 29)}<span class="hcell-n num">${n0(h.games)}</span>
+        </button>`).join('')}</div>
+      </div>` : ''}
+
+      <div class="hist-sum">
+        <span>${active
+          ? `<b>${n0(d.matched)}</b> ván khớp · trên tổng ${n0(d.total)}`
+          : `<b>${n0(d.total)}</b> ván đã lưu`}</span>
+        ${active ? '<button type="button" class="hist-clear" id="hist-clear">Bỏ lọc</button>' : ''}
+      </div>
+    </div>
 
     <div class="hist-list">${history.rows.map(historyRow).join('')}</div>
 
-    ${d.hasMore ? '<button type="button" class="btn-ghost hist-more" id="hist-more">Xem thêm</button>' : ''}`;
+    ${d.hasMore ? '<button type="button" class="btn-ghost hist-more" id="hist-more">Xem thêm 40 ván</button>' : ''}`;
 
   wireHistory();
 }
@@ -1668,7 +1718,13 @@ function wireHistory() {
       return;
     }
 
-    const hero = e.target.closest('.hf');
+    if (e.target.closest('#hero-more')) {
+      history.showAllHeroes = !history.showAllHeroes;
+      renderHistory({ total: history.total, matched: history.matched, hasMore: history.hasMore });
+      return;
+    }
+
+    const hero = e.target.closest('[data-hero]');
     if (hero) {
       const id = Number(hero.dataset.hero);
       history.hero = history.hero === id ? null : id;
@@ -1677,7 +1733,7 @@ function wireHistory() {
       return;
     }
 
-    const pos = e.target.closest('.pf-pos');
+    const pos = e.target.closest('[data-pos]');
     if (pos) {
       history.position = history.position === pos.dataset.pos ? null : pos.dataset.pos;
       history.page = 0;

@@ -277,7 +277,18 @@ public class OpenDotaIngester(
         // Dota có trên 300 mục trong constants/items; dưới ngưỡng này là bảng chưa đủ.
         const int expectedAtLeast = 200;
 
-        if (await db.Items.CountAsync(ct) >= expectedAtLeast) return;
+        // BỎ QUA CHỈ KHI BẢNG VỪA ĐỦ DÒNG VỪA ĐỦ CỘT.
+        //
+        // Cửa cũ chỉ đếm số dòng, và điều đó đúng cho tới lúc bảng có thêm cột: thêm
+        // OpenDotaItemId xong thì 501 dòng cũ vẫn thoả "đủ 200 dòng" nên danh mục không bao giờ
+        // được nạp lại, và cột mới đứng null vĩnh viễn. Đã mắc thật — bảng điểm hiện ra sáu ô
+        // đồ trống cho cả mười người mà không có gì báo là thiếu dữ liệu.
+        //
+        // Điều kiện thứ hai tự tắt: nạp một lượt là mọi dòng có id, và từ đó lại bỏ qua như cũ.
+        // Tốn đúng một lời gọi, đúng một lần.
+        if (await db.Items.CountAsync(ct) >= expectedAtLeast
+            && !await db.Items.AnyAsync(i => i.OpenDotaItemId == null, ct))
+            return;
 
         var items = await client.GetItemsAsync(ct);
         if (items.Count == 0)

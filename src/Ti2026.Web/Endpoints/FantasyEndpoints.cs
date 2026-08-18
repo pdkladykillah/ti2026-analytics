@@ -497,12 +497,16 @@ public static class FantasyEndpoints
         // ---------- Gợi ý chọn đội đi tiếp ----------
         api.MapGet("/bracket", async (Ti2026DbContext db, bool contrarian = true) =>
         {
-            var series = await db.ScheduledSeries
+            // LẤY MỌI NÚT PLAY-OFF, kể cả nút chưa biết đội. Nút chưa biết đội chính là thứ
+            // mô phỏng sinh ra — lọc chúng đi từ truy vấn thì không bao giờ đoán tới chung kết.
+            var all = await db.ScheduledSeries
                 .Include(s => s.Team1)
                 .Include(s => s.Team2)
-                .Where(s => s.GroupName == PlayoffStage && s.TeamId1 != null && s.TeamId2 != null)
+                .Where(s => s.GroupName == PlayoffStage)
                 .OrderBy(s => s.NodeId)
                 .ToListAsync();
+
+            var series = all.Where(s => s.TeamId1 != null && s.TeamId2 != null).ToList();
 
             if (series.Count == 0)
                 return Results.Ok(new
@@ -521,16 +525,21 @@ public static class FantasyEndpoints
                 .Select(g => g.OrderByDescending(s => s.CapturedOn).First())
                 .ToDictionaryAsync(s => s.TeamId, s => s.Elo!.Value);
 
-            var pairs = series
-                .Where(s => latest.ContainsKey(s.TeamId1!.Value) && latest.ContainsKey(s.TeamId2!.Value))
-                .Select(s => new BracketPair(
-                    s.NodeId, s.Name,
-                    s.Team1?.Name ?? "?", s.Team2?.Name ?? "?",
-                    latest[s.TeamId1!.Value], latest[s.TeamId2!.Value],
-                    PlayoffBestOf))
+            // Elo tra theo TÊN đội, vì mô phỏng đi tiếp chỉ mang theo tên chứ không mang id:
+            // đội ở vòng sau là kết quả của một lựa chọn, không phải một hàng trong bảng.
+            var eloByName = await db.Teams
+                .Where(x => latest.Keys.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Name, x => latest[x.Id]);
+
+            var nodes = all
+                .Select(s => new BracketNode(
+                    s.NodeId, s.Name, s.GroupName,
+                    s.IncomingNodeId1, s.IncomingNodeId2, s.WinningNodeId, s.LosingNodeId,
+                    s.Team1?.Name, s.Team2?.Name))
                 .ToList();
 
-            var calls = BracketAdvice.Build(pairs, contrarian);
+            var steps = BracketAdvice.Simulate(
+                nodes, eloByName, contrarian, PlayoffBestOf, GrandFinalBestOf);
 
             return Results.Ok(new
             {
@@ -540,14 +549,22 @@ public static class FantasyEndpoints
                 closeBand = BracketAdvice.CloseBand,
 
                 // Nút đã biết đội nhưng thiếu Elo — nói ra thay vì im lặng bỏ qua.
-                skipped = series.Count - pairs.Count,
+                skipped = all.Count - steps.Count,
 
-                calls = calls.Select(c => new
+                calls = steps.Select(s => new
                 {
-                    c.NodeId, c.Name, c.TeamA, c.TeamB,
-                    probA = c.ProbA, probB = c.ProbB,
-                    eloGap = c.EloGap, c.BestOf,
-                    c.Pick, c.PickIsFavourite, c.IsClose, c.Cost, c.Reason,
+                    s.Call.NodeId, s.Call.Name, s.Call.TeamA, s.Call.TeamB,
+                    probA = s.Call.ProbA, probB = s.Call.ProbB,
+                    eloGap = s.Call.EloGap, s.Call.BestOf,
+                    s.Call.Pick, s.Call.PickIsFavourite, s.Call.IsClose, s.Call.Cost, s.Call.Reason,
+
+                    s.Round,
+
+                    // Hai con số, không phải một. Xem ghi chú ở BracketAdvice.Simulate: xác suất
+                    // của riêng nút giả định cặp đấu DIỄN RA, còn 'reached' là xác suất nó diễn
+                    // ra thật. Nút càng sâu thì 'reached' càng nhỏ, và đó là mức tin thật sự.
+                    reached = s.Reached,
+                    teamsKnown = s.TeamsKnown,
                 }).ToList(),
 
                 method = "Xác suất mỗi ván suy từ chênh lệch Elo (thang 400), rồi đổi sang xác "
@@ -724,6 +741,9 @@ public static class FantasyEndpoints
     /// và đoán sai Bo1/Bo3 làm mọi xác suất series lệch, chứ không chỉ lệch một nút.
     /// </summary>
     private const int PlayoffBestOf = 3;
+
+    /// <summary>Chung kết tổng đá Bo5. Nút không đi tiếp đâu nữa chính là nó.</summary>
+    private const int GrandFinalBestOf = 5;
 
     private static async Task<List<ScoredPlayer>> ScorePlayersAsync(
         Ti2026DbContext db, FantasyConfig config, int days, long? leagueId = null)

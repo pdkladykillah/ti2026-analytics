@@ -4829,7 +4829,7 @@ function setupFantasyMode() {
     if (next === fantasyPlayoff) return;
 
     fantasyPlayoff = next;
-    $('[data-fa]', box).forEach((b) =>
+    $$('[data-fa]', box).forEach((b) =>
       b.setAttribute('aria-pressed', String((b.dataset.fa === 'playoff') === fantasyPlayoff)));
 
     // Ba mục con cùng đọc /optimize nên phải vẽ lại cả ba, không chỉ đội hình.
@@ -4852,7 +4852,7 @@ async function loadFantasyBracket() {
       return;
     }
 
-    const row = (c) => `<article class="bc-row${c.isClose ? ' close' : ''}">
+    const row = (c) => `<article class="bc-row${c.isClose ? ' close' : ''}${c.teamsKnown ? '' : ' guess'}">
       <div class="bc-pair">
         <span class="${c.pick === c.teamA ? 'bc-pick' : 'mu'}">${esc(c.teamA)}</span>
         <span class="mu">vs</span>
@@ -4861,17 +4861,23 @@ async function loadFantasyBracket() {
       <div class="bc-prob num">${fmt(c.probA * 100, 0)}% – ${fmt(c.probB * 100, 0)}%</div>
       <div class="bc-tag ${c.pickIsFavourite ? 'fav' : 'bet'}">${
         c.pickIsFavourite ? 'cửa trên' : 'ngược kèo'}</div>
-      <div class="bc-why mu">${esc(c.reason)}</div>
+      <div class="bc-why mu">${esc(c.reason)}${
+        c.teamsKnown ? '' : ' · cặp này chỉ xảy ra với xác suất ' + fmt(c.reached * 100, 0)
+          + '% theo chính các lựa chọn phía trên'}</div>
     </article>`;
 
     const bets = d.calls.filter((c) => !c.pickIsFavourite);
+    const rounds = [...new Set(d.calls.map((c) => c.round))].sort((a, b) => a - b);
 
     body.innerHTML = `
       <div class="bc-sum">
         <b>${n0(bets.length)}</b> cặp đáng đánh cược trên tổng <b>${n0(d.calls.length)}</b> cặp đã biết đội
         ${d.skipped ? ` · ${n0(d.skipped)} cặp bỏ qua vì thiếu Elo` : ''}
       </div>
-      <div class="bc-list">${d.calls.map(row).join('')}</div>
+      ${rounds.map((r) => `
+        <h4 class="bc-round">${r === 1 ? 'Vòng đã biết đội'
+          : 'Vòng ' + r + ' — suy từ các lựa chọn phía trên'}</h4>
+        <div class="bc-list">${d.calls.filter((c) => c.round === r).map(row).join('')}</div>`).join('')}
       <p class="desc">${esc(d.method)}</p>
       <p class="desc">${esc(d.limitation)}</p>`;
   } catch (e) {

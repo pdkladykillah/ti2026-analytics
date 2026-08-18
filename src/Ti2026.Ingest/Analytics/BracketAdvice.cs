@@ -102,4 +102,119 @@ public static class BracketAdvice
 
         return calls.OrderByDescending(c => c.IsClose).ThenBy(c => c.NodeId).ToList();
     }
+
+    /// <summary>
+    /// Mô phỏng CẢ NHÁNH tới chung kết, không chỉ vòng đầu.
+    ///
+    /// VÌ SAO BẮT BUỘC PHẢI CÓ. Dự đoán bảng đấu khoá một lần cho toàn giải, nên chỉ đoán bốn cặp
+    /// tứ kết là bỏ trống mười nút còn lại — trong đó có chung kết, nút đáng giá nhất. Muốn điền
+    /// được nút sâu thì phải biết ai tới đó, mà điều đó lại phụ thuộc vào chính những lựa chọn
+    /// phía trên.
+    ///
+    /// HAI CON SỐ, KHÔNG PHẢI MỘT, và đây là điểm dễ đọc nhầm nhất. Xác suất của riêng một nút
+    /// giả định cặp đấu đó DIỄN RA; còn xác suất nó diễn ra lại là tích của mọi lựa chọn phía
+    /// trên. Một dự đoán chung kết "70%" thực chất chỉ đúng khoảng 15% nếu bốn nút trước nó mỗi
+    /// nút đúng 60%. Không tách hai con số thì các nút sâu trông chắc chắn ngang các nút đầu.
+    ///
+    /// Đội THUA rơi xuống nhánh thua chứ không biến mất: nút nhận người thua được xác định qua
+    /// LoseTo, nên mô phỏng phải mang cả hai đội đi tiếp, không chỉ đội thắng.
+    /// </summary>
+    public static List<BracketStep> Simulate(
+        IReadOnlyList<BracketNode> nodes,
+        IReadOnlyDictionary<string, double> elo,
+        bool contrarian,
+        int bestOf,
+        int finalBestOf)
+    {
+        var byId = nodes.ToDictionary(n => n.NodeId);
+
+        var winner = new Dictionary<int, string>();
+        var loser = new Dictionary<int, string>();
+        var reached = new Dictionary<int, double>();
+        var steps = new List<BracketStep>();
+
+        // Thứ tự phụ thuộc: một nút chỉ giải được khi cả hai nút nuôi nó đã xong. Lặp cho tới
+        // khi không tiến thêm được — an toàn hơn tự sắp topo, và tự dừng khi đồ thị thiếu cạnh.
+        var pending = nodes.Select(n => n.NodeId).ToHashSet();
+        var round = 0;
+
+        while (pending.Count > 0)
+        {
+            round++;
+            var solvedThisRound = new List<int>();
+
+            foreach (var id in pending.OrderBy(x => x))
+            {
+                var n = byId[id];
+
+                var a = Participant(n, n.In1, byId, winner, loser, n.Team1);
+                var b = Participant(n, n.In2, byId, winner, loser, n.Team2);
+
+                if (a is null || b is null) continue;
+                if (!elo.TryGetValue(a, out var ea) || !elo.TryGetValue(b, out var eb)) continue;
+
+                // Chung kết tổng đá Bo5; mọi nút khác Bo3. Nút không đi tiếp đâu nữa là chung kết.
+                var bo = n.WinTo is null ? finalBestOf : bestOf;
+
+                var call = Build([new BracketPair(n.NodeId, n.Name, a, b, ea, eb, bo)], contrarian)[0];
+
+                winner[id] = call.Pick;
+                loser[id] = call.Pick == a ? b : a;
+
+                var upstream = new[] { n.In1, n.In2 }
+                    .Where(x => x is int)
+                    .Select(x => reached.GetValueOrDefault(x!.Value, 1.0))
+                    .DefaultIfEmpty(1.0)
+                    .Aggregate(1.0, (acc, x) => acc * x);
+
+                var pPick = call.Pick == a ? call.ProbA : call.ProbB;
+                reached[id] = upstream * pPick;
+
+                steps.Add(new BracketStep(
+                    call, round, upstream,
+                    TeamsKnown: n.Team1 is not null && n.Team2 is not null));
+
+                solvedThisRound.Add(id);
+            }
+
+            if (solvedThisRound.Count == 0) break;   // thiếu Elo hoặc thiếu cạnh: dừng, không treo
+            foreach (var id in solvedThisRound) pending.Remove(id);
+        }
+
+        return steps.OrderBy(s => s.Round).ThenBy(s => s.Call.NodeId).ToList();
+    }
+
+    /// <summary>
+    /// Đội vào một ô của nút: đã biết sẵn thì lấy luôn, chưa biết thì lấy từ nút nuôi.
+    ///
+    /// Nút nuôi gửi NGƯỜI THẮNG hay NGƯỜI THUA sang là do chính nó quyết định qua WinTo/LoseTo,
+    /// không phải do nút nhận. Đọc ngược chiều đó thì nhánh thua sẽ nhận nhầm người thắng, và cả
+    /// nửa dưới bảng đấu sai mà hình vẽ vẫn hợp lệ.
+    /// </summary>
+    private static string? Participant(
+        BracketNode self, int? feederId, IReadOnlyDictionary<int, BracketNode> byId,
+        IReadOnlyDictionary<int, string> winner, IReadOnlyDictionary<int, string> loser,
+        string? known)
+    {
+        if (known is not null) return known;
+        if (feederId is not int fid || !byId.TryGetValue(fid, out var feeder)) return null;
+
+        if (feeder.WinTo == self.NodeId) return winner.GetValueOrDefault(fid);
+        if (feeder.LoseTo == self.NodeId) return loser.GetValueOrDefault(fid);
+
+        return null;
+    }
 }
+
+/// <summary>Một nút bảng đấu kèm cạnh đồ thị, dùng để mô phỏng tới tận chung kết.</summary>
+public readonly record struct BracketNode(
+    int NodeId, string? Name, string? Group,
+    int? In1, int? In2, int? WinTo, int? LoseTo,
+    string? Team1, string? Team2);
+
+/// <param name="Reached">
+/// Xác suất cặp đấu này DIỄN RA ĐÚNG NHƯ DỰ ĐOÁN — tích của mọi lựa chọn phía trên nó. Đây là
+/// con số quyết định mức tin của các nút sâu, và nó luôn nhỏ hơn xác suất của riêng nút đó.
+/// </param>
+public readonly record struct BracketStep(
+    BracketCall Call, int Round, double Reached, bool TeamsKnown);

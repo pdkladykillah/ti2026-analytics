@@ -107,3 +107,98 @@ public class BracketAdviceTests
         }
     }
 }
+
+/// <summary>
+/// Mô phỏng cả nhánh tới chung kết. Dự đoán bảng đấu khoá một lần cho toàn giải, nên chỉ đoán
+/// bốn cặp tứ kết là bỏ trống mười nút — trong đó có nút đáng giá nhất.
+/// </summary>
+public class BracketSimulateTests
+{
+    /// <summary>Một nhánh loại kép rút gọn: hai tứ kết, một bán kết thắng, một nút thua, một chung kết.</summary>
+    private static List<BracketNode> Tree() =>
+    [
+        new(1, "TK1", "Playoff", null, null, 3, 4, "A", "B"),
+        new(2, "TK2", "Playoff", null, null, 3, 4, "C", "D"),
+        new(3, "BK",  "Playoff", 1, 2, 5, null, null, null),
+        new(4, "NT",  "Playoff", 1, 2, 5, null, null, null),
+        new(5, "CK",  "Playoff", 3, 4, null, null, null, null),
+    ];
+
+    private static readonly Dictionary<string, double> Elo =
+        new() { ["A"] = 1700, ["B"] = 1500, ["C"] = 1650, ["D"] = 1450 };
+
+    /// <summary>
+    /// ĐOÁN TỚI TẬN NÚT CUỐI. Nút chưa biết đội chính là thứ mô phỏng sinh ra — nếu chỉ xử lý nút
+    /// đã biết hai đội thì mãi mãi dừng ở vòng đầu.
+    /// </summary>
+    [Fact]
+    public void Mo_phong_dien_het_moi_nut_ke_ca_nut_chua_biet_doi()
+    {
+        var steps = BracketAdvice.Simulate(Tree(), Elo, contrarian: false, bestOf: 3, finalBestOf: 5);
+
+        steps.Should().HaveCount(5, "cả năm nút đều phải có dự đoán");
+        steps.Select(s => s.Call.NodeId).Should().BeEquivalentTo([1, 2, 3, 4, 5]);
+
+        steps.Count(s => s.TeamsKnown).Should().Be(2, "chỉ hai tứ kết là biết sẵn đội");
+    }
+
+    /// <summary>
+    /// NGƯỜI THUA RƠI XUỐNG NHÁNH THUA, không biến mất. Nút 4 nhận người thua của 1 và 2 — đọc
+    /// ngược chiều đó thì cả nửa dưới bảng đấu sai mà hình vẽ vẫn hợp lệ.
+    /// </summary>
+    [Fact]
+    public void Nguoi_thua_roi_xuong_dung_nut_nhanh_thua()
+    {
+        var steps = BracketAdvice.Simulate(Tree(), Elo, contrarian: false, bestOf: 3, finalBestOf: 5);
+
+        var semi = steps.First(s => s.Call.NodeId == 3);
+        var lower = steps.First(s => s.Call.NodeId == 4);
+
+        // A và C mạnh hơn nên thắng; B và D rơi xuống.
+        new[] { semi.Call.TeamA, semi.Call.TeamB }.Should().BeEquivalentTo(["A", "C"]);
+        new[] { lower.Call.TeamA, lower.Call.TeamB }.Should().BeEquivalentTo(["B", "D"]);
+    }
+
+    /// <summary>
+    /// XÁC SUẤT NÚT SÂU PHẢI NHÂN DỒN. Một dự đoán chung kết "70%" thực chất chỉ đúng khoảng 15%
+    /// nếu bốn nút trước nó mỗi nút đúng 60%. Không tách hai con số thì nút sâu trông chắc chắn
+    /// ngang nút đầu.
+    /// </summary>
+    [Fact]
+    public void Nut_cang_sau_thi_do_tin_cang_thap()
+    {
+        var steps = BracketAdvice.Simulate(Tree(), Elo, contrarian: false, bestOf: 3, finalBestOf: 5);
+
+        var quarter = steps.First(s => s.Call.NodeId == 1);
+        var final = steps.First(s => s.Call.NodeId == 5);
+
+        quarter.Reached.Should().Be(1.0, "tứ kết chắc chắn diễn ra, đội đã biết");
+        final.Reached.Should().BeLessThan(1.0);
+        final.Reached.Should().BeLessThan(steps.First(s => s.Call.NodeId == 3).Reached,
+            "chung kết nằm sau bán kết nên chỉ có thể kém chắc hơn");
+    }
+
+    /// <summary>Chung kết đá Bo5 chứ không phải Bo3 — nút không đi tiếp đâu nữa chính là nó.</summary>
+    [Fact]
+    public void Chung_ket_dung_the_thuc_Bo5()
+    {
+        var steps = BracketAdvice.Simulate(Tree(), Elo, contrarian: false, bestOf: 3, finalBestOf: 5);
+
+        steps.First(s => s.Call.NodeId == 5).Call.BestOf.Should().Be(5);
+        steps.First(s => s.Call.NodeId == 1).Call.BestOf.Should().Be(3);
+    }
+
+    /// <summary>
+    /// Thiếu Elo một đội thì DỪNG chứ không treo. Vòng lặp phải tự thoát khi không tiến thêm
+    /// được, nếu không một đồ thị thiếu cạnh sẽ quay vô hạn ngay trong một request.
+    /// </summary>
+    [Fact]
+    public void Thieu_elo_thi_dung_lai_khong_treo()
+    {
+        var elo = new Dictionary<string, double> { ["A"] = 1700, ["B"] = 1500 };
+        var steps = BracketAdvice.Simulate(Tree(), elo, contrarian: false, bestOf: 3, finalBestOf: 5);
+
+        steps.Should().HaveCount(1, "chỉ nút 1 có đủ Elo hai bên");
+        steps[0].Call.NodeId.Should().Be(1);
+    }
+}

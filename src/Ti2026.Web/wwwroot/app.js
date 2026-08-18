@@ -4839,6 +4839,18 @@ function setupFantasyMode() {
   };
 }
 
+/**
+ * Xác suất một cặp đấu sâu thật sự diễn ra.
+ *
+ * Làm tròn về "0%" là nói sai: một đường đi cụ thể qua nhánh loại kép vốn rất hiếm, nhưng hiếm
+ * KHÁC với không thể — và người đọc thấy 0% sẽ tưởng phần dự đoán đang hỏng chứ không tưởng là
+ * mình đang đọc một dự đoán sâu.
+ */
+function reachPct(p) {
+  if (p >= 0.005) return fmt(p * 100, 0) + '%';
+  return p > 0 ? 'dưới 1%' : '0%';
+}
+
 async function loadFantasyBracket() {
   const body = $('#fantasy-bracket');
   if (!body) return;
@@ -4862,8 +4874,8 @@ async function loadFantasyBracket() {
       <div class="bc-tag ${c.pickIsFavourite ? 'fav' : 'bet'}">${
         c.pickIsFavourite ? 'cửa trên' : 'ngược kèo'}</div>
       <div class="bc-why mu">${esc(c.reason)}${
-        c.teamsKnown ? '' : ' · cặp này chỉ xảy ra với xác suất ' + fmt(c.reached * 100, 0)
-          + '% theo chính các lựa chọn phía trên'}</div>
+        c.teamsKnown ? '' : ' · cặp này chỉ xảy ra với xác suất ' + reachPct(c.reached)
+          + ' theo chính các lựa chọn phía trên'}</div>
     </article>`;
 
     const bets = d.calls.filter((c) => !c.pickIsFavourite);

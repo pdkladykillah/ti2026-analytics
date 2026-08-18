@@ -131,6 +131,7 @@ public static class BracketAdvice
         var winner = new Dictionary<int, string>();
         var loser = new Dictionary<int, string>();
         var reached = new Dictionary<int, double>();
+        var depths = new Dictionary<int, int>();
         var steps = new List<BracketStep>();
 
         // Thứ tự phụ thuộc: một nút chỉ giải được khi cả hai nút nuôi nó đã xong. Lặp cho tới
@@ -170,8 +171,21 @@ public static class BracketAdvice
                 var pPick = call.Pick == a ? call.ProbA : call.ProbB;
                 reached[id] = upstream * pPick;
 
+                // VÒNG = ĐỘ SÂU TRONG CÂY, không phải lượt giải của vòng lặp bên ngoài.
+                //
+                // Vòng lặp giải được nhiều nút trong cùng một lượt (giải xong nút 14 thì nút 18
+                // cũng giải được ngay trong lượt đó), nên lấy số lượt làm số vòng sẽ dồn gần hết
+                // bảng đấu vào "vòng 1" — đã thấy thật: 13 trong 14 nút cùng mang nhãn vòng 1.
+                var depth = 1 + new[] { n.In1, n.In2 }
+                    .Where(x => x is int)
+                    .Select(x => depths.GetValueOrDefault(x!.Value, 0))
+                    .DefaultIfEmpty(0)
+                    .Max();
+
+                depths[id] = depth;
+
                 steps.Add(new BracketStep(
-                    call, round, upstream,
+                    call, depth, upstream,
                     TeamsKnown: n.Team1 is not null && n.Team2 is not null));
 
                 solvedThisRound.Add(id);

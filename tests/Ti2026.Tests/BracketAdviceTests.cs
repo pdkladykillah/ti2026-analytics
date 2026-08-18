@@ -202,3 +202,39 @@ public class BracketSimulateTests
         steps[0].Call.NodeId.Should().Be(1);
     }
 }
+
+/// <summary>
+/// Vòng phải là ĐỘ SÂU TRONG CÂY, không phải lượt giải của vòng lặp.
+///
+/// Vòng lặp mô phỏng giải được nhiều nút trong cùng một lượt, nên lấy số lượt làm số vòng sẽ dồn
+/// gần hết bảng đấu vào "vòng 1" — đã thấy thật trên dữ liệu TI: 13 trong 14 nút cùng mang nhãn
+/// vòng 1, khiến phần nhóm theo vòng trên trang trở nên vô nghĩa.
+/// </summary>
+public class BracketRoundTests
+{
+    [Fact]
+    public void Vong_la_do_sau_trong_cay()
+    {
+        List<BracketNode> tree =
+        [
+            new(1, "TK1", "Playoff", null, null, 3, 4, "A", "B"),
+            new(2, "TK2", "Playoff", null, null, 3, 4, "C", "D"),
+            new(3, "BK",  "Playoff", 1, 2, 5, null, null, null),
+            new(4, "NT",  "Playoff", 1, 2, 5, null, null, null),
+            new(5, "CK",  "Playoff", 3, 4, null, null, null, null),
+        ];
+
+        var elo = new Dictionary<string, double>
+            { ["A"] = 1700, ["B"] = 1500, ["C"] = 1650, ["D"] = 1450 };
+
+        var byId = BracketAdvice
+            .Simulate(tree, elo, contrarian: false, bestOf: 3, finalBestOf: 5)
+            .ToDictionary(s => s.Call.NodeId, s => s.Round);
+
+        byId[1].Should().Be(1);
+        byId[2].Should().Be(1);
+        byId[3].Should().Be(2, "bán kết nằm sau tứ kết");
+        byId[4].Should().Be(2);
+        byId[5].Should().Be(3, "chung kết nằm sau bán kết");
+    }
+}

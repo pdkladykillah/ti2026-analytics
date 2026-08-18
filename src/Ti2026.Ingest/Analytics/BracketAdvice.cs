@@ -186,7 +186,8 @@ public static class BracketAdvice
 
                 steps.Add(new BracketStep(
                     call, depth, upstream,
-                    TeamsKnown: n.Team1 is not null && n.Team2 is not null));
+                    TeamsKnown: n.Team1 is not null && n.Team2 is not null,
+                    n.In1, n.In2, n.WinTo, n.LoseTo));
 
                 solvedThisRound.Add(id);
             }
@@ -231,4 +232,5 @@ public readonly record struct BracketNode(
 /// con số quyết định mức tin của các nút sâu, và nó luôn nhỏ hơn xác suất của riêng nút đó.
 /// </param>
 public readonly record struct BracketStep(
-    BracketCall Call, int Round, double Reached, bool TeamsKnown);
+    BracketCall Call, int Round, double Reached, bool TeamsKnown,
+    int? In1 = null, int? In2 = null, int? WinTo = null, int? LoseTo = null);

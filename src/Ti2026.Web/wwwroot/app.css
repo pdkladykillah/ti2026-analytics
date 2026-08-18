@@ -2626,3 +2626,35 @@ details:not(.why):not(.pf-more)[open] > summary { margin-bottom: var(--s-1); }
   .bc-row { grid-template-columns: minmax(0, 1fr) auto; }
   .bc-tag { grid-column: 2; }
 }
+
+/* ---- Thẻ dự đoán trong cây nhánh ---- */
+
+.pd-card { min-width: 196px; }
+
+.pd-team {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-2);
+  padding: 4px 7px; border-radius: var(--r-sm);
+  font-size: 13.5px; color: var(--muted);
+}
+.pd-team + .pd-team { margin-top: 2px; }
+.pd-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-team .num { font-size: 12px; }
+
+/* Đội ĐƯỢC CHỌN nổi bằng nền đặc, không chỉ bằng chữ đậm: quét cả cây mười bốn nút thì một nét
+   chữ đậm hơn không đủ để thấy mình đã chọn ai. */
+.pd-team.pick {
+  background: var(--surface); color: var(--ink); font-weight: 800;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.pd-team.pick .num { color: var(--ink); font-weight: 800; }
+
+/* Nút chọn ngược kèo: viền màu nhấn quanh cả thẻ. Đây là những nút đáng nhìn kỹ nhất. */
+.pd-card.bet { border-color: var(--accent); }
+
+/* Nút do mô phỏng sinh ra — cặp đấu này chỉ xảy ra nếu mọi lựa chọn phía trên đúng. */
+.pd-card.guess { border-style: dashed; }
+
+.pd-reach {
+  font-size: 11px; margin-top: 4px; padding: 0 7px;
+  font-family: var(--font-num);
+}

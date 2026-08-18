@@ -4851,6 +4851,30 @@ function reachPct(p) {
   return p > 0 ? 'dưới 1%' : '0%';
 }
 
+
+/**
+ * Một nút trong cây dự đoán: hai đội, lựa chọn được tô đậm, kèm xác suất.
+ *
+ * Đội ĐƯỢC CHỌN nổi lên bằng nền đặc chứ không chỉ bằng chữ đậm — quét cả cây mười bốn nút thì
+ * một nét chữ đậm hơn không đủ để thấy mình đã chọn ai.
+ */
+function predCard(c) {
+  if (!c) return '';
+
+  const teamRow = (name, prob, picked) => `<div class="pd-team${picked ? ' pick' : ''}">
+    <span>${esc(name)}</span><b class="num">${fmt(prob * 100, 0)}%</b></div>`;
+
+  return `<article class="br-card pd-card${c.teamsKnown ? '' : ' guess'}${
+      c.pickIsFavourite ? '' : ' bet'}" data-node="${c.nodeId}">
+    <div class="br-head">
+      <span>${esc(c.name || 'Nút ' + c.nodeId)}</span>
+      <span class="mu">${c.pickIsFavourite ? 'cửa trên' : 'ngược kèo'}</span>
+    </div>
+    ${teamRow(c.teamA, c.probA, c.pick === c.teamA)}
+    ${teamRow(c.teamB, c.probB, c.pick === c.teamB)}
+    ${c.teamsKnown ? '' : `<div class="pd-reach mu">cặp này xảy ra ${reachPct(c.reached)}</div>`}
+  </article>`;
+}
 async function loadFantasyBracket() {
   const body = $('#fantasy-bracket');
   if (!body) return;
@@ -4864,32 +4888,51 @@ async function loadFantasyBracket() {
       return;
     }
 
-    const row = (c) => `<article class="bc-row${c.isClose ? ' close' : ''}${c.teamsKnown ? '' : ' guess'}">
-      <div class="bc-pair">
-        <span class="${c.pick === c.teamA ? 'bc-pick' : 'mu'}">${esc(c.teamA)}</span>
-        <span class="mu">vs</span>
-        <span class="${c.pick === c.teamB ? 'bc-pick' : 'mu'}">${esc(c.teamB)}</span>
-      </div>
-      <div class="bc-prob num">${fmt(c.probA * 100, 0)}% – ${fmt(c.probB * 100, 0)}%</div>
-      <div class="bc-tag ${c.pickIsFavourite ? 'fav' : 'bet'}">${
-        c.pickIsFavourite ? 'cửa trên' : 'ngược kèo'}</div>
-      <div class="bc-why mu">${esc(c.reason)}${
-        c.teamsKnown ? '' : ' · cặp này chỉ xảy ra với xác suất ' + reachPct(c.reached)
-          + ' theo chính các lựa chọn phía trên'}</div>
-    </article>`;
-
     const bets = d.calls.filter((c) => !c.pickIsFavourite);
-    const rounds = [...new Set(d.calls.map((c) => c.round))].sort((a, b) => a - b);
+
+    // DỰNG LẠI CÂY, không bày danh sách phẳng. Một bảng loại kép có hình dạng, và hình dạng
+    // đó chính là thứ trả lời "thua trận này thì rơi đi đâu" — thứ một danh sách không nói
+    // được. Dùng lại đúng bracketGraph() của tab Lịch: hai chỗ vẽ cùng một hình thì phải dùng
+    // chung một phép suy, nếu không chúng sẽ lệch nhau khi thể thức đổi.
+    const byNode = new Map(d.calls.map((c) => [c.nodeId, c]));
+    const g = bracketGraph(d.calls.map((c) => ({
+      nodeId: c.nodeId, in1: c.in1, in2: c.in2, winTo: c.winTo, loseTo: c.loseTo,
+    })));
+
+    const side = (title, hint, rounds) => !rounds.length ? '' : `<section class="br-side">
+      <h4 class="br-title">${esc(title)}<span class="mu"> — ${esc(hint)}</span></h4>
+      <div class="br-scroll"><div class="br-cols">${rounds.map((r) => {
+        const pairs = new Map();
+        for (const n of r.nodes) {
+          const k = n.winTo || ('x' + n.nodeId);
+          if (!pairs.has(k)) pairs.set(k, []);
+          pairs.get(k).push(n);
+        }
+
+        const groups = [...pairs.values()].map((list) => `<div class="br-pair${
+          list.length > 1 ? ' joined' : ''}">${list.map((n) => predCard(byNode.get(n.nodeId))).join('')}</div>`).join('');
+
+        return `<div class="br-col">
+          <div class="br-round">${esc(r.last ? 'Chung kết nhánh' : 'Vòng ' + r.index)}</div>
+          <div class="br-list">${groups}</div>
+        </div>`;
+      }).join('')}</div></div>
+    </section>`;
 
     body.innerHTML = `
       <div class="bc-sum">
-        <b>${n0(bets.length)}</b> cặp đáng đánh cược trên tổng <b>${n0(d.calls.length)}</b> cặp đã biết đội
-        ${d.skipped ? ` · ${n0(d.skipped)} cặp bỏ qua vì thiếu Elo` : ''}
+        <b>${n0(bets.length)}</b> nút chọn ngược kèo trên tổng <b>${n0(d.calls.length)}</b> nút đã đoán
+        ${d.skipped ? ` · ${n0(d.skipped)} nút bỏ qua vì thiếu Elo` : ''}
       </div>
-      ${rounds.map((r) => `
-        <h4 class="bc-round">${r === 1 ? 'Vòng đã biết đội'
-          : 'Vòng ' + r + ' — suy từ các lựa chọn phía trên'}</h4>
-        <div class="bc-list">${d.calls.filter((c) => c.round === r).map(row).join('')}</div>`).join('')}
+      ${g ? side('Nhánh thắng', 'thua một lần là rơi xuống nhánh thua', g.up)
+            + side('Nhánh thua', 'thua lần nữa là dừng giải', g.low)
+            + (g.final ? `<section class="br-side">
+                <h4 class="br-title">Chung kết tổng<span class="mu"> — Bo5</span></h4>
+                <div class="br-cols"><div class="br-col"><div class="br-list">
+                  <div class="br-pair">${predCard(byNode.get(g.final.nodeId))}</div>
+                </div></div></div>
+              </section>` : '')
+          : '<div class="empty">Chưa dựng được cây: bảng đấu thiếu liên kết giữa các nút.</div>'}
       <p class="desc">${esc(d.method)}</p>
       <p class="desc">${esc(d.limitation)}</p>`;
   } catch (e) {

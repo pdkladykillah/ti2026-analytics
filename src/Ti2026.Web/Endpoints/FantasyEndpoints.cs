@@ -565,6 +565,12 @@ public static class FantasyEndpoints
                     // ra thật. Nút càng sâu thì 'reached' càng nhỏ, và đó là mức tin thật sự.
                     reached = s.Reached,
                     teamsKnown = s.TeamsKnown,
+
+                    // Cạnh đồ thị, để giao diện dựng LẠI CÂY thay vì bày một danh sách phẳng.
+                    // Dùng chung đúng bộ dựng cây của tab Lịch — hai chỗ vẽ cùng một hình dạng
+                    // thì phải dùng chung một phép suy, nếu không chúng sẽ lệch nhau khi thể
+                    // thức đổi và không ai biết bên nào đúng.
+                    in1 = s.In1, in2 = s.In2, winTo = s.WinTo, loseTo = s.LoseTo,
                 }).ToList(),
 
                 method = "Xác suất mỗi ván suy từ chênh lệch Elo (thang 400), rồi đổi sang xác "

@@ -494,6 +494,72 @@ public static class FantasyEndpoints
     /// </summary>
     private static void MapOptimize(RouteGroupBuilder api)
     {
+        // ---------- Gợi ý chọn đội đi tiếp ----------
+        api.MapGet("/bracket", async (Ti2026DbContext db, bool contrarian = true) =>
+        {
+            var series = await db.ScheduledSeries
+                .Include(s => s.Team1)
+                .Include(s => s.Team2)
+                .Where(s => s.GroupName == PlayoffStage && s.TeamId1 != null && s.TeamId2 != null)
+                .OrderBy(s => s.NodeId)
+                .ToListAsync();
+
+            if (series.Count == 0)
+                return Results.Ok(new
+                {
+                    ready = false,
+                    note = "Valve chưa điền đội vào nút play-off nào. Bảng này tự đầy lên khi họ "
+                         + "cập nhật — không cần ai nhập tay.",
+                });
+
+            // Elo mới nhất trong cửa sổ 180 ngày. Đội thiếu Elo thì BỎ CẶP ĐÓ, không thay bằng
+            // 1500: một con số mặc định trông y hệt một con số đo được, và cặp đấu dựng trên nó
+            // sẽ hiện một xác suất bịa ra mà không có gì báo.
+            var latest = await db.TeamStatSnapshots
+                .Where(s => s.WindowDays == 180 && s.Elo != null)
+                .GroupBy(s => s.TeamId)
+                .Select(g => g.OrderByDescending(s => s.CapturedOn).First())
+                .ToDictionaryAsync(s => s.TeamId, s => s.Elo!.Value);
+
+            var pairs = series
+                .Where(s => latest.ContainsKey(s.TeamId1!.Value) && latest.ContainsKey(s.TeamId2!.Value))
+                .Select(s => new BracketPair(
+                    s.NodeId, s.Name,
+                    s.Team1?.Name ?? "?", s.Team2?.Name ?? "?",
+                    latest[s.TeamId1!.Value], latest[s.TeamId2!.Value],
+                    PlayoffBestOf))
+                .ToList();
+
+            var calls = BracketAdvice.Build(pairs, contrarian);
+
+            return Results.Ok(new
+            {
+                ready = true,
+                contrarian,
+                bestOf = PlayoffBestOf,
+                closeBand = BracketAdvice.CloseBand,
+
+                // Nút đã biết đội nhưng thiếu Elo — nói ra thay vì im lặng bỏ qua.
+                skipped = series.Count - pairs.Count,
+
+                calls = calls.Select(c => new
+                {
+                    c.NodeId, c.Name, c.TeamA, c.TeamB,
+                    probA = c.ProbA, probB = c.ProbB,
+                    eloGap = c.EloGap, c.BestOf,
+                    c.Pick, c.PickIsFavourite, c.IsClose, c.Cost, c.Reason,
+                }).ToList(),
+
+                method = "Xác suất mỗi ván suy từ chênh lệch Elo (thang 400), rồi đổi sang xác "
+                    + "suất CẢ SERIES — Bo3 khuếch đại lợi thế, nên không đổi thang thì mọi cặp "
+                    + "trông sát nhau hơn thực tế.",
+
+                limitation = "Elo đo trên ván đã đá của cửa sổ 180 ngày, KHÔNG biết đội vừa đổi "
+                    + "người hay vừa đổi lối chơi. Và nó không thấy được thứ quyết định nhiều "
+                    + "series ở TI: đội nào đọc được bản cập nhật mới hơn.",
+            });
+        });
+
         api.MapGet("/optimize", async (
             Ti2026DbContext db, Ti2026Paths paths, int days = 120, bool playoff = false) =>
         {
@@ -515,6 +581,24 @@ public static class FantasyEndpoints
             var scoredNow = await ScorePlayersAsync(db, config, days);
             var scoredTi = await ScorePlayersAsync(db, config, days, Ti2025LeagueId);
 
+            // LOẠI NGƯỜI CỦA ĐỘI ĐÃ BỊ LOẠI, và đây là bản sửa cho một lỗi nghiêm trọng.
+            //
+            // Bộ tối ưu xếp hạng theo điểm LỊCH SỬ, nên nó vẫn tiến cử người của đội vừa dừng
+            // bước. Đo được lúc phát hiện: bộ gợi ý cho play-off trả về THIOLICOR, KJ và TOPSON —
+            // cả ba đều thuộc LGD Gaming, đội không có mặt trong 8 đội play-off. Ba trong năm ô
+            // sẽ ăn ĐÚNG 0 điểm, mà bảng vẫn hiện một tổng dự kiến 34.036 trông hoàn toàn hợp lý.
+            //
+            // Chỉ lọc ở chế độ play-off: ở vòng bảng thì mọi đội đều còn thi đấu, và lọc theo
+            // bảng đấu lúc đó sẽ cắt oan.
+            var alive = playoff ? await AlivePlayoffTeamsAsync(db) : null;
+
+            var eliminated = alive is null
+                ? []
+                : scoredNow.Where(p => p.TeamId is int t && !alive.Contains(t)).ToList();
+
+            if (alive is not null && alive.Count > 0)
+                scoredNow = scoredNow.Where(p => p.TeamId is int t && alive.Contains(t)).ToList();
+
             var prefixPct = LoadPrefixPercentages(paths);
             var prefixMeta = LoadTitleTable(paths, "prefixes");
             var suffixMeta = LoadTitleTable(paths, "suffixes");
@@ -532,6 +616,20 @@ public static class FantasyEndpoints
                 days,
                 slots = slots.Select(s => new { group = s.Key, count = s.Value }),
                 slotsConfirmed = SlotsConfirmed(paths),
+
+                // Nói rõ chế độ đang xem VÀ số ô mỗi banner. Vòng bảng 3 ô, play-off 5 ô — hai
+                // con số cho ra hai đội hình khác nhau, nên trang phải nói nó đang tính cái nào.
+                playoff,
+                bannerSlots = colors.ToDictionary(x => x.Key, x => x.Value.Count),
+
+                // Ai bị loại khỏi phép chọn vì đội đã dừng bước. Hiện ra chứ không âm thầm bỏ:
+                // người dùng cần biết vì sao một cái tên quen thuộc biến mất khỏi gợi ý.
+                excluded = eliminated
+                    .OrderByDescending(p => p.Average ?? 0)
+                    .Take(8)
+                    .Select(p => new { p.Nick, p.TeamName, p.Position })
+                    .ToList(),
+
                 roster = now.Picked,
                 bias = BiasWarning(config),
                 partial = PartialWarning(config, Coverage(scoredNow)),
@@ -595,6 +693,38 @@ public static class FantasyEndpoints
     /// Tính điểm cho mọi tuyển thủ. Dùng CHUNG cho /players và /optimize — hai nơi tự tính
     /// riêng là hai nơi sẽ lệch nhau, và người dùng sẽ thấy bảng xếp hạng không khớp đội hình.
     /// </summary>
+    /// <summary>
+    /// Các đội CÒN Ở TRONG nhánh play-off, suy từ bảng đấu Valve.
+    ///
+    /// Lấy từ những nút mà Valve ĐÃ điền đội — nút chưa xác định thì chưa nói được gì. Trả về
+    /// tập rỗng khi bảng đấu chưa có nút play-off nào, và bên gọi phải hiểu tập rỗng là "chưa
+    /// biết" chứ không phải "không còn ai": lọc theo một tập rỗng sẽ xoá sạch mọi ứng viên.
+    /// </summary>
+    private static async Task<HashSet<int>> AlivePlayoffTeamsAsync(Ti2026DbContext db)
+    {
+        var rows = await db.ScheduledSeries
+            .Where(s => s.GroupName == PlayoffStage)
+            .Select(s => new { s.TeamId1, s.TeamId2 })
+            .ToListAsync();
+
+        return rows
+            .SelectMany(r => new[] { r.TeamId1, r.TeamId2 })
+            .Where(id => id != null)
+            .Select(id => id!.Value)
+            .ToHashSet();
+    }
+
+    /// <summary>Tên vòng play-off trong bảng đấu Valve. Khớp đúng chuỗi họ đặt.</summary>
+    private const string PlayoffStage = "Playoff";
+
+    /// <summary>
+    /// Thể thức mỗi series play-off. TI đá Bo3 ở mọi vòng trừ chung kết tổng (Bo5).
+    ///
+    /// Để một hằng số chứ không đọc từ Valve vì họ không công bố thể thức trong GetLeagueData —
+    /// và đoán sai Bo1/Bo3 làm mọi xác suất series lệch, chứ không chỉ lệch một nút.
+    /// </summary>
+    private const int PlayoffBestOf = 3;
+
     private static async Task<List<ScoredPlayer>> ScorePlayersAsync(
         Ti2026DbContext db, FantasyConfig config, int days, long? leagueId = null)
     {

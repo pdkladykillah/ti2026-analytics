@@ -584,6 +584,12 @@
           <h2>Đội hình fantasy điểm cao nhất</h2>
           <p class="desc">Chọn theo điểm trung bình mỗi trận của từng người trong cửa sổ gần đây. Điểm một trận là tổng <b>hai ván cao nhất</b> trong series — đúng luật TI2026.</p>
         </header>
+        <!-- Vòng bảng 3 ô emblem, play-off 5 ô — hai con số cho ra hai đội hình khác nhau,
+             nên phải chọn được chứ không thể mặc định một cái. -->
+        <div class="fa-mode" role="radiogroup" aria-label="Vòng đấu">
+          <button type="button" class="pchip" data-fa="group" aria-pressed="true">Vòng bảng<span class="num">3 ô</span></button>
+          <button type="button" class="pchip" data-fa="playoff" aria-pressed="false">Play-off<span class="num">5 ô</span></button>
+        </div>
         <div id="fantasy-roster"></div>
       </div>
 
@@ -617,6 +623,17 @@
           <p class="desc">Tier và trait là thứ <b>quay trúng</b>, không phải thứ chọn được — nên đây là máy tính cho bộ emblem bạn vừa quay ra, để biết nên giữ hay quay lại. <b>Benevolent</b> và <b>vampiric</b> tác động sang ô kề bên, nên thứ tự đặt có ảnh hưởng thật.</p>
         </header>
         <div id="fantasy-calc"></div>
+      </div>
+
+      <div class="card" data-sec="Dự đoán nhánh">
+        <header>
+          <h2>Chọn đội đi tiếp thế nào cho được nhiều điểm</h2>
+          <p class="desc">Xác suất suy từ chênh lệch Elo rồi đổi sang <b>xác suất cả series</b> —
+            Bo3 khuếch đại lợi thế, nên không đổi thang thì mọi cặp trông sát nhau hơn thực tế.
+            Chiến lược đang dùng là <b>đánh cược có tính toán</b>: chỉ chọn ngược kèo ở những cặp
+            sát nhau, nơi cái giá phải trả nhỏ mà khác biệt so với số đông thì lớn.</p>
+        </header>
+        <div id="fantasy-bracket" aria-live="polite"></div>
       </div>
 
       <div class="card" data-sec="Bảng hệ số">

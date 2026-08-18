@@ -2583,3 +2583,46 @@ details:not(.why):not(.pf-more) > summary {
 }
 details:not(.why):not(.pf-more) > summary:hover { border-color: var(--border-strong); }
 details:not(.why):not(.pf-more)[open] > summary { margin-bottom: var(--s-1); }
+
+/* ---- Fantasy: công tắc vòng đấu và dự đoán nhánh ---- */
+
+.fa-mode { display: flex; gap: 6px; margin-bottom: var(--s-4); }
+.fa-mode .num { color: var(--muted); font-size: 12px; margin-left: 6px; }
+.fa-mode [aria-pressed="true"] .num { color: inherit; }
+
+.bc-sum {
+  font-size: 13px; color: var(--muted);
+  padding-bottom: var(--s-3); margin-bottom: var(--s-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.bc-list { display: grid; gap: 6px; }
+
+/* Cặp sát nhau nổi lên bằng NỀN, vì đó là những nút người dùng cần cân nhắc; cặp chênh lệch rõ
+   thì chỉ cần liếc qua. Nền chứ không phải viền màu nhấn — viền mảnh màu nhấn ở chủ đề sáng
+   chỉ đạt 2,2:1. */
+.bc-row {
+  display: grid; gap: 4px var(--s-3); align-items: baseline;
+  grid-template-columns: minmax(0, 1fr) 104px 84px;
+  padding: 8px var(--s-3); border-radius: var(--r-md);
+  font-size: 14px;
+}
+.bc-row.close { background: var(--surface-2); }
+
+.bc-pair { font-weight: 700; display: flex; gap: 7px; flex-wrap: wrap; min-width: 0; }
+.bc-pick { color: var(--ink); font-weight: 800; }
+.bc-prob { text-align: right; color: var(--muted); font-size: 13px; }
+
+.bc-tag {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+  text-align: center; padding: 2px 0; border-radius: var(--r-pill);
+}
+.bc-tag.fav { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.bc-tag.bet { background: var(--accent-soft); color: var(--accent-ink); }
+
+.bc-why { grid-column: 1 / -1; font-size: 12.5px; line-height: 1.45; }
+
+@media (max-width: 620px) {
+  .bc-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .bc-tag { grid-column: 2; }
+}

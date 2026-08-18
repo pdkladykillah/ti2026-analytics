@@ -4816,7 +4816,72 @@ async function setupIdols() {
   await loadIdols(idolWho);
 }
 
+function setupFantasyMode() {
+  const box = $('.fa-mode');
+  if (!box || box.dataset.wired) return;
+  box.dataset.wired = '1';
+
+  box.onclick = (e) => {
+    const btn = e.target.closest('[data-fa]');
+    if (!btn) return;
+
+    const next = btn.dataset.fa === 'playoff';
+    if (next === fantasyPlayoff) return;
+
+    fantasyPlayoff = next;
+    $('[data-fa]', box).forEach((b) =>
+      b.setAttribute('aria-pressed', String((b.dataset.fa === 'playoff') === fantasyPlayoff)));
+
+    // Ba mục con cùng đọc /optimize nên phải vẽ lại cả ba, không chỉ đội hình.
+    loadFantasyRoster();
+    loadFantasyBaseline();
+    loadFantasyTitles();
+  };
+}
+
+async function loadFantasyBracket() {
+  const body = $('#fantasy-bracket');
+  if (!body) return;
+  body.innerHTML = '<div class="skeleton sk-md"></div>';
+
+  try {
+    const d = await getJson('api/fantasy/bracket?contrarian=true');
+
+    if (!d.ready) {
+      body.innerHTML = `<div class="empty">${esc(d.note || 'Chưa có cặp đấu nào.')}</div>`;
+      return;
+    }
+
+    const row = (c) => `<article class="bc-row${c.isClose ? ' close' : ''}">
+      <div class="bc-pair">
+        <span class="${c.pick === c.teamA ? 'bc-pick' : 'mu'}">${esc(c.teamA)}</span>
+        <span class="mu">vs</span>
+        <span class="${c.pick === c.teamB ? 'bc-pick' : 'mu'}">${esc(c.teamB)}</span>
+      </div>
+      <div class="bc-prob num">${fmt(c.probA * 100, 0)}% – ${fmt(c.probB * 100, 0)}%</div>
+      <div class="bc-tag ${c.pickIsFavourite ? 'fav' : 'bet'}">${
+        c.pickIsFavourite ? 'cửa trên' : 'ngược kèo'}</div>
+      <div class="bc-why mu">${esc(c.reason)}</div>
+    </article>`;
+
+    const bets = d.calls.filter((c) => !c.pickIsFavourite);
+
+    body.innerHTML = `
+      <div class="bc-sum">
+        <b>${n0(bets.length)}</b> cặp đáng đánh cược trên tổng <b>${n0(d.calls.length)}</b> cặp đã biết đội
+        ${d.skipped ? ` · ${n0(d.skipped)} cặp bỏ qua vì thiếu Elo` : ''}
+      </div>
+      <div class="bc-list">${d.calls.map(row).join('')}</div>
+      <p class="desc">${esc(d.method)}</p>
+      <p class="desc">${esc(d.limitation)}</p>`;
+  } catch (e) {
+    body.innerHTML = `<div class="empty">Không tải được: ${esc(String(e.message || e))}</div>`;
+  }
+}
+
 async function loadFantasy() {
+  setupFantasyMode();
+  loadFantasyBracket();
   loadFantasyConfig();
   loadFantasyRoster();
   loadFantasyPlayers();
@@ -5133,8 +5198,24 @@ async function loadFantasyConfig() {
  * /optimize dùng chung cho ba mục con (đội hình, đối chiếu TI2025, danh hiệu). Gọi ba lần thì
  * máy chủ chấm điểm lại ba lượt cho cùng một câu trả lời, nên nhớ lại kết quả trong phiên.
  */
-let optimizeOnce = null;
-const getOptimize = () => (optimizeOnce ??= getJson('api/fantasy/optimize'));
+let optimizeOnce = {};
+
+/**
+ * Chế độ đang xem: vòng bảng (3 ô emblem) hay play-off (5 ô).
+ *
+ * Ngoài số ô, hai chế độ còn khác một chỗ quyết định: play-off CHỈ chọn trong những đội còn ở
+ * trong nhánh. Không lọc thì bộ tối ưu vẫn tiến cử người của đội vừa dừng bước — đo được lúc
+ * phát hiện: ba trong năm ô là người LGD Gaming, đội không có mặt ở play-off, tức ba ô ăn đúng
+ * 0 điểm trong khi tổng dự kiến vẫn hiện 34.036 trông hoàn toàn hợp lý.
+ */
+let fantasyPlayoff = false;
+
+/**
+ * /optimize dùng chung cho ba mục con. Nhớ theo CHẾ ĐỘ: hai chế độ trả về hai đội hình khác
+ * nhau, nên một ô nhớ duy nhất sẽ phát bản của chế độ trước cho chế độ sau.
+ */
+const getOptimize = () => (optimizeOnce[fantasyPlayoff] ??=
+  getJson('api/fantasy/optimize?playoff=' + fantasyPlayoff));
 
 /** Thẻ một tuyển thủ trong đội hình. Tên ĐỘI phải hiện, vì luật ràng buộc CẶP CÙNG ĐỘI. */
 function rosterCard(p) {
